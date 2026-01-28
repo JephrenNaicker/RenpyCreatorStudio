@@ -1,0 +1,129 @@
+# Backend (Python/FastAPI) specific ignores
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Frontend (Vue.js/TypeScript) specific ignores
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Project specific ignores
+**/README[Test].MD
+README[Test].MD
+README[Test].md
+READMETest.MD
+READMETest.md
+
+# Docker
+docker-compose.override.yml
+*.env.local
+
+# Database
+*.db
+*.sqlite3
+*.sqlite
+
+# Alembic migrations (except the necessary ones)
+alembic/versions/
+!alembic/versions/__pycache__/
+
+# Project specific temporary files
+*.tmp
+*.temp
+/temp/
+/tmp/
+
+# Optional: Ignore local development configs
+backend/.env
+frontend/.env
+backend/local_settings.py
+
+# Optional: Build artifacts
+backend/static/
+backend/media/
+
+# Optional: Testing
+backend/tests/__pycache__/
