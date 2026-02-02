@@ -1,422 +1,289 @@
 <template>
     <div class="dashboard">
         <!-- Left Panel -->
-        <aside class="sidebar">
-            <h3>Characters</h3>
-
-            <div v-for="char in characters" :key="char.id" class="character-item" @click="selectCharacter(char)"
-                :class="{ active: selectedCharacter?.id === char.id }">
-                <span class="color-dot" :style="{ background: char.color }" />
-                {{ char.name }}
-                <span class="expression-count">{{ char.expressions?.length || 0 }} 😀</span>
-            </div>
-
-            <button class="secondary small" @click="addCharacter">
-                + Add Character to Project
-            </button>
-
-            <div class="sidebar-section">
-                <h4>Recent Scenes</h4>
-                <div v-for="scene in recentScenes" :key="scene.id" class="scene-item">
-                    <span class="scene-icon">🎬</span>
-                    {{ scene.name }}
-                </div>
-            </div>
-        </aside>
+        <CharacterSidebar :characters="projectCharacters" :scenes="scenes" :selected-character-id="selectedCharacterId"
+            @select-character="handleSelectCharacter" @add-character="addCharacterToProject"
+            @select-scene="selectScene" />
 
         <!-- Main Panel -->
         <main class="workspace">
             <div class="workspace-header">
-                <h2>{{ selectedCharacter ? `Writing as ${selectedCharacter.name}` : 'Continue Writing' }}</h2>
-                <div class="character-expressions" v-if="selectedCharacter">
-                    <button v-for="exp in selectedCharacter.expressions" :key="exp" class="expression-btn"
-                        @click="setExpression(exp)">
-                        {{ getEmoji(exp) }} {{ exp }}
+                <h2>
+                    {{ selectedCharacter ? `Writing as ${selectedCharacter.name}` : 'Continue Writing' }}
+                    <span v-if="currentScene" class="scene-badge">
+                        🎬 {{ currentScene.name }}
+                    </span>
+                </h2>
+
+                <div class="quick-tools">
+                    <button class="tool-btn" @click="saveScene">
+                        💾 Save Scene
+                    </button>
+                    <button class="tool-btn" @click="exportScene">
+                        📤 Export
+                    </button>
+                    <button class="tool-btn" @click="undo">
+                        ↩️ Undo
                     </button>
                 </div>
             </div>
 
-            <div class="dialogue-editor">
-                <div class="dialogue-history">
-                    <div v-for="(line, index) in dialogueLines" :key="index" class="dialogue-line">
-                        <div class="speaker" :style="{ color: line.character?.color }">
-                            {{ line.character?.name || 'Narrator' }}:
-                        </div>
-                        <div class="text">{{ line.text }}</div>
-                        <div class="expression" v-if="line.expression">
-                            {{ getEmoji(line.expression) }}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="dialogue-input">
-                    <div class="input-header">
-                        <select v-model="currentSpeaker" class="speaker-select">
-                            <option value="">Narrator</option>
-                            <option v-for="char in characters" :key="char.id" :value="char.id">
-                                {{ char.name }}
-                            </option>
-                        </select>
-
-                        <select v-if="currentSpeakerChar" v-model="currentExpression" class="expression-select">
-                            <option value="">Default</option>
-                            <option v-for="exp in currentSpeakerChar.expressions" :key="exp" :value="exp">
-                                {{ exp }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <textarea v-model="currentText" placeholder="Type dialogue here..."
-                        @keydown.enter.prevent="addDialogueLine" rows="3" />
-
-                    <div class="input-actions">
-                        <button class="primary" @click="addDialogueLine">
-                            Add Line
-                        </button>
-                        <button class="secondary" @click="addMenu">
-                            Add Menu Choice
-                        </button>
-                        <button class="secondary" @click="saveScene">
-                            Save Scene
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <DialogueEditor :dialogue-lines="dialogueLines" :characters="projectCharacters"
+                :selected-line-index="selectedLineIndex" :selected-speaker-id="selectedCharacterId"
+                @add-line="addDialogueLine" @edit-line="editDialogueLine" @delete-line="deleteDialogueLine"
+                @select-line="selectLine" @speaker-change="handleSpeakerChange" @add-menu="addMenuChoice"
+                @add-action="addAction" />
         </main>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import CharacterSidebar from '@/components/Project/CharacterSidebar.vue';
+import DialogueEditor from '@/components/Project/DialogueEditor.vue';
+import { dummyCharacters } from '@/utils/dummyData';
+import type { Character, DialogueLine, Scene } from '@/types';
 
-const characters = ref([
-    { id: '1', name: 'Alice', color: '#f87171', expressions: ['happy', 'sad', 'angry', 'surprised'] },
-    { id: '2', name: 'Bob', color: '#60a5fa', expressions: ['neutral', 'smile', 'concerned'] },
-    { id: '3', name: 'Catherine', color: '#a78bfa', expressions: ['serious', 'mysterious', 'determined'] }
+const route = useRoute();
+
+// State
+const selectedCharacterId = ref<string | null>(null);
+const selectedLineIndex = ref<number | null>(null);
+const currentScene = ref<Scene | null>(null);
+const dialogueLines = ref<DialogueLine[]>([
+    {
+        id: '1',
+        character: {
+            id: '1',
+            name: 'Alice',
+            color: '#FF6B6B'
+        },
+        text: 'Welcome to Mystic Academy!',
+        expression: 'happy',
+        order: 1
+    },
+    {
+        id: '2',
+        character: {
+            id: '2',
+            name: 'Bob',
+            color: '#4ECDC4'
+        },
+        text: 'Thanks! I\'m excited to be here.',
+        expression: 'smile',
+        order: 2
+    },
+    {
+        id: '3',
+        character: {
+            id: '',
+            name: 'Catherine',
+            color: '#A78BFA'
+        },
+        text: 'The ancient doors creak open, revealing a grand hall filled with magical energy.',
+        order: 3
+    },
+    {
+        id: '4',
+        character: {
+            id: '3',
+            name: 'Catherine',
+            color: '#A78BFA'
+        },
+        text: 'Be careful, not everything is as it seems here...',
+        expression: 'mysterious',
+        order: 4
+    }
 ]);
 
-const recentScenes = ref([
-    { id: '1', name: 'First Encounter' },
-    { id: '2', name: 'The Library' },
-    { id: '3', name: 'Training Grounds' }
+const scenes = ref<Scene[]>([
+    { id: '1', name: 'First Encounter', projectId: '1', dialogue: [] },
+    { id: '2', name: 'The Library', projectId: '1', dialogue: [] },
+    { id: '3', name: 'Training Grounds', projectId: '1', dialogue: [] }
 ]);
 
-const selectedCharacter = ref<any>(null);
-const currentSpeaker = ref('');
-const currentExpression = ref('');
-const currentText = ref('');
-const dialogueLines = ref([
-    { character: characters.value[0], text: 'Welcome to Mystic Academy!', expression: 'happy' },
-    { character: characters.value[1], text: 'Thanks! I\'m excited to be here.', expression: 'smile' },
-    { character: characters.value[2], text: 'Be careful, not everything is as it seems here...', expression: 'mysterious' }
-]);
-
-const currentSpeakerChar = computed(() => {
-    return characters.value.find(c => c.id === currentSpeaker.value);
+// Computed
+const projectCharacters = computed(() => {
+    // dummyCharacters uses a slightly different shape; assert to Character[] for UI usage
+    return dummyCharacters as unknown as Character[];
 });
 
-const selectCharacter = (char: any) => {
-    selectedCharacter.value = char;
-    currentSpeaker.value = char.id;
+const selectedCharacter = computed<Character | null>(() => {
+    return selectedCharacterId.value
+        ? projectCharacters.value.find(c => c.id === selectedCharacterId.value) || null
+        : null;
+});
+
+// Watch for narrator selection (empty character ID)
+watch(() => selectedCharacterId.value, (newId) => {
+    // If narrator is selected (null), ensure no character is selected in UI
+    if (newId === null || newId === '') {
+        // The sidebar will handle this via prop
+    }
+});
+
+// Methods
+const handleSelectCharacter = (character: Character) => {
+    selectedCharacterId.value = character.id;
+    selectedLineIndex.value = null; // Deselect any line when selecting character
 };
 
-const addCharacter = () => {
+const handleSpeakerChange = (characterId: string | null) => {
+    selectedCharacterId.value = characterId;
+};
+
+const addCharacterToProject = () => {
     // TODO: Open character selection modal
     alert('Character selection modal coming soon!');
 };
 
-const getEmoji = (expression: string) => {
-    const emojiMap: Record<string, string> = {
-        'happy': '😊',
-        'sad': '😢',
-        'angry': '😠',
-        'surprised': '😲',
-        'neutral': '😐',
-        'smile': '😄',
-        'concerned': '😟',
-        'serious': '😐',
-        'mysterious': '🕵️',
-        'determined': '💪'
+const selectScene = (scene: Scene) => {
+    currentScene.value = scene;
+    // TODO: Load scene dialogue
+    console.log('Loading scene:', scene);
+    // Reset dialogue for new scene
+    // dialogueLines.value = scene.dialogue || [];
+};
+
+const addDialogueLine = (line: DialogueLine) => {
+    const newLine = {
+        ...line,
+        id: Date.now().toString(),
+        order: dialogueLines.value.length + 1
     };
-    return emojiMap[expression] || '😀';
+    dialogueLines.value.push(newLine);
+    selectedLineIndex.value = dialogueLines.value.length - 1;
+
+    // Update speaker selection
+    if (line.character) {
+        selectedCharacterId.value = line.character.id;
+    } else {
+        selectedCharacterId.value = null; // Narrator
+    }
 };
 
-const setExpression = (expression: string) => {
-    currentExpression.value = expression;
+const editDialogueLine = (index: number) => {
+    selectedLineIndex.value = index;
+    const line = dialogueLines.value[index];
+    // Update speaker selection based on edited line
+    selectedCharacterId.value = line?.character?.id ?? null;
 };
 
-const addDialogueLine = () => {
-    if (!currentText.value.trim()) return;
-
-    const character = currentSpeakerChar.value || null;
-
-    dialogueLines.value.push({
-        character,
-        text: currentText.value,
-        expression: currentExpression.value
-    });
-
-    currentText.value = '';
-    currentExpression.value = '';
+const deleteDialogueLine = (index: number) => {
+    if (confirm('Delete this dialogue line?')) {
+        dialogueLines.value.splice(index, 1);
+        selectedLineIndex.value = null;
+        // Update orders
+        dialogueLines.value.forEach((line, idx) => {
+            line.order = idx + 1;
+        });
+    }
 };
 
-const addMenu = () => {
-    // TODO: Implement menu choice
+const selectLine = (index: number) => {
+    selectedLineIndex.value = index;
+    const line = dialogueLines.value[index];
+    selectedCharacterId.value = line?.character?.id ?? null;
+};
+
+const addMenuChoice = () => {
     alert('Menu choice feature coming soon!');
 };
 
+const addAction = () => {
+    alert('Action feature coming soon!');
+};
+
 const saveScene = () => {
-    // TODO: Save scene to backend
+    // TODO: Save to backend
+    console.log('Saving scene:', {
+        scene: currentScene.value,
+        dialogue: dialogueLines.value
+    });
     alert('Scene saved!');
 };
+
+const exportScene = () => {
+    alert('Export feature coming soon!');
+};
+
+const undo = () => {
+    if (dialogueLines.value.length > 0) {
+        dialogueLines.value.pop();
+        selectedLineIndex.value = null;
+        selectedCharacterId.value = null; // Reset to narrator
+    }
+};
+
+onMounted(() => {
+    console.log('Project ID:', route.params.id);
+    // TODO: Load project data
+});
 </script>
 
 <style scoped>
+/* Keep your existing styles, they're good */
 .dashboard {
     display: grid;
     grid-template-columns: 260px 1fr;
     height: calc(100vh - 64px);
 }
 
-.sidebar {
-    background: #020617;
-    border-right: 1px solid #334155;
-    padding: 1rem;
-    overflow-y: auto;
-}
-
-.sidebar h3,
-.sidebar h4 {
-    margin-bottom: 1rem;
-    color: #f8fafc;
-}
-
-.character-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    border-radius: 6px;
-    cursor: pointer;
-    margin-bottom: 0.25rem;
-    transition: all 0.2s;
-}
-
-.character-item:hover {
-    background: #1e293b;
-}
-
-.character-item.active {
-    background: rgba(56, 189, 248, 0.2);
-    border-left: 3px solid #38bdf8;
-}
-
-.color-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-}
-
-.expression-count {
-    margin-left: auto;
-    font-size: 0.8rem;
-    opacity: 0.7;
-}
-
-.sidebar-section {
-    margin-top: 2rem;
-}
-
-.scene-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    border-radius: 6px;
-    cursor: pointer;
-    margin-bottom: 0.25rem;
-    font-size: 0.9rem;
-}
-
-.scene-item:hover {
-    background: #1e293b;
-}
-
-.scene-icon {
-    opacity: 0.7;
-}
-
-.secondary {
-    background: #1e293b;
-    border: none;
-    color: #e2e8f0;
-    border-radius: 6px;
-    padding: 0.5rem 0.75rem;
-    margin-top: 1rem;
-    width: 100%;
-    cursor: pointer;
-}
-
-.small {
-    font-size: 0.85rem;
-}
-
-/* Workspace */
 .workspace {
-    padding: 1.5rem;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     background: #0f172a;
+    overflow: hidden;
 }
 
 .workspace-header {
-    margin-bottom: 2rem;
+    padding: 1.5rem 1.5rem 0;
 }
 
 .workspace-header h2 {
     color: #f8fafc;
     margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
-.character-expressions {
+.scene-badge {
+    background: rgba(56, 189, 248, 0.2);
+    color: #38bdf8;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.quick-tools {
     display: flex;
     gap: 0.5rem;
-    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
 }
 
-.expression-btn {
+.tool-btn {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid #334155;
-    border-radius: 20px;
-    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
     color: #cbd5e1;
     cursor: pointer;
     font-size: 0.85rem;
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.5rem;
+    transition: all 0.2s;
 }
 
-.expression-btn:hover {
+.tool-btn:hover {
     background: rgba(56, 189, 248, 0.2);
     border-color: #38bdf8;
-}
-
-/* Dialogue Editor */
-.dialogue-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-}
-
-.dialogue-history {
-    background: #020617;
-    border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 1.5rem;
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-.dialogue-line {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.dialogue-line:last-child {
-    margin-bottom: 0;
-    padding-bottom: 0;
-    border-bottom: none;
-}
-
-.speaker {
-    font-weight: bold;
-    min-width: 120px;
-    padding-top: 0.25rem;
-}
-
-.text {
-    flex: 1;
-    color: #cbd5e1;
-    line-height: 1.5;
-}
-
-.expression {
-    font-size: 1.2rem;
-    opacity: 0.8;
-}
-
-/* Dialogue Input */
-.dialogue-input {
-    background: #020617;
-    border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 1.5rem;
-}
-
-.input-header {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-
-.speaker-select,
-.expression-select {
-    background: #0f172a;
-    border: 1px solid #334155;
-    border-radius: 6px;
-    padding: 0.5rem 0.75rem;
     color: #f8fafc;
-    cursor: pointer;
-}
-
-textarea {
-    width: 100%;
-    background: #0f172a;
-    border: 1px solid #334155;
-    border-radius: 8px;
-    padding: 1rem;
-    color: #f8fafc;
-    font-size: 1rem;
-    resize: vertical;
-    min-height: 80px;
-    margin-bottom: 1rem;
-}
-
-textarea:focus {
-    outline: none;
-    border-color: #38bdf8;
-}
-
-.input-actions {
-    display: flex;
-    gap: 0.75rem;
-}
-
-.primary {
-    background: #38bdf8;
-    color: #020617;
-    border: none;
-    border-radius: 6px;
-    padding: 0.75rem 1.5rem;
-    cursor: pointer;
-    font-weight: 500;
-}
-
-.secondary {
-    background: #1e293b;
-    color: #e2e8f0;
-    border: 1px solid #334155;
-    border-radius: 6px;
-    padding: 0.75rem 1.5rem;
-    cursor: pointer;
-}
-
-.primary:hover,
-.secondary:hover {
-    opacity: 0.9;
 }
 </style>

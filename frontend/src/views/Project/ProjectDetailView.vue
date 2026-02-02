@@ -109,10 +109,10 @@
                             </div>
                             <div class="character-stats">
                                 <span class="stat-badge">
-                                    😀 {{ character.expressions?.length || 0 }}
+                                    😀 {{ character.expressions || 0 }}
                                 </span>
                                 <span class="stat-badge">
-                                    👕 {{ character.outfits?.length || 0 }}
+                                    👕 {{ character.outfits || 0 }}
                                 </span>
                             </div>
                         </div>
