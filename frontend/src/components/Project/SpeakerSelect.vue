@@ -14,7 +14,7 @@
 
         <div v-if="showExpression && selectedCharacter" class="expression-select">
             <select v-model="selectedExpression" @change="$emit('expression-change', selectedExpression)"
-                class="select">
+                class="select expression-select-dropdown">
                 <option value="">Default Expression</option>
                 <option v-for="expression in selectedCharacter.expressions || []" :key="expression" :value="expression">
                     {{ expression }}
@@ -25,6 +25,7 @@
             </span>
         </div>
 
+        <!-- Make character info more compact -->
         <div v-if="selectedCharacter" class="character-info">
             <span class="color-preview" :style="{ backgroundColor: selectedCharacter.color }"></span>
             <span class="character-name">{{ selectedCharacter.name }}</span>
@@ -104,7 +105,10 @@ const getExpressionEmoji = (expression: string) => {
 .speaker-select {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.5rem;
+    /* Reduced from 0.75rem */
+    margin-bottom: 0.5rem;
+    /* Add margin to separate from textarea */
 }
 
 .select-group {
@@ -128,6 +132,8 @@ const getExpressionEmoji = (expression: string) => {
     cursor: pointer;
     font-size: 0.9rem;
     transition: border-color 0.2s;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .select.narrator {
@@ -144,38 +150,60 @@ const getExpressionEmoji = (expression: string) => {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    width: 100%;
+}
+
+.expression-select-dropdown {
+    flex: 1;
+    min-width: 0;
+    /* Allow shrinking */
 }
 
 .expression-emoji {
     font-size: 1.2rem;
     opacity: 0.8;
+    flex-shrink: 0;
 }
 
 .character-info {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem;
+    padding: 0.375rem;
+    /* Reduced from 0.5rem */
     background: rgba(255, 255, 255, 0.05);
     border-radius: 6px;
-    margin-top: 0.25rem;
+    margin-top: 0.125rem;
+    /* Reduced from 0.25rem */
+    font-size: 0.85rem;
+    /* Slightly smaller */
 }
 
 .color-preview {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    /* Reduced from 12px */
+    height: 10px;
+    /* Reduced from 12px */
     border-radius: 50%;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
 }
 
 .character-name {
     font-weight: 500;
     color: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .character-nickname {
     color: #94a3b8;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    /* Reduced from 0.85rem */
     font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 </style>

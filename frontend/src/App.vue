@@ -1,9 +1,8 @@
 <template>
-  <AppLayout />
+  <router-view />
 </template>
 
 <script setup lang="ts">
-import AppLayout from './components/layout/AppLayout.vue';
 </script>
 
 <style>
@@ -13,14 +12,26 @@ import AppLayout from './components/layout/AppLayout.vue';
   box-sizing: border-box;
 }
 
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  /* Prevent body scrolling, let containers handle it */
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   background: #0f172a;
   color: #f8fafc;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #app {
-  min-height: 100vh;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  /* App handles its own scrolling */
 }
 </style>

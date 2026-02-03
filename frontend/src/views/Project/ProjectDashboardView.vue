@@ -28,11 +28,13 @@
                 </div>
             </div>
 
-            <DialogueEditor :dialogue-lines="dialogueLines" :characters="projectCharacters"
-                :selected-line-index="selectedLineIndex" :selected-speaker-id="selectedCharacterId"
-                @add-line="addDialogueLine" @edit-line="editDialogueLine" @delete-line="deleteDialogueLine"
-                @select-line="selectLine" @speaker-change="handleSpeakerChange" @add-menu="addMenuChoice"
-                @add-action="addAction" />
+            <div class="workspace-content">
+                <DialogueEditor :dialogue-lines="dialogueLines" :characters="projectCharacters"
+                    :selected-line-index="selectedLineIndex" :selected-speaker-id="selectedCharacterId"
+                    @add-line="addDialogueLine" @edit-line="handleEditLine" @delete-line="deleteDialogueLine"
+                    @select-line="selectLine" @speaker-change="handleSpeakerChange" @add-menu="addMenuChoice"
+                    @add-action="addAction" />
+            </div>
         </main>
     </div>
 </template>
@@ -77,9 +79,9 @@ const dialogueLines = ref<DialogueLine[]>([
     {
         id: '3',
         character: {
-            id: '',
+            id: '3',
             name: 'Catherine',
-            color: '#A78BFA'
+            color: '#FFD166'
         },
         text: 'The ancient doors creak open, revealing a grand hall filled with magical energy.',
         order: 3
@@ -89,7 +91,7 @@ const dialogueLines = ref<DialogueLine[]>([
         character: {
             id: '3',
             name: 'Catherine',
-            color: '#A78BFA'
+            color: '#FFD166'
         },
         text: 'Be careful, not everything is as it seems here...',
         expression: 'mysterious',
@@ -163,11 +165,11 @@ const addDialogueLine = (line: DialogueLine) => {
     }
 };
 
-const editDialogueLine = (index: number) => {
-    selectedLineIndex.value = index;
-    const line = dialogueLines.value[index];
-    // Update speaker selection based on edited line
-    selectedCharacterId.value = line?.character?.id ?? null;
+const handleEditLine = (payload: { index: number; line: DialogueLine }) => {
+    const { index, line } = payload;
+    dialogueLines.value[index] = line;
+    selectedLineIndex.value = null; // Exit edit mode
+    selectedCharacterId.value = line.character?.id || null;
 };
 
 const deleteDialogueLine = (index: number) => {
@@ -181,10 +183,14 @@ const deleteDialogueLine = (index: number) => {
     }
 };
 
-const selectLine = (index: number) => {
+const selectLine = (index: number | null) => {
     selectedLineIndex.value = index;
-    const line = dialogueLines.value[index];
-    selectedCharacterId.value = line?.character?.id ?? null;
+    if (index !== null && index >= 0 && index < dialogueLines.value.length) {
+        const line = dialogueLines.value[index];
+        selectedCharacterId.value = line?.character?.id ?? null;
+    } else {
+        selectedCharacterId.value = null; // Clear selection when deselecting
+    }
 };
 
 const addMenuChoice = () => {
@@ -224,6 +230,20 @@ onMounted(() => {
 
 <style scoped>
 /* Keep your existing styles, they're good */
+.workspace {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #0f172a;
+    overflow: hidden;
+}
+
+.dialogue-editor-wrapper {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .dashboard {
     display: grid;
     grid-template-columns: 260px 1fr;
@@ -285,5 +305,31 @@ onMounted(() => {
     background: rgba(56, 189, 248, 0.2);
     border-color: #38bdf8;
     color: #f8fafc;
+}
+
+.workspace-content {
+    flex: 1;
+    min-height: 0;
+    /* Crucial for scrolling */
+    overflow-y: auto;
+    /* Enable scrolling here */
+}
+
+/* Add custom scrollbar for workspace */
+.workspace-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.workspace-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.workspace-content::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+
+.workspace-content::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
 }
 </style>
