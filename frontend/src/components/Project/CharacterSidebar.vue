@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Character, Scene } from '@/types';
+import type { Character, Scene } from '@/utils/dummyData';
 
 interface Props {
     characters: Character[];

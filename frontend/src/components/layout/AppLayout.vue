@@ -33,20 +33,46 @@ const isDashboardMode = computed(() => {
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
+    /* Allow scrolling in default mode if content overflows */
+    overflow-y: auto;
 }
 
 /* Dashboard mode (full screen) */
-.app-layout.dashboard-mode {
-    overflow: hidden;
-}
-
 .app-layout.dashboard-mode .main-content {
     padding: 0;
     max-width: none;
     margin: 0;
     width: 100%;
-    overflow: hidden;
+    /* Change from overflow: hidden to auto */
+    overflow-y: auto;
+    /* CHANGE THIS */
     display: flex;
     flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    /* Important for flex children to scroll */
+}
+
+/* Optional: Add smooth scrolling */
+.main-content {
+    scroll-behavior: smooth;
+}
+
+/* Custom scrollbar styling */
+.main-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.main-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.main-content::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
 }
 </style>

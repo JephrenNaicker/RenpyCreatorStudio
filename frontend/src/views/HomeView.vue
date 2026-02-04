@@ -11,16 +11,16 @@
           <p>Design characters with expressions and outfits</p>
         </router-link>
 
-        <router-link to="/dialogue" class="action-card">
-          <span class="action-icon">💬</span>
-          <h3>Write Dialogue</h3>
-          <p>Craft branching conversations</p>
+        <router-link to="/projects/new" class="action-card">
+          <span class="action-icon">📁</span>
+          <h3>Start New Project</h3>
+          <p>Create a new visual novel project</p>
         </router-link>
 
-        <router-link to="/export" class="action-card">
-          <span class="action-icon">📤</span>
-          <h3>Export to Ren'Py</h3>
-          <p>Generate ready-to-use .rpy files</p>
+        <router-link to="/projects" class="action-card">
+          <span class="action-icon">📚</span>
+          <h3>Browse Projects</h3>
+          <p>View and manage your projects</p>
         </router-link>
       </div>
     </div>
@@ -32,7 +32,10 @@
           <div class="character-color" :style="{ backgroundColor: char.color }"></div>
           <div class="character-info">
             <h4>{{ char.name }}</h4>
-            <p class="character-meta">{{ char.expressions?.length || 0 }} expressions</p>
+            <p class="character-meta">
+              {{ char.expressions?.length || 0 }} expressions •
+              {{ char.outfits?.length || 0 }} outfits
+            </p>
             <p class="character-bio">{{ char.bio?.substring(0, 60) }}...</p>
           </div>
           <div class="character-actions">
@@ -42,39 +45,42 @@
         </div>
       </div>
     </div>
+
+    <div class="recent-section">
+      <h2>Recent Projects</h2>
+      <div class="character-grid">
+        <div v-for="project in recentProjects" :key="project.id" class="character-card">
+          <div class="character-color" :style="{ backgroundColor: '#38bdf8' }"></div>
+          <div class="character-info">
+            <h4>{{ project.name }}</h4>
+            <p class="character-meta">
+              {{ project.tags.join(', ') }}
+            </p>
+            <p class="character-bio">{{ project.main_plot?.substring(0, 80) }}...</p>
+          </div>
+          <div class="character-actions">
+            <router-link :to="`/projects/${project.id}`" class="btn-small">View</router-link>
+            <router-link :to="`/projects/${project.id}/dashboard`" class="btn-small secondary">Dashboard</router-link>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { dummyCharacters, dummyProjects, type Character, type Project } from '@/utils/dummyData';
 
-// Mock data - will be replaced with API call
-const recentCharacters = ref([
-  {
-    id: '1',
-    name: 'Alice',
-    color: '#FF6B6B',
-    bio: 'A cheerful protagonist who loves adventure and has a mysterious past.',
-    expressions: ['happy', 'sad', 'angry'],
-    outfit: 'casual'
-  },
-  {
-    id: '2',
-    name: 'Bob',
-    color: '#4ECDC4',
-    bio: 'The reliable best friend who always has your back.',
-    expressions: ['neutral', 'smile', 'concerned'],
-    outfit: 'school'
-  },
-  {
-    id: '3',
-    name: 'Catherine',
-    color: '#FFD166',
-    bio: 'Mysterious transfer student with hidden powers.',
-    expressions: ['serious', 'surprised', 'determined'],
-    outfit: 'magical'
-  }
-]);
+// Use dummy data directly
+const recentCharacters = ref<Character[]>([]);
+const recentProjects = ref<Project[]>([]);
+
+onMounted(() => {
+  // Get first 3 characters and projects for the home page
+  recentCharacters.value = dummyCharacters.slice(0, 3);
+  recentProjects.value = dummyProjects.slice(0, 3);
+});
 </script>
 
 <style scoped>

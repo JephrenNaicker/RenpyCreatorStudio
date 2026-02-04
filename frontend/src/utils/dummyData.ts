@@ -1,4 +1,50 @@
-export const dummyCharacters = [
+export interface Character {
+    id: string;
+    name: string;
+    nickname?: string;
+    color: string;
+    age?: number;
+    birth_date?: string;
+    bio?: string;
+    voice_lines?: Array<{ line_name: string; audio_path: string }>;
+    outfits?: Array<{ name: string; default_image: string }>;
+    expressions?: Array<{ name: string; image_path: string; outfit: string }>;
+    created_at: string;
+}
+
+export interface Project {
+    id: string;
+    name: string;
+    main_plot: string;
+    main_character_id?: string;
+    tags: string[];
+    created_at: string;
+    updated_at: string;
+}
+
+export interface DialogueLine {
+    id: string;
+    character?: {
+        id: string;
+        name: string;
+        color: string;
+    };
+    text: string;
+    expression?: string;
+    order: number;
+}
+
+export interface Scene {
+    id: string;
+    name: string;
+    project_id: string;
+    dialogue_lines: DialogueLine[];
+    created_at: string;
+    updated_at: string;
+}
+
+// Define the data arrays
+const initialCharacters: Character[] = [
     {
         id: '1',
         name: 'Alice',
@@ -68,7 +114,7 @@ export const dummyCharacters = [
     }
 ];
 
-export const dummyProjects = [
+const initialProjects: Project[] = [
     {
         id: '1',
         name: 'Mystic Academy',
@@ -88,3 +134,84 @@ export const dummyProjects = [
         updated_at: '2024-01-19T09:15:00Z'
     }
 ];
+
+// Add dialogue lines to dummy data
+const initialDialogueLines: DialogueLine[] = [
+    {
+        id: '1',
+        character: {
+            id: '1',
+            name: 'Alice',
+            color: '#FF6B6B'
+        },
+        text: 'Welcome to Mystic Academy!',
+        expression: 'happy',
+        order: 1
+    },
+    {
+        id: '2',
+        character: {
+            id: '2',
+            name: 'Bob',
+            color: '#4ECDC4'
+        },
+        text: 'Thanks! I\'m excited to be here.',
+        expression: 'smile',
+        order: 2
+    },
+    {
+        id: '3',
+        character: {
+            id: '3',
+            name: 'Catherine',
+            color: '#FFD166'
+        },
+        text: 'The ancient doors creak open, revealing a grand hall filled with magical energy.',
+        order: 3
+    },
+    {
+        id: '4',
+        character: {
+            id: '3',
+            name: 'Catherine',
+            color: '#FFD166'
+        },
+        text: 'Be careful, not everything is as it seems here...',
+        expression: 'mysterious',
+        order: 4
+    }
+];
+
+// Add scenes to dummy data
+const initialScenes: Scene[] = [
+    {
+        id: '1',
+        name: 'First Encounter',
+        project_id: '1',
+        dialogue_lines: initialDialogueLines,
+        created_at: '2024-01-20T10:00:00Z',
+        updated_at: '2024-01-20T10:00:00Z'
+    },
+    {
+        id: '2',
+        name: 'The Library',
+        project_id: '1',
+        dialogue_lines: [],
+        created_at: '2024-01-21T14:30:00Z',
+        updated_at: '2024-01-21T14:30:00Z'
+    },
+    {
+        id: '3',
+        name: 'Training Grounds',
+        project_id: '1',
+        dialogue_lines: [],
+        created_at: '2024-01-22T09:15:00Z',
+        updated_at: '2024-01-22T09:15:00Z'
+    }
+];
+
+// Export the data arrays directly
+export const dummyCharacters: Character[] = initialCharacters;
+export const dummyProjects: Project[] = initialProjects;
+export const dummyScenes: Scene[] = initialScenes;
+export const dummyDialogueLines: DialogueLine[] = initialDialogueLines;

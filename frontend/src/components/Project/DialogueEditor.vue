@@ -74,7 +74,7 @@
 <script setup lang="ts">
 import { ref, nextTick, watch } from 'vue';
 import SpeakerSelect from '@/components/Project/SpeakerSelect.vue';
-import type { DialogueLine, Character } from '@/types';
+import type { DialogueLine, Character } from '@/utils/dummyData';
 
 interface Props {
     dialogueLines: DialogueLine[];

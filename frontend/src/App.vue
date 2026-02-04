@@ -15,8 +15,6 @@
 html,
 body {
   height: 100%;
-  overflow: hidden;
-  /* Prevent body scrolling, let containers handle it */
 }
 
 body {
@@ -26,12 +24,13 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-y: auto;
 }
 
 #app {
-  height: 100vh;
+  min-height: 100vh;
   width: 100vw;
-  overflow: hidden;
-  /* App handles its own scrolling */
+  display: flex;
+  flex-direction: column;
 }
 </style>

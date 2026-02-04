@@ -16,8 +16,9 @@
             <select v-model="selectedExpression" @change="$emit('expression-change', selectedExpression)"
                 class="select expression-select-dropdown">
                 <option value="">Default Expression</option>
-                <option v-for="expression in selectedCharacter.expressions || []" :key="expression" :value="expression">
-                    {{ expression }}
+                <option v-for="expression in selectedCharacter.expressions || []" :key="expression.name"
+                    :value="expression.name">
+                    {{ expression.name }}
                 </option>
             </select>
             <span v-if="selectedExpression" class="expression-emoji">
@@ -38,14 +39,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-
-interface Character {
-    id: string;
-    name: string;
-    nickname?: string;
-    color: string;
-    expressions?: string[];
-}
+import type { Character } from '@/utils/dummyData';
 
 interface Props {
     modelValue: string;  // Selected character ID

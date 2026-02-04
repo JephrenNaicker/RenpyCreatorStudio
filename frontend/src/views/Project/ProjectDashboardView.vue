@@ -44,71 +44,31 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import CharacterSidebar from '@/components/Project/CharacterSidebar.vue';
 import DialogueEditor from '@/components/Project/DialogueEditor.vue';
-import { dummyCharacters } from '@/utils/dummyData';
-import type { Character, DialogueLine, Scene } from '@/types';
+// Import everything from dummyData.ts (your single source)
+import {
+    dummyCharacters,
+    dummyScenes,
+    dummyDialogueLines,
+    type Character,
+    type DialogueLine,
+    type Scene,
+    type Project
+} from '@/utils/dummyData';
 
 const route = useRoute();
 
-// State
+// State - use the dummy data
 const selectedCharacterId = ref<string | null>(null);
 const selectedLineIndex = ref<number | null>(null);
 const currentScene = ref<Scene | null>(null);
-const dialogueLines = ref<DialogueLine[]>([
-    {
-        id: '1',
-        character: {
-            id: '1',
-            name: 'Alice',
-            color: '#FF6B6B'
-        },
-        text: 'Welcome to Mystic Academy!',
-        expression: 'happy',
-        order: 1
-    },
-    {
-        id: '2',
-        character: {
-            id: '2',
-            name: 'Bob',
-            color: '#4ECDC4'
-        },
-        text: 'Thanks! I\'m excited to be here.',
-        expression: 'smile',
-        order: 2
-    },
-    {
-        id: '3',
-        character: {
-            id: '3',
-            name: 'Catherine',
-            color: '#FFD166'
-        },
-        text: 'The ancient doors creak open, revealing a grand hall filled with magical energy.',
-        order: 3
-    },
-    {
-        id: '4',
-        character: {
-            id: '3',
-            name: 'Catherine',
-            color: '#FFD166'
-        },
-        text: 'Be careful, not everything is as it seems here...',
-        expression: 'mysterious',
-        order: 4
-    }
-]);
+const dialogueLines = ref<DialogueLine[]>([...dummyDialogueLines]);
 
-const scenes = ref<Scene[]>([
-    { id: '1', name: 'First Encounter', projectId: '1', dialogue: [] },
-    { id: '2', name: 'The Library', projectId: '1', dialogue: [] },
-    { id: '3', name: 'Training Grounds', projectId: '1', dialogue: [] }
-]);
+// IMPORTANT: Use the correct property names from dummyData.ts
+const scenes = ref<Scene[]>([...dummyScenes]);
 
 // Computed
 const projectCharacters = computed(() => {
-    // dummyCharacters uses a slightly different shape; assert to Character[] for UI usage
-    return dummyCharacters as unknown as Character[];
+    return dummyCharacters;
 });
 
 const selectedCharacter = computed<Character | null>(() => {
@@ -117,18 +77,15 @@ const selectedCharacter = computed<Character | null>(() => {
         : null;
 });
 
-// Watch for narrator selection (empty character ID)
+// Watch for narrator selection
 watch(() => selectedCharacterId.value, (newId) => {
-    // If narrator is selected (null), ensure no character is selected in UI
-    if (newId === null || newId === '') {
-        // The sidebar will handle this via prop
-    }
+    // Handle narrator selection if needed
 });
 
 // Methods
 const handleSelectCharacter = (character: Character) => {
     selectedCharacterId.value = character.id;
-    selectedLineIndex.value = null; // Deselect any line when selecting character
+    selectedLineIndex.value = null;
 };
 
 const handleSpeakerChange = (characterId: string | null) => {
@@ -136,16 +93,14 @@ const handleSpeakerChange = (characterId: string | null) => {
 };
 
 const addCharacterToProject = () => {
-    // TODO: Open character selection modal
     alert('Character selection modal coming soon!');
 };
 
 const selectScene = (scene: Scene) => {
     currentScene.value = scene;
-    // TODO: Load scene dialogue
+    // Use dialogue_lines (from dummyData.ts structure)
+    dialogueLines.value = [...(scene.dialogue_lines || [])];
     console.log('Loading scene:', scene);
-    // Reset dialogue for new scene
-    // dialogueLines.value = scene.dialogue || [];
 };
 
 const addDialogueLine = (line: DialogueLine) => {
@@ -168,7 +123,7 @@ const addDialogueLine = (line: DialogueLine) => {
 const handleEditLine = (payload: { index: number; line: DialogueLine }) => {
     const { index, line } = payload;
     dialogueLines.value[index] = line;
-    selectedLineIndex.value = null; // Exit edit mode
+    selectedLineIndex.value = null;
     selectedCharacterId.value = line.character?.id || null;
 };
 
@@ -189,7 +144,7 @@ const selectLine = (index: number | null) => {
         const line = dialogueLines.value[index];
         selectedCharacterId.value = line?.character?.id ?? null;
     } else {
-        selectedCharacterId.value = null; // Clear selection when deselecting
+        selectedCharacterId.value = null;
     }
 };
 
@@ -202,7 +157,6 @@ const addAction = () => {
 };
 
 const saveScene = () => {
-    // TODO: Save to backend
     console.log('Saving scene:', {
         scene: currentScene.value,
         dialogue: dialogueLines.value
@@ -218,13 +172,12 @@ const undo = () => {
     if (dialogueLines.value.length > 0) {
         dialogueLines.value.pop();
         selectedLineIndex.value = null;
-        selectedCharacterId.value = null; // Reset to narrator
+        selectedCharacterId.value = null;
     }
 };
 
 onMounted(() => {
     console.log('Project ID:', route.params.id);
-    // TODO: Load project data
 });
 </script>
 
