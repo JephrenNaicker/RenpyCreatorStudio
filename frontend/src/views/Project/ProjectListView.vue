@@ -22,6 +22,15 @@
                         {{ tag }}
                     </span>
                 </div>
+
+                <div class="project-meta">
+                    <span class="meta-item">
+                        📅 {{ formatDate(project.created_at) }}
+                    </span>
+                    <span v-if="project.main_character_id" class="meta-item">
+                        👤 Main Character: {{ getMainCharacterName(project.main_character_id) }}
+                    </span>
+                </div>
             </div>
         </div>
 
@@ -37,19 +46,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { dummyProjects, dummyCharacters, type Project, type Character } from '@/utils/dummyData';
 
-const projects = ref([
-    {
-        id: '1',
-        name: 'Mystic Academy',
-        main_plot: 'A mysterious school hiding magical secrets.',
-        tags: ['fantasy', 'school', 'mystery']
-    }
-]);
+// Use the dummy data
+const projects = ref<Project[]>([]);
+
+// Helper function to get main character name
+const getMainCharacterName = (characterId: string): string => {
+    const character = dummyCharacters.find(c => c.id === characterId);
+    return character ? character.name : 'Unknown';
+};
+
+// Helper function to format date
+const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+};
 
 const truncate = (text: string, len: number) =>
     text.length > len ? text.slice(0, len) + '...' : text;
+
+// Load dummy projects on mounted
+onMounted(() => {
+    projects.value = [...dummyProjects];
+});
 </script>
 
 <style scoped>

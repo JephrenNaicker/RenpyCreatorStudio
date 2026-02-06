@@ -1,70 +1,83 @@
 <template>
     <div class="dialogue-editor">
-        <!-- Dialogue History with improved scrolling -->
-        <div class="dialogue-history-container">
-            <div class="dialogue-history-header">
-                <h4>Dialogue History</h4>
-                <span class="line-count">{{ dialogueLines.length }} lines</span>
-            </div>
-            <div class="dialogue-history">
-                <div v-for="(line, index) in dialogueLines" :key="line.id || index" class="dialogue-line" :class="{
-                    narrator: !line.character,
-                    selected: selectedLineIndex === index
-                }" @click="$emit('select-line', index)">
-                    <div class="line-header">
-                        <div class="speaker" :style="{ color: line.character?.color || '#94a3b8' }">
-                            {{ line.character?.name || 'Narrator' }}
+        <!-- Main container for side-by-side layout -->
+        <div class="editor-layout">
+            <!-- Left panel: Dialogue History -->
+            <div class="dialogue-history-container">
+                <div class="dialogue-history-header">
+                    <h4>Dialogue History</h4>
+                    <span class="line-count">{{ dialogueLines.length }} lines</span>
+                </div>
+                <div class="dialogue-history">
+                    <div v-for="(line, index) in dialogueLines" :key="line.id || index" class="dialogue-line" :class="{
+                        narrator: !line.character,
+                        selected: selectedLineIndex === index
+                    }" @click="$emit('select-line', index)">
+                        <div class="line-header">
+                            <div class="speaker" :style="{ color: line.character?.color || '#94a3b8' }">
+                                {{ line.character?.name || 'Narrator' }}
+                            </div>
+                            <div v-if="line.expression" class="expression">
+                                {{ getExpressionEmoji(line.expression) }}
+                                <span class="expression-name">{{ line.expression }}</span>
+                            </div>
                         </div>
-                        <div v-if="line.expression" class="expression">
-                            {{ getExpressionEmoji(line.expression) }}
-                            <span class="expression-name">{{ line.expression }}</span>
+                        <div class="text">{{ line.text }}</div>
+                        <div class="line-actions">
+                            <button class="icon-btn" @click.stop="startEdit(index)" title="Edit">
+                                ✏️
+                            </button>
+                            <button class="icon-btn danger" @click.stop="$emit('delete-line', index)" title="Delete">
+                                🗑️
+                            </button>
                         </div>
-                    </div>
-                    <div class="text">{{ line.text }}</div>
-                    <div class="line-actions">
-                        <button class="icon-btn" @click.stop="startEdit(index)" title="Edit">
-                            ✏️
-                        </button>
-                        <button class="icon-btn danger" @click.stop="$emit('delete-line', index)" title="Delete">
-                            🗑️
-                        </button>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Dialogue Input - Fixed at bottom -->
-        <div class="dialogue-input-container">
-            <div class="dialogue-input">
-                <div class="input-header">
-                    <SpeakerSelect v-model="currentSpeaker" :characters="characters" label="Speaker"
-                        @update:modelValue="handleSpeakerChange" @expression-change="handleExpressionChange" />
-                </div>
-
-                <div class="textarea-wrapper">
-                    <textarea ref="textAreaRef" v-model="currentText" placeholder="Type dialogue here..."
-                        @keydown.enter.prevent="addLine" rows="3" class="dialogue-textarea" />
-                    <div class="textarea-hint">
-                        Press Enter to submit, Shift+Enter for new line
+            <!-- Right panel: Speaker Selection and Input -->
+            <div class="input-panel">
+                <!-- Speaker Selection Section -->
+                <div class="speaker-section">
+                    <div class="section-header">
+                        <h4>Speaker & Expression</h4>
+                    </div>
+                    <div class="speaker-input">
+                        <SpeakerSelect v-model="currentSpeaker" :characters="characters" label="Select Speaker"
+                            @update:modelValue="handleSpeakerChange" @expression-change="handleExpressionChange" />
                     </div>
                 </div>
 
-                <div class="input-actions">
-                    <button v-if="!isEditing" class="btn primary" @click="addLine" :disabled="!currentText.trim()">
-                        Add Line
-                    </button>
-                    <button v-else class="btn primary" @click="updateLine" :disabled="!currentText.trim()">
-                        Update Line
-                    </button>
-                    <button v-if="isEditing" class="btn secondary" @click="cancelEdit">
-                        Cancel
-                    </button>
-                    <button class="btn secondary" @click="$emit('add-menu')">
-                        Add Menu Choice
-                    </button>
-                    <button class="btn secondary" @click="$emit('add-action')">
-                        Add Action
-                    </button>
+                <!-- Dialogue Input Section -->
+                <div class="dialogue-input-section">
+                    <div class="section-header">
+                        <h4>Dialogue Text</h4>
+                    </div>
+                    <div class="textarea-wrapper">
+                        <textarea ref="textAreaRef" v-model="currentText" placeholder="Type dialogue here..."
+                            @keydown.enter.prevent="addLine" rows="4" class="dialogue-textarea" />
+                        <div class="textarea-hint">
+                            Press Enter to submit, Shift+Enter for new line
+                        </div>
+                    </div>
+
+                    <div class="input-actions">
+                        <button v-if="!isEditing" class="btn primary" @click="addLine" :disabled="!currentText.trim()">
+                            Add Line
+                        </button>
+                        <button v-else class="btn primary" @click="updateLine" :disabled="!currentText.trim()">
+                            Update Line
+                        </button>
+                        <button v-if="isEditing" class="btn secondary" @click="cancelEdit">
+                            Cancel
+                        </button>
+                        <button class="btn secondary" @click="$emit('add-menu')">
+                            Add Menu Choice
+                        </button>
+                        <button class="btn secondary" @click="$emit('add-action')">
+                            Add Action
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -168,7 +181,6 @@ const updateLine = () => {
     cancelEdit();
 };
 
-
 const startEdit = (index: number) => {
     emit('select-line', index); // Let parent handle the selection/editing
 };
@@ -206,7 +218,6 @@ watch(() => props.selectedLineIndex, (index) => {
     }
 }, { immediate: true });
 
-
 const getExpressionEmoji = (expression: string) => {
     const emojiMap: Record<string, string> = {
         'happy': '😊',
@@ -226,33 +237,34 @@ const getExpressionEmoji = (expression: string) => {
     };
     return emojiMap[expression] || '😀';
 };
-
 </script>
 
 <style scoped>
 .dialogue-editor {
-    display: flex;
-    flex-direction: column;
     height: 100%;
-    gap: 1.5rem;
-    padding: 0 1.5rem 1.5rem;
+    padding: 1.5rem;
     box-sizing: border-box;
 }
 
-/* Dialogue History Container */
+/* Main layout container */
+.editor-layout {
+    display: flex;
+    gap: 1.5rem;
+    height: 100%;
+    min-height: 500px;
+}
+
+/* Left panel: Dialogue History */
 .dialogue-history-container {
+    flex: 3;
+    /* 3 parts for history */
     display: flex;
     flex-direction: column;
-    flex: 1;
-    min-height: 200px;
-    /* Minimum height */
-    max-height: 60vh;
-    /* Maximum height relative to viewport */
     background: #020617;
     border: 1px solid #334155;
     border-radius: 12px;
     overflow: hidden;
-    /* Keep rounded corners */
+    min-width: 300px;
 }
 
 .dialogue-history-header {
@@ -262,6 +274,7 @@ const getExpressionEmoji = (expression: string) => {
     padding: 1rem 1.5rem;
     background: rgba(255, 255, 255, 0.03);
     border-bottom: 1px solid #334155;
+    flex-shrink: 0;
 }
 
 .dialogue-history-header h4 {
@@ -282,16 +295,58 @@ const getExpressionEmoji = (expression: string) => {
 .dialogue-history {
     flex: 1;
     overflow-y: auto;
-    padding: 1.5rem;
-    padding-top: 0.5rem;
-    /* Reduced top padding since header exists */
+    padding: 1rem;
 }
 
+/* Right panel: Input Section */
+.input-panel {
+    flex: 2;
+    /* 2 parts for input */
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-width: 300px;
+}
+
+.speaker-section,
+.dialogue-input-section {
+    background: #020617;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.speaker-section {
+    flex-shrink: 0;
+}
+
+.dialogue-input-section {
+    flex: 1;
+}
+
+.section-header {
+    margin-bottom: 1rem;
+}
+
+.section-header h4 {
+    color: #f8fafc;
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.speaker-input {
+    flex: 1;
+}
+
+/* Shared styles for dialogue lines */
 .dialogue-line {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     padding: 1rem;
     border-radius: 8px;
     border: 1px solid transparent;
@@ -324,7 +379,6 @@ const getExpressionEmoji = (expression: string) => {
 .speaker {
     font-weight: bold;
     font-size: 1rem;
-    /* Slightly smaller */
 }
 
 .expression {
@@ -380,42 +434,23 @@ const getExpressionEmoji = (expression: string) => {
     background: rgba(248, 113, 113, 0.1);
 }
 
-/* Dialogue Input Container - Fixed at bottom */
-.dialogue-input-container {
-    background: #020617;
-    border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 1.5rem;
-}
-
-.dialogue-input {
+/* Textarea styles */
+.textarea-wrapper {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-}
-
-.input-header {
-    margin-bottom: 0;
-    /* Now controlled by gap */
-}
-
-.textarea-wrapper {
-    position: relative;
 }
 
 .dialogue-textarea {
-    width: 100%;
+    flex: 1;
     background: #0f172a;
     border: 1px solid #334155;
     border-radius: 8px;
     padding: 1rem;
     color: #f8fafc;
     font-size: 1rem;
-    resize: vertical;
-    min-height: 80px;
-    max-height: 200px;
-    margin-bottom: 0.25rem;
-    /* Small gap for hint */
+    resize: none;
+    min-height: 120px;
     transition: border-color 0.2s;
     box-sizing: border-box;
 }
@@ -429,18 +464,20 @@ const getExpressionEmoji = (expression: string) => {
     font-size: 0.75rem;
     color: #64748b;
     text-align: right;
+    margin-top: 0.25rem;
     padding-right: 0.25rem;
 }
 
+/* Button styles */
 .input-actions {
     display: flex;
     gap: 0.75rem;
     flex-wrap: wrap;
+    margin-top: 1rem;
 }
 
 .btn {
     padding: 0.75rem 1.25rem;
-    /* Slightly smaller padding */
     border-radius: 6px;
     cursor: pointer;
     font-weight: 500;
@@ -449,7 +486,6 @@ const getExpressionEmoji = (expression: string) => {
     font-size: 0.9rem;
     flex: 1;
     min-width: 120px;
-    /* Minimum width for buttons */
 }
 
 .primary {
@@ -473,36 +509,65 @@ const getExpressionEmoji = (expression: string) => {
     transform: translateY(-1px);
 }
 
-/* Responsive adjustments */
-@media (max-height: 700px) {
-    .dialogue-history-container {
-        max-height: 50vh;
+/* Responsive design */
+@media (max-width: 1024px) {
+    .editor-layout {
+        flex-direction: column;
+        gap: 1rem;
     }
 
-    .dialogue-line {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        /* Reduced from 0.5rem */
-        margin-bottom: 0.75rem;
-        /* Reduced from 1.5rem */
-        padding: 0.75rem;
-        /* Reduced from 1rem */
-        border-radius: 8px;
-        border: 1px solid transparent;
-        transition: all 0.2s;
-        cursor: pointer;
+    .dialogue-history-container,
+    .input-panel {
+        min-height: 300px;
+    }
+
+    .input-panel {
+        flex-direction: row;
+        gap: 1rem;
+    }
+
+    .speaker-section {
+        flex: 1;
+    }
+
+    .dialogue-input-section {
+        flex: 2;
     }
 }
 
 @media (max-width: 768px) {
+    .dialogue-editor {
+        padding: 1rem;
+    }
+
+    .input-panel {
+        flex-direction: column;
+    }
+
     .btn {
         min-width: 100px;
         padding: 0.6rem 1rem;
+        font-size: 0.85rem;
     }
 
     .input-actions {
         gap: 0.5rem;
+    }
+
+    .editor-layout {
+        gap: 1rem;
+    }
+}
+
+@media (max-height: 700px) {
+    .dialogue-line {
+        gap: 0.25rem;
+        margin-bottom: 0.75rem;
+        padding: 0.75rem;
+    }
+
+    .dialogue-history {
+        padding: 0.75rem;
     }
 }
 </style>
