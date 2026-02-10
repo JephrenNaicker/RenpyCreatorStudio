@@ -1,70 +1,54 @@
 <template>
-    <div class="max-w-7xl mx-auto px-4 pb-20">
-        <div class="tool-card">
-            <h2 class="section-title mb-6">Create Character</h2>
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Header with Create Button -->
+        <div class="action-bar mb-8">
+            <div>
+                <h1 class="section-title mb-0">Create Character</h1>
+                <p class="text-gray-400 text-sm">Design your character's appearance, expressions, and voice lines</p>
+            </div>
+            <button type="button" @click="createCharacter" class="btn-primary px-6 py-3 text-base font-medium"
+                :disabled="!character.name.trim()" :class="{ 'opacity-50 cursor-not-allowed': !character.name.trim() }">
+                Create Character
+            </button>
+        </div>
 
-            <!-- 3-Panel Layout -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                <!-- Panel 1: Character Info (Left) -->
-                <div class="lg:col-span-1">
-                    <div class="panel h-full">
-                        <h3 class="text-lg font-semibold text-white mb-4">Character Info</h3>
-                        <CharacterInfoPanel v-model:name="character.name" v-model:nickname="character.nickname"
-                            v-model:color="character.color" v-model:age="character.age"
-                            v-model:birth_date="character.birth_date" v-model:bio="character.bio" />
+        <!-- 3-Panel Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Panel 1: Character Info (Left) -->
+            <div class="lg:col-span-1">
+                <div class="panel h-full">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Character Info</h3>
                     </div>
+                    <CharacterInfoPanel v-model:name="character.name" v-model:nickname="character.nickname"
+                        v-model:color="character.color" v-model:age="character.age"
+                        v-model:birth_date="character.birth_date" v-model:bio="character.bio" />
                 </div>
+            </div>
 
-                <!-- Panel 2 & 3: Right Column -->
-                <div class="lg:col-span-2 space-y-6">
-
-                    <!-- Panel 2: Preview (Top Right) -->
-                    <div class="panel">
-                        <h3 class="text-lg font-semibold text-white mb-4">Preview</h3>
-                        <CharacterPreviewPanel :character="character" :selected-outfit="selectedOutfit"
-                            :selected-expression="selectedExpression" @select-outfit="selectOutfit"
-                            @select-expression="selectExpression" />
-                    </div>
-
-                    <!-- Panel 3: Asset Library (Bottom) -->
-                    <div class="panel">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-semibold text-white">Asset Library</h3>
-                            <div class="flex gap-2">
-                                <button type="button" class="tab-button" @click="activeAssetTab = 'expressions'"
-                                    :class="{ 'bg-gray-700': activeAssetTab === 'expressions' }">
-                                    Expressions
-                                </button>
-                                <button type="button" class="tab-button" @click="activeAssetTab = 'outfits'"
-                                    :class="{ 'bg-gray-700': activeAssetTab === 'outfits' }">
-                                    Outfits
-                                </button>
-                                <button type="button" class="tab-button" @click="activeAssetTab = 'voice'"
-                                    :class="{ 'bg-gray-700': activeAssetTab === 'voice' }">
-                                    Voice Lines
-                                </button>
-                            </div>
+            <!-- Panel 2 & 3: Right Column -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Panel 2: Preview (Top Right) -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Preview</h3>
+                        <div class="flex gap-2">
+                            <span class="text-xs text-gray-400">Live Preview</span>
                         </div>
-
-                        <AssetLibraryPanel :character="character" :active-tab="activeAssetTab"
-                            @add-expression="addExpression" @remove-expression="removeExpression"
-                            @add-outfit="addOutfit" @remove-outfit="removeOutfit" @add-voice="addVoice"
-                            @remove-voice="removeVoice" @upload-image="handleImageUpload"
-                            @upload-audio="handleAudioUpload" @select-preview-expression="selectExpression"
-                            @select-preview-outfit="selectOutfit" />
                     </div>
+                    <CharacterPreviewPanel :character="character" :selected-outfit="selectedOutfit"
+                        :selected-expression="selectedExpression" @select-outfit="selectOutfit"
+                        @select-expression="selectExpression" />
+                </div>
 
+                <!-- Panel 3: Asset Library (Bottom) -->
+                <div class="panel">
+                    <AssetLibraryPanel :character="character" @add-expression="addExpression"
+                        @remove-expression="removeExpression" @add-outfit="addOutfit" @remove-outfit="removeOutfit"
+                        @add-voice="addVoice" @remove-voice="removeVoice" @upload-image="handleImageUpload"
+                        @upload-audio="handleAudioUpload" @select-preview-expression="selectExpression" />
                 </div>
             </div>
-
-            <!-- Submit Button -->
-            <div class="flex justify-end pt-6 mt-6 border-t border-gray-700">
-                <button type="button" @click="createCharacter" class="btn-primary px-5 py-2 text-base">
-                    Create Character
-                </button>
-            </div>
-
         </div>
     </div>
 </template>
@@ -83,19 +67,7 @@ interface VoiceLine {
     file?: File;
 }
 
-interface Outfit {
-    name: string;
-    default_image: string;
-    images: string[];
-}
-
-interface Expression {
-    name: string;
-    image_path: string;
-    outfit: string;
-    file?: File;
-}
-
+// Update the CharacterData interface in CharacterCreator.vue
 interface CharacterData {
     project_id: string;
     name: string;
@@ -105,8 +77,15 @@ interface CharacterData {
     birth_date: string;
     bio: string;
     voice_lines: VoiceLine[];
-    outfits: Outfit[];
+    outfits: { name: string; default_image: string }[];
     expressions: Expression[];
+}
+
+interface Expression {
+    name: string;
+    image_path: string;
+    outfit: string;
+    file?: File;
 }
 
 // Character data
@@ -133,6 +112,10 @@ const selectOutfit = (outfitName: string) => {
     selectedOutfit.value = outfitName;
 };
 
+// Update addOutfit method
+const addOutfit = () => {
+    character.value.outfits.push({ name: '', default_image: '' });
+};
 const selectExpression = (expressionName: string) => {
     selectedExpression.value = expressionName;
 };
@@ -146,9 +129,8 @@ const removeVoice = (i: number) => {
     character.value.voice_lines.splice(i, 1);
 };
 
-const addOutfit = () => {
-    character.value.outfits.push({ name: '', default_image: '', images: [] });
-};
+
+
 
 const removeOutfit = (i: number) => {
     character.value.outfits.splice(i, 1);
@@ -163,17 +145,22 @@ const removeExpression = (i: number) => {
 };
 
 // File upload handlers
-const handleImageUpload = (files: File[], outfitName?: string) => {
+const handleImageUpload = (files: File[], index: number) => {
+    console.log('Uploading images:', files, 'for index:', index);
     // Handle image upload logic here
-    console.log('Uploading images:', files, 'for outfit:', outfitName);
 };
 
 const handleAudioUpload = (files: File[]) => {
-    // Handle audio upload logic here
     console.log('Uploading audio files:', files);
+    // Handle audio upload logic here
 };
 
 const createCharacter = async () => {
+    if (!character.value.name.trim()) {
+        alert('Please enter a character name');
+        return;
+    }
+
     try {
         // Prepare form data for file uploads
         const formData = new FormData();
@@ -218,8 +205,8 @@ const createCharacter = async () => {
         });
 
         await characterAPI.create(formData);
-        // Add success notification
         alert('Character created successfully!');
+        // Redirect to character list or detail view
     } catch (error) {
         console.error('Error creating character:', error);
         alert('Failed to create character. Please try again.');

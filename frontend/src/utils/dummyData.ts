@@ -10,6 +10,7 @@ export interface Character {
     outfits?: Array<{ name: string; default_image: string }>;
     expressions?: Array<{ name: string; image_path: string; outfit: string }>;
     created_at: string;
+    updated_at: string;
 }
 
 export interface Project {
@@ -69,7 +70,8 @@ const initialCharacters: Character[] = [
             { name: 'surprised', image_path: 'alice_surprised.png', outfit: 'casual' },
             { name: 'magical', image_path: 'alice_magical.png', outfit: 'magical' }
         ],
-        created_at: '2024-01-10T09:30:00Z'
+        created_at: '2024-01-10T09:30:00Z',
+        updated_at: '2024-01-10T09:30:00Z'
     },
     {
         id: '2',
@@ -91,7 +93,8 @@ const initialCharacters: Character[] = [
             { name: 'smile', image_path: 'bob_smile.png', outfit: 'casual' },
             { name: 'concerned', image_path: 'bob_concerned.png', outfit: 'casual' }
         ],
-        created_at: '2024-01-12T14:20:00Z'
+        created_at: '2024-01-12T14:20:00Z',
+        updated_at: '2024-01-12T14:20:00Z'
     },
     {
         id: '3',
@@ -101,6 +104,7 @@ const initialCharacters: Character[] = [
         age: 19,
         birth_date: '11/03',
         bio: 'Mysterious transfer student with hidden powers. She seems cold at first but has a warm heart.',
+        voice_lines: [],
         outfits: [
             { name: 'magical', default_image: 'catherine_magical.png' },
             { name: 'school', default_image: 'catherine_school.png' }
@@ -110,7 +114,29 @@ const initialCharacters: Character[] = [
             { name: 'mysterious', image_path: 'catherine_mysterious.png', outfit: 'magical' },
             { name: 'determined', image_path: 'catherine_determined.png', outfit: 'magical' }
         ],
-        created_at: '2024-01-14T11:45:00Z'
+        created_at: '2024-01-14T11:45:00Z',
+        updated_at: '2024-01-14T11:45:00Z'
+    },
+    {
+        id: '4',
+        name: 'David',
+        nickname: 'Dave',
+        color: '#A78BFA',
+        age: 17,
+        birth_date: '05/19',
+        bio: 'The smart but socially awkward class president.',
+        voice_lines: [],  // Should be array of {line_name, audio_path} objects
+        outfits: [
+            { name: 'formal', default_image: 'david_formal.png' },
+            { name: 'casual', default_image: 'david_casual.png' }
+        ],
+        expressions: [
+            { name: 'thinking', image_path: 'david_thinking.png', outfit: 'formal' },
+            { name: 'nervous', image_path: 'david_nervous.png', outfit: 'formal' },
+            { name: 'confident', image_path: 'david_confident.png', outfit: 'formal' }
+        ],
+        created_at: '2024-01-12T10:00:00Z',
+        updated_at: '2024-01-12T10:00:00Z'
     }
 ];
 

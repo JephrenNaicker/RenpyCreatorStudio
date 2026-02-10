@@ -1,163 +1,248 @@
 <template>
-    <div class="panel max-h-[420px] overflow-y-auto scrollbar-thin space-y-6">
-        <!-- Expressions Tab -->
-        <div v-if="activeTab === 'expressions'" class="space-y-4">
-            <div class="flex justify-between items-center">
-                <h4 class="text-sm font-medium text-gray-300">Expression Images</h4>
-                <button type="button" @click="$emit('add-expression')" class="btn-secondary text-sm px-3 py-1">
-                    + Add Expression
-                </button>
+    <div class="panel h-full flex flex-col">
+        <!-- Tab Navigation -->
+        <div class="panel-header">
+            <div>
+                <h3 class="panel-title">Asset Library</h3>
+                <p class="text-sm text-gray-400">Manage expressions and voice lines</p>
             </div>
-
-            <!-- Upload Area -->
-            <div class="border-2 border-dashed border-gray-700 rounded-lg p-6 text-center">
-                <input type="file" ref="expressionFileInput" @change="handleExpressionFileSelect" accept="image/*"
-                    multiple class="hidden" />
-                <button type="button" @click="triggerExpressionFileInput" class="btn-secondary mb-2">
-                    Upload Images
+            <div class="tab-group">
+                <button type="button" class="tab-button" @click="activeTab = 'expressions'"
+                    :class="{ 'tab-button-active': activeTab === 'expressions' }">
+                    Expressions
                 </button>
-                <p class="text-xs text-gray-500">Drag & drop or click to upload expression images</p>
-            </div>
-
-            <!-- Expression List -->
-            <div v-if="character.expressions.length > 0" class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <div v-for="(exp, index) in character.expressions" :key="index"
-                    class="bg-gray-900 rounded-lg p-3 border border-gray-700 hover:border-gray-600 transition-colors">
-                    <div class="flex items-start justify-between mb-2">
-                        <div class="space-y-2 flex-1">
-                            <input v-model="exp.name" placeholder="Expression name" class="input text-sm"
-                                @input="updateExpression(index, exp)" />
-                            <select v-model="exp.outfit" @change="updateExpression(index, exp)"
-                                class="input text-sm py-1">
-                                <option value="">Default Outfit</option>
-                                <option v-for="outfit in character.outfits" :key="outfit.name" :value="outfit.name">
-                                    {{ outfit.name }}
-                                </option>
-                            </select>
-                        </div>
-                        <button type="button" @click="$emit('remove-expression', index)"
-                            class="text-gray-500 hover:text-red-400 ml-2">
-                            ✕
-                        </button>
-                    </div>
-
-                    <!-- Image Preview -->
-                    <div v-if="exp.image_path" class="cursor-pointer"
-                        @click="$emit('select-preview-expression', exp.name)">
-                        <div class="aspect-square bg-gray-800 rounded overflow-hidden mb-2">
-                            <img v-if="exp.image_path.startsWith('http') || exp.image_path.startsWith('data:')"
-                                :src="exp.image_path" :alt="exp.name" class="w-full h-full object-cover" />
-                            <div v-else class="w-full h-full flex items-center justify-center text-gray-500">
-                                {{ exp.image_path }}
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-400 truncate">{{ exp.image_path }}</p>
-                    </div>
-                    <div v-else class="text-center py-4 text-gray-500 text-sm">
-                        No image assigned
-                    </div>
-                </div>
+                <button type="button" class="tab-button" @click="activeTab = 'voice'"
+                    :class="{ 'tab-button-active': activeTab === 'voice' }">
+                    Voice Lines
+                </button>
             </div>
         </div>
 
-        <!-- Outfits Tab -->
-        <div v-if="activeTab === 'outfits'" class="space-y-4">
-            <div class="flex justify-between items-center">
-                <h4 class="text-sm font-medium text-gray-300">Outfits</h4>
-                <button type="button" @click="$emit('add-outfit')" class="btn-secondary text-sm px-3 py-1">
-                    + Add Outfit
-                </button>
-            </div>
+        <!-- Tab Content -->
+        <div class="flex-1 overflow-y-auto scrollbar-thin p-2">
+            <!-- Expressions Tab -->
+            <div v-if="activeTab === 'expressions'" class="space-y-6">
+                <!-- Quick Add Expression -->
+                <div class="upload-widget-simple" @click="addExpression">
+                    <svg class="w-8 h-8 mx-auto text-gray-500 mb-2" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <p class="upload-widget-title">Add Expression</p>
+                    <p class="upload-widget-hint">Click to add a new expression</p>
+                </div>
 
-            <!-- Outfit List -->
-            <div class="space-y-3">
-                <div v-for="(outfit, index) in character.outfits" :key="index"
-                    class="bg-gray-900 rounded-lg p-4 border border-gray-700">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex-1">
-                            <input v-model="outfit.name" placeholder="Outfit name"
-                                class="input text-sm font-medium mb-2" @input="updateOutfit(index, outfit)" />
-                            <input v-model="outfit.default_image" placeholder="Default image path"
-                                class="input text-sm py-1" @input="updateOutfit(index, outfit)" />
-                        </div>
-                        <button type="button" @click="$emit('remove-outfit', index)"
-                            class="text-gray-500 hover:text-red-400 ml-3">
-                            ✕
-                        </button>
-                    </div>
+                <!-- Expression Cards Grid -->
+                <div v-if="character.expressions.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div v-for="(exp, index) in character.expressions" :key="index" class="expression-card">
+                        <div class="asset-card-header">
+                            <div class="flex-1">
+                                <input v-model="exp.name" placeholder="Expression Name"
+                                    class="bg-transparent border-none text-lg font-semibold text-white placeholder-gray-500 focus:outline-none focus:ring-0 w-full mb-2"
+                                    @input="updateExpression(index, exp)" />
 
-                    <!-- Outfit Preview -->
-                    <div class="flex gap-2">
-                        <div v-if="outfit.default_image" class="cursor-pointer"
-                            @click="$emit('select-preview-outfit', outfit.name)">
-                            <div class="w-20 h-20 bg-gray-800 rounded overflow-hidden">
-                                <img v-if="outfit.default_image.startsWith('http') || outfit.default_image.startsWith('data:')"
-                                    :src="outfit.default_image" :alt="outfit.name" class="w-full h-full object-cover" />
-                                <div v-else
-                                    class="w-full h-full flex items-center justify-center text-xs text-gray-500 p-1">
-                                    {{ outfit.default_image }}
+                                <!-- Outfit Tag -->
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="text-xs text-gray-500">Outfit:</span>
+                                    <select v-model="exp.outfit" @change="updateExpression(index, exp)"
+                                        class="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-sky-400">
+                                        <option value="">Default</option>
+                                        <option v-for="outfit in character.outfits" :key="outfit.name"
+                                            :value="outfit.name">
+                                            {{ outfit.name }}
+                                        </option>
+                                    </select>
                                 </div>
                             </div>
-                            <p class="text-xs text-gray-400 mt-1">Default</p>
+                            <button type="button" @click="removeExpression(index)"
+                                class="text-gray-400 hover:text-red-400 p-1 rounded-lg hover:bg-red-900/20 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
-                        <!-- Additional Images -->
-                        <div v-for="(img, imgIndex) in outfit.images" :key="imgIndex"
-                            class="w-20 h-20 bg-gray-800 rounded overflow-hidden">
-                            <img v-if="img.startsWith('http') || img.startsWith('data:')" :src="img"
-                                :alt="`Outfit image ${imgIndex + 1}`" class="w-full h-full object-cover" />
-                            <div v-else class="w-full h-full flex items-center justify-center text-xs text-gray-500">
-                                {{ img }}
+                        <!-- Image Preview & Upload -->
+                        <div class="expression-preview-container">
+                            <div v-if="exp.image_path" class="relative h-full">
+                                <img :src="getImageSrc(exp.image_path)" :alt="exp.name"
+                                    class="expression-preview-image" />
+                                <div
+                                    class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                                    <span class="text-white text-sm font-medium">{{ exp.name }}</span>
+                                </div>
+                                <button type="button" @click="triggerExpressionFileInput(index)"
+                                    class="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                    </svg>
+                                </button>
                             </div>
+                            <div v-else class="expression-upload-area" @click="triggerExpressionFileInput(index)">
+                                <svg class="w-10 h-10 text-gray-600 mb-2" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <span class="text-sm text-gray-400">Upload Image</span>
+                                <span class="text-xs text-gray-500 mt-1">Click to select</span>
+                            </div>
+                        </div>
+
+                        <!-- File Path (if exists) -->
+                        <div v-if="exp.image_path" class="mt-2">
+                            <p class="text-xs text-gray-400 truncate">{{ getFileName(exp.image_path) }}</p>
+                        </div>
+
+                        <input type="file" :id="`expressionFile_${index}`"
+                            @change="(e) => handleExpressionFileSelect(e, index)" accept="image/*" class="hidden" />
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div v-if="character.expressions.length === 0" class="empty-state">
+                    <div class="empty-icon mb-4">
+                        <svg class="w-16 h-16 mx-auto text-gray-600" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <h4 class="text-lg font-medium text-gray-300 mb-2">No Expressions Yet</h4>
+                    <p class="text-gray-400 mb-6 max-w-md mx-auto">
+                        Add expressions to define different emotional states or poses for your character.
+                    </p>
+                </div>
+
+                <!-- Outfit Tags Section (Moved to bottom of Expressions tab) -->
+                <div class="mt-8 pt-6 border-t border-gray-800">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="subsection-title mb-0">Outfit Tags</h4>
+                        <button type="button" @click="addOutfit" class="btn-secondary btn-small">
+                            + Add Tag
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div v-for="(outfit, index) in character.outfits" :key="index" class="outfit-tag-card">
+                            <div>
+                                <input v-model="outfit.name" placeholder="Outfit Name"
+                                    class="bg-transparent border-none outfit-tag-name placeholder-gray-500 focus:outline-none focus:ring-0 w-full"
+                                    @input="updateOutfit(index, outfit)" />
+                                <span class="outfit-badge">
+                                    {{ getExpressionCountForOutfit(outfit.name) }} expression(s)
+                                </span>
+                            </div>
+                            <button type="button" @click="removeOutfit(index)"
+                                class="text-gray-400 hover:text-red-400 p-1 rounded hover:bg-red-900/20 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Voice Lines Tab -->
-        <div v-if="activeTab === 'voice'" class="space-y-4">
-            <div class="flex justify-between items-center">
-                <h4 class="text-sm font-medium text-gray-300">Voice Lines</h4>
-                <button type="button" @click="$emit('add-voice')" class="btn-secondary text-sm px-3 py-1">
-                    + Add Voice Line
-                </button>
-            </div>
+            <!-- Voice Lines Tab -->
+            <div v-if="activeTab === 'voice'" class="space-y-6">
+                <!-- Quick Add Voice Line -->
+                <div class="upload-widget-simple" @click="addVoice">
+                    <svg class="w-8 h-8 mx-auto text-gray-500 mb-2" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    <p class="upload-widget-title">Add Voice Line</p>
+                    <p class="upload-widget-hint">Click to add a new voice clip</p>
+                </div>
 
-            <!-- Upload Area -->
-            <div class="border-2 border-dashed border-gray-700 rounded-lg p-6 text-center">
-                <input type="file" ref="voiceFileInput" @change="handleVoiceFileSelect" accept="audio/*" multiple
-                    class="hidden" />
-                <button type="button" @click="triggerVoiceFileInput" class="btn-secondary mb-2">
-                    Upload Audio Files
-                </button>
-                <p class="text-xs text-gray-500">Supports MP3, WAV, OGG formats</p>
-            </div>
+                <!-- Voice Line Cards -->
+                <div v-if="character.voice_lines.length > 0" class="space-y-3">
+                    <div v-for="(voice, index) in character.voice_lines" :key="index" class="voice-line-card">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <!-- Voice Line Name -->
+                                <input v-model="voice.line_name" placeholder="Voice Line Name"
+                                    class="bg-transparent border-none text-lg font-semibold text-white placeholder-gray-500 focus:outline-none focus:ring-0 w-full mb-3"
+                                    @input="updateVoiceLine(index, voice)" />
 
-            <!-- Voice Line List -->
-            <div v-if="character.voice_lines.length > 0" class="space-y-2">
-                <div v-for="(voice, index) in character.voice_lines" :key="index"
-                    class="bg-gray-900 rounded-lg p-3 border border-gray-700 hover:border-gray-600 transition-colors">
-                    <div class="flex items-center justify-between">
-                        <div class="flex-1">
-                            <input v-model="voice.line_name" placeholder="Line name (e.g., Greeting, Laugh)"
-                                class="input text-sm mb-1" />
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs text-gray-400">Audio:</span>
-                                <input v-model="voice.audio_path" placeholder="Audio file path"
-                                    class="flex-1 input text-sm py-1" />
-                                <button v-if="voice.audio_path && isAudioFile(voice.audio_path)" type="button"
-                                    @click="playAudio(voice.audio_path)"
-                                    class="text-sm text-sky-400 hover:text-sky-300">
-                                    ▶ Play
-                                </button>
+                                <!-- Audio Player/Upload -->
+                                <div class="audio-player-compact">
+                                    <button v-if="voice.audio_path" type="button" @click="playAudio(voice.audio_path)"
+                                        class="w-8 h-8 rounded-full bg-sky-400/20 flex items-center justify-center text-sky-400 hover:bg-sky-400/30 transition-colors">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd"
+                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                                                clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                    <div v-else
+                                        class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-gray-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+
+                                    <div class="flex-1 min-w-0">
+                                        <div v-if="voice.audio_path" class="flex items-center gap-2">
+                                            <span class="text-sm text-gray-300 truncate">{{
+                                                getFileName(voice.audio_path) }}</span>
+                                            <span class="text-xs text-gray-500">•</span>
+                                            <span class="text-xs text-gray-500">Audio file</span>
+                                        </div>
+                                        <div v-else class="text-sm text-gray-500">
+                                            No audio file uploaded
+                                        </div>
+                                    </div>
+
+                                    <button type="button" @click="triggerVoiceFileInput(index)"
+                                        class="btn-secondary btn-small whitespace-nowrap">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                        </svg>
+                                        {{ voice.audio_path ? 'Change' : 'Upload' }}
+                                    </button>
+                                </div>
+
+                                <!-- Audio Path (if exists) -->
+                                <input v-if="voice.audio_path" v-model="voice.audio_path"
+                                    class="w-full mt-2 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-sky-400"
+                                    placeholder="/audio/voice.mp3" @input="updateVoiceLine(index, voice)" />
+
+                                <input type="file" :id="`voiceFile_${index}`"
+                                    @change="(e) => handleVoiceFileSelect(e, index)" accept="audio/*" class="hidden" />
                             </div>
+
+                            <button type="button" @click="removeVoice(index)"
+                                class="text-gray-400 hover:text-red-400 p-1 rounded-lg hover:bg-red-900/20 transition-colors ml-3">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
-                        <button type="button" @click="$emit('remove-voice', index)"
-                            class="text-gray-500 hover:text-red-400 ml-3">
-                            ✕
-                        </button>
                     </div>
+                </div>
+
+                <!-- Empty State -->
+                <div v-if="character.voice_lines.length === 0" class="empty-state">
+                    <div class="empty-icon mb-4">
+                        <svg class="w-16 h-16 mx-auto text-gray-600" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                    </div>
+                    <h4 class="text-lg font-medium text-gray-300 mb-2">No Voice Lines Yet</h4>
+                    <p class="text-gray-400 mb-6 max-w-md mx-auto">
+                        Add voice clips to bring your character to life. Upload MP3, WAV, or OGG files.
+                    </p>
                 </div>
             </div>
         </div>
@@ -169,13 +254,12 @@ import { ref } from 'vue';
 
 interface Character {
     expressions: Array<{ name: string; image_path: string; outfit: string }>;
-    outfits: Array<{ name: string; default_image: string; images: string[] }>;
+    outfits: Array<{ name: string; default_image?: string }>;
     voice_lines: Array<{ line_name: string; audio_path: string }>;
 }
 
 const props = defineProps<{
     character: Character;
-    activeTab: 'expressions' | 'outfits' | 'voice';
 }>();
 
 const emit = defineEmits<{
@@ -185,52 +269,130 @@ const emit = defineEmits<{
     'remove-outfit': [index: number];
     'add-voice': [];
     'remove-voice': [index: number];
-    'upload-image': [files: File[], outfitName?: string];
-    'upload-audio': [files: File[]];
+    'upload-image': [files: File[], index: number];
+    'upload-audio': [files: File[], index: number];
     'select-preview-expression': [expressionName: string];
-    'select-preview-outfit': [outfitName: string];
 }>();
 
-const expressionFileInput = ref<HTMLInputElement | null>(null);
-const voiceFileInput = ref<HTMLInputElement | null>(null);
-
-// File handling
-const triggerExpressionFileInput = () => {
-    expressionFileInput.value?.click();
-};
-
-const handleExpressionFileSelect = (event: Event) => {
-    const input = event.target as HTMLInputElement;
-    if (input && input.files && input.files.length > 0) {
-        const files = Array.from(input.files);
-        emit('upload-image', files);
-    }
-};
-
-const triggerVoiceFileInput = () => {
-    voiceFileInput.value?.click();
-};
-
-const handleVoiceFileSelect = (event: Event) => {
-    const input = event.target as HTMLInputElement;
-    if (input && input.files && input.files.length > 0) {
-        const files = Array.from(input.files);
-        emit('upload-audio', files);
-    }
-};
+const activeTab = ref<'expressions' | 'voice'>('expressions');
 
 // Helper methods
+const addExpression = () => {
+    emit('add-expression');
+};
+
+const removeExpression = (index: number) => {
+    if (confirm('Delete this expression?')) {
+        emit('remove-expression', index);
+    }
+};
+
+const addOutfit = () => {
+    emit('add-outfit');
+};
+
+const removeOutfit = (index: number) => {
+    const outfit = props.character?.outfits?.[index];
+    if (!outfit) return;
+
+    const expressionsUsingOutfit = getExpressionCountForOutfit(outfit.name);
+    if (expressionsUsingOutfit > 0) {
+        if (!confirm(`This outfit tag is used by ${expressionsUsingOutfit} expression(s). Delete anyway?`)) {
+            return;
+        }
+    } else {
+        if (!confirm('Delete this outfit tag?')) return;
+    }
+    emit('remove-outfit', index);
+};
+
+const addVoice = () => {
+    emit('add-voice');
+};
+
+const removeVoice = (index: number) => {
+    if (confirm('Delete this voice line?')) {
+        emit('remove-voice', index);
+    }
+};
+
 const updateExpression = (index: number, exp: any) => {
-    // This ensures the parent component knows about the update
-    props.character.expressions[index] = { ...exp };
+    if (props.character?.expressions?.[index]) {
+        props.character.expressions[index] = { ...exp };
+    }
 };
 
 const updateOutfit = (index: number, outfit: any) => {
-    props.character.outfits[index] = { ...outfit };
+    if (props.character?.outfits?.[index]) {
+        props.character.outfits[index] = { ...outfit };
+    }
+};
+
+const updateVoiceLine = (index: number, voice: any) => {
+    if (props.character?.voice_lines?.[index]) {
+        props.character.voice_lines[index] = { ...voice };
+    }
+};
+
+const getExpressionCountForOutfit = (outfitName: string) => {
+    if (!outfitName || !props.character?.expressions) return 0;
+    return props.character.expressions.filter(exp => exp.outfit === outfitName).length;
+};
+
+const getFileName = (path: string) => {
+    return path.split('/').pop() || path;
+};
+
+const getImageSrc = (path: string) => {
+    if (path.startsWith('http') || path.startsWith('data:')) {
+        return path;
+    }
+    return `/images/${path}`;
+};
+
+// File handling
+const triggerExpressionFileInput = (index: number) => {
+    const fileInput = document.getElementById(`expressionFile_${index}`) as HTMLInputElement;
+    if (fileInput) {
+        fileInput.click();
+    }
+};
+
+const handleExpressionFileSelect = (event: Event, index: number) => {
+    const input = event.target as HTMLInputElement;
+    if (input?.files?.length) {
+        const files = Array.from(input.files);
+        if (props.character?.expressions?.[index] && files[0]) {
+            // Create object URL for preview
+            const objectUrl = URL.createObjectURL(files[0]);
+            props.character.expressions[index].image_path = objectUrl;
+            emit('select-preview-expression', props.character.expressions[index].name);
+        }
+        emit('upload-image', files, index);
+    }
+};
+
+const triggerVoiceFileInput = (index: number) => {
+    const fileInput = document.getElementById(`voiceFile_${index}`) as HTMLInputElement;
+    if (fileInput) {
+        fileInput.click();
+    }
+};
+
+const handleVoiceFileSelect = (event: Event, index: number) => {
+    const input = event.target as HTMLInputElement;
+    if (input?.files?.length) {
+        const files = Array.from(input.files);
+        if (props.character?.voice_lines?.[index] && files[0]) {
+            const objectUrl = URL.createObjectURL(files[0]);
+            props.character.voice_lines[index].audio_path = objectUrl;
+        }
+        emit('upload-audio', files, index);
+    }
 };
 
 const isAudioFile = (path: string) => {
-    return /\.(mp3|wav|ogg)$/i.test(path);
+    return /\.(mp3|wav|ogg|m4a)$/i.test(path) || path.startsWith('blob:');
 };
 
 const playAudio = (path: string) => {

@@ -18,10 +18,17 @@
         <div class="space-y-1">
             <label class="input-label">Theme Color</label>
             <div class="flex items-center gap-3">
-                <input type="color" :value="color" @input="handleColorInput($event)"
-                    class="h-10 w-14 bg-transparent border border-gray-600 rounded cursor-pointer" />
-                <span class="w-8 h-8 rounded border border-gray-600" :style="{ backgroundColor: color }" />
-                <span class="text-sm text-gray-400">{{ color }}</span>
+                <div class="relative">
+                    <!-- Hidden color input -->
+                    <input type="color" :value="color" @input="handleColorInput($event)"
+                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                    <!-- Visible color display -->
+                    <div
+                        class="flex items-center gap-2 bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 cursor-pointer hover:border-gray-500 transition-colors">
+                        <span class="w-6 h-6 rounded border border-gray-600" :style="{ backgroundColor: color }"></span>
+                        <span class="text-sm text-gray-200 font-mono select-all">{{ color }}</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -43,9 +50,14 @@
 
         <!-- Bio -->
         <div class="space-y-1">
-            <label class="input-label">Biography</label>
-            <textarea :value="bio" @input="handleInput($event, 'bio')" rows="4" class="input"
-                placeholder="Character description, personality, background..." />
+            <div class="flex justify-between items-center">
+                <label class="input-label">Biography</label>
+                <span class="text-xs text-gray-500" :class="{ 'text-amber-500': bio.length > 600 }">
+                    {{ bio.length }}/660
+                </span>
+            </div>
+            <textarea :value="bio" @input="handleBioInput($event)" rows="4" class="input"
+                placeholder="Character description, personality, background..." :maxlength="660" />
         </div>
     </form>
 </template>
@@ -91,6 +103,15 @@ const handleNumberInput = (event: Event, field: 'age') => {
     if (target) {
         const value = target.value ? parseInt(target.value) : null;
         emit(`update:${field}` as any, value);
+    }
+};
+
+const handleBioInput = (event: Event) => {
+    const target = event.target as HTMLTextAreaElement;
+    if (target) {
+        // Limit to 660 characters
+        const value = target.value.slice(0, 660);
+        emit('update:bio', value);
     }
 };
 </script>
