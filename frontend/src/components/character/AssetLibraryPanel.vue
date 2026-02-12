@@ -19,9 +19,41 @@
         </div>
 
         <!-- Tab Content -->
-        <div class="flex-1 overflow-y-auto scrollbar-thin p-2">
+        <div class="flex-1 overflow-y-auto scrollbar-thin">
             <!-- Expressions Tab -->
-            <div v-if="activeTab === 'expressions'" class="space-y-6">
+            <div v-if="activeTab === 'expressions'" class="p-4 space-y-6">
+                <!-- Outfit Tags Section (At the top) -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="subsection-title mb-0">Outfit Tags</h4>
+                        <button type="button" @click="addOutfit" class="btn-secondary btn-small">
+                            + Add Tag
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
+                        <div v-for="(outfit, index) in character.outfits" :key="index" class="outfit-tag-card">
+                            <div class="flex-1 min-w-0">
+                                <input v-model="outfit.name" placeholder="Outfit Name"
+                                    class="bg-transparent border-none outfit-tag-name placeholder-gray-500 focus:outline-none focus:ring-0 w-full truncate"
+                                    @input="updateOutfit(index, outfit)" />
+                                <div class="mt-1">
+                                    <span class="outfit-badge text-xs">
+                                        {{ getExpressionCountForOutfit(outfit.name) }} expression(s)
+                                    </span>
+                                </div>
+                            </div>
+                            <button type="button" @click="removeOutfit(index)"
+                                class="text-gray-400 hover:text-red-400 p-1 rounded hover:bg-red-900/20 transition-colors flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Quick Add Expression -->
                 <div class="upload-widget-simple" @click="addExpression">
                     <svg class="w-8 h-8 mx-auto text-gray-500 mb-2" fill="none" stroke="currentColor"
@@ -36,16 +68,15 @@
                 <div v-if="character.expressions.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div v-for="(exp, index) in character.expressions" :key="index" class="expression-card">
                         <div class="asset-card-header">
-                            <div class="flex-1">
+                            <div class="flex-1 min-w-0">
                                 <input v-model="exp.name" placeholder="Expression Name"
-                                    class="bg-transparent border-none text-lg font-semibold text-white placeholder-gray-500 focus:outline-none focus:ring-0 w-full mb-2"
-                                    @input="updateExpression(index, exp)" />
+                                    class="asset-card-title-input mb-2" @input="updateExpression(index, exp)" />
 
                                 <!-- Outfit Tag -->
-                                <div class="flex items-center gap-2 mb-3">
+                                <div class="flex items-center gap-2">
                                     <span class="text-xs text-gray-500">Outfit:</span>
                                     <select v-model="exp.outfit" @change="updateExpression(index, exp)"
-                                        class="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-sky-400">
+                                        class="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-sky-400 min-w-[120px]">
                                         <option value="">Default</option>
                                         <option v-for="outfit in character.outfits" :key="outfit.name"
                                             :value="outfit.name">
@@ -54,8 +85,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <button type="button" @click="removeExpression(index)"
-                                class="text-gray-400 hover:text-red-400 p-1 rounded-lg hover:bg-red-900/20 transition-colors">
+                            <button type="button" @click="removeExpression(index)" class="asset-card-delete-btn">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M6 18L18 6M6 6l12 12" />
@@ -65,12 +95,13 @@
 
                         <!-- Image Preview & Upload -->
                         <div class="expression-preview-container">
-                            <div v-if="exp.image_path" class="relative h-full">
+                            <div v-if="exp.image_path"
+                                class="relative h-full w-full flex items-center justify-center bg-gray-900">
                                 <img :src="getImageSrc(exp.image_path)" :alt="exp.name"
-                                    class="expression-preview-image" />
+                                    class="w-full h-full object-contain scale-[1.35]" /> <!-- Custom scale -->
                                 <div
                                     class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                                    <span class="text-white text-sm font-medium">{{ exp.name }}</span>
+                                    <span class="text-white text-sm font-medium truncate block">{{ exp.name }}</span>
                                 </div>
                                 <button type="button" @click="triggerExpressionFileInput(index)"
                                     class="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded transition-colors">
@@ -81,13 +112,13 @@
                                 </button>
                             </div>
                             <div v-else class="expression-upload-area" @click="triggerExpressionFileInput(index)">
-                                <svg class="w-10 h-10 text-gray-600 mb-2" fill="none" stroke="currentColor"
+                                <svg class="w-12 h-12 text-gray-600 mb-2" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                         d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                 </svg>
-                                <span class="text-sm text-gray-400">Upload Image</span>
-                                <span class="text-xs text-gray-500 mt-1">Click to select</span>
+                                <span class="text-sm text-gray-400 font-medium">Upload Image</span>
+                                <span class="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 5MB</span>
                             </div>
                         </div>
 
@@ -101,8 +132,8 @@
                     </div>
                 </div>
 
-                <!-- Empty State -->
-                <div v-if="character.expressions.length === 0" class="empty-state">
+                <!-- Empty State for Expressions -->
+                <div v-if="character.expressions.length === 0" class="empty-state mt-6">
                     <div class="empty-icon mb-4">
                         <svg class="w-16 h-16 mx-auto text-gray-600" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
@@ -115,40 +146,10 @@
                         Add expressions to define different emotional states or poses for your character.
                     </p>
                 </div>
-
-                <!-- Outfit Tags Section (Moved to bottom of Expressions tab) -->
-                <div class="mt-8 pt-6 border-t border-gray-800">
-                    <div class="flex items-center justify-between mb-4">
-                        <h4 class="subsection-title mb-0">Outfit Tags</h4>
-                        <button type="button" @click="addOutfit" class="btn-secondary btn-small">
-                            + Add Tag
-                        </button>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div v-for="(outfit, index) in character.outfits" :key="index" class="outfit-tag-card">
-                            <div>
-                                <input v-model="outfit.name" placeholder="Outfit Name"
-                                    class="bg-transparent border-none outfit-tag-name placeholder-gray-500 focus:outline-none focus:ring-0 w-full"
-                                    @input="updateOutfit(index, outfit)" />
-                                <span class="outfit-badge">
-                                    {{ getExpressionCountForOutfit(outfit.name) }} expression(s)
-                                </span>
-                            </div>
-                            <button type="button" @click="removeOutfit(index)"
-                                class="text-gray-400 hover:text-red-400 p-1 rounded hover:bg-red-900/20 transition-colors">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Voice Lines Tab -->
-            <div v-if="activeTab === 'voice'" class="space-y-6">
+            <div v-if="activeTab === 'voice'" class="p-4 space-y-6">
                 <!-- Quick Add Voice Line -->
                 <div class="upload-widget-simple" @click="addVoice">
                     <svg class="w-8 h-8 mx-auto text-gray-500 mb-2" fill="none" stroke="currentColor"
@@ -164,16 +165,15 @@
                 <div v-if="character.voice_lines.length > 0" class="space-y-3">
                     <div v-for="(voice, index) in character.voice_lines" :key="index" class="voice-line-card">
                         <div class="flex items-start justify-between">
-                            <div class="flex-1">
+                            <div class="flex-1 min-w-0">
                                 <!-- Voice Line Name -->
                                 <input v-model="voice.line_name" placeholder="Voice Line Name"
-                                    class="bg-transparent border-none text-lg font-semibold text-white placeholder-gray-500 focus:outline-none focus:ring-0 w-full mb-3"
-                                    @input="updateVoiceLine(index, voice)" />
+                                    class="asset-card-title-input mb-3" @input="updateVoiceLine(index, voice)" />
 
                                 <!-- Audio Player/Upload -->
                                 <div class="audio-player-compact">
                                     <button v-if="voice.audio_path" type="button" @click="playAudio(voice.audio_path)"
-                                        class="w-8 h-8 rounded-full bg-sky-400/20 flex items-center justify-center text-sky-400 hover:bg-sky-400/30 transition-colors">
+                                        class="w-8 h-8 rounded-full bg-sky-400/20 flex items-center justify-center text-sky-400 hover:bg-sky-400/30 transition-colors flex-shrink-0">
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd"
                                                 d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
@@ -181,7 +181,7 @@
                                         </svg>
                                     </button>
                                     <div v-else
-                                        class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-gray-400">
+                                        class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-gray-400 flex-shrink-0">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -201,7 +201,7 @@
                                     </div>
 
                                     <button type="button" @click="triggerVoiceFileInput(index)"
-                                        class="btn-secondary btn-small whitespace-nowrap">
+                                        class="btn-secondary btn-small whitespace-nowrap flex-shrink-0">
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -220,7 +220,7 @@
                             </div>
 
                             <button type="button" @click="removeVoice(index)"
-                                class="text-gray-400 hover:text-red-400 p-1 rounded-lg hover:bg-red-900/20 transition-colors ml-3">
+                                class="asset-card-delete-btn ml-3 flex-shrink-0">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M6 18L18 6M6 6l12 12" />
@@ -230,8 +230,8 @@
                     </div>
                 </div>
 
-                <!-- Empty State -->
-                <div v-if="character.voice_lines.length === 0" class="empty-state">
+                <!-- Empty State for Voice Lines -->
+                <div v-if="character.voice_lines.length === 0" class="empty-state mt-6">
                     <div class="empty-icon mb-4">
                         <svg class="w-16 h-16 mx-auto text-gray-600" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
@@ -343,11 +343,28 @@ const getFileName = (path: string) => {
     return path.split('/').pop() || path;
 };
 
+// Update getImageSrc to use placeholder images
 const getImageSrc = (path: string) => {
-    if (path.startsWith('http') || path.startsWith('data:')) {
+    if (!path) return '';
+
+    // If it's a blob URL (temporary), return as is
+    if (path.startsWith('blob:')) {
         return path;
     }
-    return `/images/${path}`;
+
+    // If it's a base64 string, return as is
+    if (path.startsWith('data:')) {
+        return path;
+    }
+
+    // If it's a path to a real image
+    if (path.startsWith('http')) {
+        return path;
+    }
+
+    // For dummy data, use placeholder images
+    // You can use free placeholder services
+    return `https://picsum.photos/400/400?random=${encodeURIComponent(path)}`;
 };
 
 // File handling
