@@ -98,7 +98,7 @@
                             <div v-if="exp.image_path"
                                 class="relative h-full w-full flex items-center justify-center bg-gray-900">
                                 <img :src="getImageSrc(exp.image_path)" :alt="exp.name"
-                                    class="w-full h-full object-contain scale-[1.35]" /> <!-- Custom scale -->
+                                    class="w-full h-full object-contain scale-[1.20]" /> <!-- Custom scale -->
                                 <div
                                     class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                                     <span class="text-white text-sm font-medium truncate block">{{ exp.name }}</span>

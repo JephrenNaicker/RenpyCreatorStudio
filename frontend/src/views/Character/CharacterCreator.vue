@@ -38,7 +38,7 @@
                     </div>
                     <CharacterPreviewPanel :character="character" :selected-outfit="selectedOutfit"
                         :selected-expression="selectedExpression" @select-outfit="selectOutfit"
-                        @select-expression="selectExpression" />
+                        @select-expression="selectExpression" @set-default-expression="setDefaultExpression" />
                 </div>
 
                 <!-- Panel 3: Asset Library (Bottom) -->
@@ -60,14 +60,21 @@ import CharacterInfoPanel from '@/components/character/CharacterInfoPanel.vue';
 import CharacterPreviewPanel from '@/components/character/CharacterPreviewPanel.vue';
 import AssetLibraryPanel from '@/components/character/AssetLibraryPanel.vue';
 
-// Define types for better TypeScript support
+// Define types
 interface VoiceLine {
     line_name: string;
     audio_path: string;
     file?: File;
 }
 
-// Update the CharacterData interface in CharacterCreator.vue
+interface Expression {
+    name: string;
+    image_path: string;
+    outfit: string;
+    isDefault?: boolean;
+    file?: File;
+}
+
 interface CharacterData {
     project_id: string;
     name: string;
@@ -81,19 +88,12 @@ interface CharacterData {
     expressions: Expression[];
 }
 
-interface Expression {
-    name: string;
-    image_path: string;
-    outfit: string;
-    file?: File;
-}
-
 // Character data
 const character = ref<CharacterData>({
     project_id: 'test-project',
     name: '',
     nickname: '',
-    color: '#4F46E5', // Default purple
+    color: '#4F46E5',
     age: null,
     birth_date: '',
     bio: '',
@@ -112,12 +112,21 @@ const selectOutfit = (outfitName: string) => {
     selectedOutfit.value = outfitName;
 };
 
-// Update addOutfit method
-const addOutfit = () => {
-    character.value.outfits.push({ name: '', default_image: '' });
-};
 const selectExpression = (expressionName: string) => {
     selectedExpression.value = expressionName;
+};
+
+// Set default expression
+const setDefaultExpression = (expressionName: string) => {
+    // Remove default flag from all expressions
+    character.value.expressions.forEach(exp => {
+        exp.isDefault = exp.name === expressionName;
+    });
+
+    // Also select this expression in the preview
+    selectExpression(expressionName);
+
+    console.log(`Set "${expressionName}" as default expression`);
 };
 
 // Asset management methods
@@ -129,30 +138,46 @@ const removeVoice = (i: number) => {
     character.value.voice_lines.splice(i, 1);
 };
 
-
-
+const addOutfit = () => {
+    character.value.outfits.push({ name: '', default_image: '' });
+};
 
 const removeOutfit = (i: number) => {
     character.value.outfits.splice(i, 1);
 };
 
 const addExpression = () => {
-    character.value.expressions.push({ name: '', image_path: '', outfit: '' });
+    const newExp = {
+        name: '',
+        image_path: '',
+        outfit: '',
+        isDefault: character.value.expressions.length === 0 // First expression becomes default
+    };
+    character.value.expressions.push(newExp);
 };
 
 const removeExpression = (i: number) => {
+    const wasDefault = character.value.expressions[i]?.isDefault;
     character.value.expressions.splice(i, 1);
+
+    // If we removed the default expression, set a new default if there are other expressions
+    if (wasDefault && character.value.expressions.length > 0) {
+        // Find first expression with an image, or just the first expression
+        const newDefault = character.value.expressions.find(exp => exp.image_path) || character.value.expressions[0];
+        if (newDefault) {
+            newDefault.isDefault = true;
+            selectExpression(newDefault.name);
+        }
+    }
 };
 
 // File upload handlers
 const handleImageUpload = (files: File[], index: number) => {
     console.log('Uploading images:', files, 'for index:', index);
-    // Handle image upload logic here
 };
 
 const handleAudioUpload = (files: File[]) => {
     console.log('Uploading audio files:', files);
-    // Handle audio upload logic here
 };
 
 const createCharacter = async () => {
@@ -162,10 +187,8 @@ const createCharacter = async () => {
     }
 
     try {
-        // Prepare form data for file uploads
         const formData = new FormData();
 
-        // Create a clean character object without file references for JSON
         const charData: Omit<CharacterData, 'voice_lines' | 'expressions'> & {
             voice_lines: Omit<VoiceLine, 'file'>[];
             expressions: Omit<Expression, 'file'>[];
@@ -185,13 +208,13 @@ const createCharacter = async () => {
             expressions: character.value.expressions.map(exp => ({
                 name: exp.name,
                 image_path: exp.image_path,
-                outfit: exp.outfit
+                outfit: exp.outfit,
+                isDefault: exp.isDefault
             }))
         };
 
         formData.append('character', JSON.stringify(charData));
 
-        // Add files if they exist
         character.value.expressions.forEach((exp, index) => {
             if (exp.file) {
                 formData.append(`expression_${index}`, exp.file);
@@ -206,7 +229,6 @@ const createCharacter = async () => {
 
         await characterAPI.create(formData);
         alert('Character created successfully!');
-        // Redirect to character list or detail view
     } catch (error) {
         console.error('Error creating character:', error);
         alert('Failed to create character. Please try again.');
