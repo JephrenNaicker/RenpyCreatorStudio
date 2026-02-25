@@ -291,6 +291,36 @@
 
     /* ========== LAYOUT COMPONENTS ========== */
 
+    /* Project Dashboard */
+    .dashboard-layout {
+        @apply grid h-[calc(100vh-64px)];
+        grid-template-columns: 260px 1fr;
+    }
+
+    .workspace-main {
+        @apply flex flex-col h-full bg-slate-900 overflow-hidden;
+    }
+
+    .workspace-header {
+        @apply px-6 pt-6;
+    }
+
+    .workspace-title {
+        @apply text-white mb-4 flex items-center justify-between flex-wrap gap-4 text-xl font-bold;
+    }
+
+    .workspace-content {
+        @apply flex-1 min-h-0 overflow-y-auto;
+    }
+
+    .tool-btn {
+        @apply flex items-center gap-2 px-4 py-2 rounded-md text-sm text-slate-300 border border-slate-700 bg-white/10 cursor-pointer transition-all hover:bg-sky-400/20 hover:border-sky-400 hover:text-white;
+    }
+
+    .scene-badge {
+        @apply bg-sky-400/20 text-sky-400 px-3 py-1 rounded-xl text-sm font-medium;
+    }
+
     .page-header {
         @apply flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8;
     }
