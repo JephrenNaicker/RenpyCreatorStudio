@@ -2,8 +2,9 @@
     <div class="dashboard-layout">
         <!-- Left Panel -->
         <CharacterSidebar :characters="projectCharacters" :scenes="scenes" :selected-character-id="selectedCharacterId"
-            @select-character="handleSelectCharacter" @add-character="addCharacterToProject" @select-scene="selectScene"
-            @add-scene="handleAddScene" @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene" />
+            :dirty-scene-ids="dirtyScenes" @select-character="handleSelectCharacter"
+            @add-character="addCharacterToProject" @select-scene="selectScene" @add-scene="handleAddScene"
+            @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene" />
 
         <!-- Main Panel -->
         <main class="workspace-main">
@@ -25,9 +26,9 @@
             <div class="workspace-content scrollbar-thin">
                 <DialogueEditor :dialogue-lines="dialogueLines" :characters="projectCharacters"
                     :selected-line-index="selectedLineIndex" :selected-speaker-id="selectedCharacterId"
-                    @add-line="addDialogueLine" @edit-line="handleEditLine" @delete-line="deleteDialogueLine"
-                    @select-line="selectLine" @speaker-change="handleSpeakerChange" @add-menu="addMenuChoice"
-                    @add-action="addAction" />
+                    :is-dirty="currentScene ? dirtyScenes.has(currentScene.id) : false" @add-line="addDialogueLine"
+                    @edit-line="handleEditLine" @delete-line="deleteDialogueLine" @select-line="selectLine"
+                    @speaker-change="handleSpeakerChange" @add-menu="addMenuChoice" @add-action="addAction" />
             </div>
         </main>
     </div>
@@ -54,6 +55,8 @@ const selectedLineIndex = ref<number | null>(null);
 const currentScene = ref<Scene | null>(null);
 const dialogueLines = ref<DialogueLine[]>([...dummyDialogueLines]);
 const scenes = ref<Scene[]>([...dummyScenes]);
+const sceneDialogueCache = ref<Record<string, DialogueLine[]>>({});
+const dirtyScenes = ref<Set<string>>(new Set());
 
 const projectCharacters = computed(() => dummyCharacters);
 
@@ -77,18 +80,26 @@ const addCharacterToProject = () => {
 };
 
 const selectScene = (scene: Scene) => {
+    // Save current scene's dialogue to cache before switching
+    if (currentScene.value) {
+        sceneDialogueCache.value[currentScene.value.id] = [...dialogueLines.value];
+    }
     currentScene.value = scene;
-    dialogueLines.value = [...(scene.dialogue_lines || [])];
+    // Restore from cache if exists, else use scene's saved lines
+    dialogueLines.value = [...(sceneDialogueCache.value[scene.id] ?? scene.dialogue_lines ?? [])];
     selectedLineIndex.value = null;
 };
 
 const handleAddScene = (scene: Scene) => {
     scenes.value.push(scene);
+    sceneDialogueCache.value[scene.id] = [];
     selectScene(scene);
 };
 
 const handleDeleteScene = (sceneId: string) => {
     scenes.value = scenes.value.filter(s => s.id !== sceneId);
+    delete sceneDialogueCache.value[sceneId];
+    dirtyScenes.value.delete(sceneId);
     if (currentScene.value?.id === sceneId) {
         currentScene.value = null;
         dialogueLines.value = [];
@@ -98,8 +109,13 @@ const handleDeleteScene = (sceneId: string) => {
 
 const handleUpdateScene = (scene: Scene) => {
     const index = scenes.value.findIndex(s => s.id === scene.id);
-    if (index !== -1) scenes.value[index] = scene;
-    if (currentScene.value?.id === scene.id) currentScene.value = scene;
+    if (index !== -1) {
+        // assert defined to satisfy strict indexing rules
+        scenes.value[index] = scene;
+    }
+    if (currentScene.value?.id === scene.id) {
+        currentScene.value = scene;
+    }
 };
 
 const addDialogueLine = (line: DialogueLine) => {
@@ -107,6 +123,7 @@ const addDialogueLine = (line: DialogueLine) => {
     dialogueLines.value.push(newLine);
     selectedLineIndex.value = dialogueLines.value.length - 1;
     selectedCharacterId.value = line.character?.id || null;
+    if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
 };
 
 const handleEditLine = (payload: { index: number; line: DialogueLine }) => {
@@ -114,6 +131,7 @@ const handleEditLine = (payload: { index: number; line: DialogueLine }) => {
     dialogueLines.value[index] = line;
     selectedLineIndex.value = null;
     selectedCharacterId.value = line.character?.id || null;
+    if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
 };
 
 const deleteDialogueLine = (index: number) => {
@@ -121,6 +139,7 @@ const deleteDialogueLine = (index: number) => {
         dialogueLines.value.splice(index, 1);
         selectedLineIndex.value = null;
         dialogueLines.value.forEach((line, idx) => { line.order = idx + 1; });
+        if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
     }
 };
 
@@ -137,8 +156,16 @@ const addMenuChoice = () => alert('Menu choice feature coming soon!');
 const addAction = () => alert('Action feature coming soon!');
 
 const saveScene = () => {
-    console.log('Saving scene:', { scene: currentScene.value, dialogue: dialogueLines.value });
-    alert('Scene saved!');
+    if (!currentScene.value) return;
+    const id = currentScene.value.id;
+    const index = scenes.value.findIndex(s => s.id === id);
+    if (index !== -1) {
+        const updated: Scene = { ...scenes.value[index]!, dialogue_lines: [...dialogueLines.value] };
+        scenes.value[index] = updated;
+        currentScene.value = updated;
+    }
+    delete sceneDialogueCache.value[id];
+    dirtyScenes.value.delete(id);
 };
 
 const exportScene = () => alert('Export feature coming soon!');

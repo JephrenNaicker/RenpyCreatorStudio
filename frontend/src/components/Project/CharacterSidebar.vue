@@ -41,7 +41,11 @@
                         <div class="scene-content" @click="$emit('select-scene', scene)"
                             @dblclick.stop="startEditing(scene)">
                             <span class="scene-icon">🎬</span>
-                            <span class="scene-name">{{ scene.name || 'Untitled Scene' }}</span>
+                            <span class="scene-name">
+                                {{ scene.name || 'Untitled Scene' }}
+                                <span v-if="dirtySceneIds?.has(scene.id)" class="dirty-indicator"
+                                    title="Unsaved changes">*</span>
+                            </span>
                         </div>
                         <button class="rename-scene" @click.stop="startEditing(scene)" title="Rename scene">
                             <span class="text-gray-400 hover:text-sky-400">✎</span>
@@ -83,6 +87,7 @@ interface Props {
     scenes?: Scene[];
     selectedCharacterId?: string | null;
     selectedSceneId?: string | null;
+    dirtySceneIds?: Set<string>;
 }
 
 interface Emits {
@@ -195,6 +200,12 @@ const deleteScene = () => {
 </script>
 
 <style scoped>
+.dirty-indicator {
+    color: #38bdf8;
+    font-weight: bold;
+    margin-left: 2px;
+}
+
 .sidebar {
     background: #020617;
     border-right: 1px solid #334155;

@@ -5,7 +5,9 @@
             <!-- Left panel: Dialogue History -->
             <div class="dialogue-history-container">
                 <div class="dialogue-history-header">
-                    <h4>Dialogue History</h4>
+                    <!-- Replace the dialogue-history-header h4: -->
+                    <h4>Dialogue History<span v-if="isDirty" class="dirty-indicator" title="Unsaved changes"> *</span>
+                    </h4>
                     <span class="line-count">{{ dialogueLines.length }} lines</span>
                 </div>
                 <div class="dialogue-history">
@@ -94,6 +96,7 @@ interface Props {
     characters: Character[];
     selectedLineIndex?: number | null;
     selectedSpeakerId?: string | null;
+    isDirty?: boolean;
 }
 
 interface Emits {
@@ -240,6 +243,11 @@ const getExpressionEmoji = (expression: string) => {
 </script>
 
 <style scoped>
+.dirty-indicator {
+    color: #38bdf8;
+    font-weight: bold;
+}
+
 .dialogue-editor {
     height: 100%;
     padding: 1.5rem;
