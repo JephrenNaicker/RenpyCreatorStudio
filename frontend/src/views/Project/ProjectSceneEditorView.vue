@@ -24,7 +24,7 @@
             </div>
 
             <div class="workspace-content scrollbar-thin">
-                <DialogueEditor :dialogue-lines="dialogueLines" :characters="projectCharacters"
+                <SceneWorkspace :dialogue-lines="dialogueLines" :characters="projectCharacters"
                     :selected-line-index="selectedLineIndex" :selected-speaker-id="selectedCharacterId"
                     :is-dirty="currentScene ? dirtyScenes.has(currentScene.id) : false"
                     :scene-character-ids="currentScene?.character_ids" @add-line="addDialogueLine"
@@ -38,8 +38,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import CharacterSidebar from '@/components/Project/CharacterSidebar.vue';
-import DialogueEditor from '@/components/Project/DialogueEditor.vue';
+import CharacterSidebar from '@/components/scene/CharacterSidebar.vue';
+import SceneWorkspace from '@/components/scene/SceneWorkspace.vue';
 import {
     dummyCharacters,
     dummyScenes,

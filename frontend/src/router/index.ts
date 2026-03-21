@@ -7,15 +7,15 @@ import AppLayout from '@/components/layout/AppLayout.vue';
 import HomeView from '../views/HomeView.vue';
 
 // Characters
-import CharacterListView from '../views/Character/CharacterListView.vue';
-import CharacterDetailView from '../views/Character/CharacterDetailView.vue';
-import CharacterCreator from '../views/Character/CharacterCreator.vue';
+import CharacterListView from '../views/character/CharacterListView.vue';
+import CharacterDetailView from '../views/character/CharacterDetailView.vue';
+import CharacterCreator from '../views/character/CharacterCreatorView.vue';
 
 // Projects
-import ProjectListView from '../views/Project/ProjectListView.vue';
-import ProjectCreateView from '../views/Project/ProjectCreateView.vue';
-import ProjectDetailView from '../views/Project/ProjectDetailView.vue';
-import ProjectDashboardView from '../views/Project/ProjectDashboardView.vue';
+import ProjectListView from '../views/project/ProjectListView.vue';
+import ProjectCreateView from '../views/project/ProjectCreateView.vue';
+import ProjectDetailView from '../views/project/ProjectDetailView.vue';
+import ProjectSceneEditorView from '../views/project/ProjectSceneEditorView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -80,7 +80,7 @@ const router = createRouter({
         {
           path: 'projects/:id/dashboard',
           name: 'project-dashboard',
-          component: ProjectDashboardView,
+          component: ProjectSceneEditorView,
           props: true,
           meta: { layout: 'dashboard' }
         }

@@ -45,7 +45,7 @@
                         <h4>Speaker & Expression</h4>
                     </div>
                     <div class="speaker-input">
-                        <SpeakerSelect v-model="currentSpeaker" :characters="characters"
+                        <CastSelector v-model="currentSpeaker" :characters="characters"
                             :scene-character-ids="sceneCharacterIds" label="Select Speaker"
                             @update:modelValue="handleSpeakerChange" @expression-change="handleExpressionChange" />
                     </div>
@@ -89,7 +89,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick, watch } from 'vue';
-import SpeakerSelect from '@/components/Project/SpeakerSelect.vue';
+import CastSelector from '@/components/scene/CastSelector.vue';
 import type { DialogueLine, Character } from '@/utils/dummyData';
 
 interface Props {
