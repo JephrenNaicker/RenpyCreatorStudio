@@ -5,7 +5,7 @@
             <select :value="modelValue" @input="$emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
                 class="select" :class="{ narrator: !selectedCharacter }">
                 <option value="">Narrator</option>
-                <option v-for="character in characters" :key="character.id" :value="character.id"
+                <option v-for="character in availableCharacters" :key="character.id" :value="character.id"
                     :style="{ color: character.color }">
                     {{ character.name }}
                 </option>
@@ -42,10 +42,11 @@ import { ref, computed, watch } from 'vue';
 import type { Character } from '@/utils/dummyData';
 
 interface Props {
-    modelValue: string;  // Selected character ID
+    modelValue: string;
     characters: Character[];
     label?: string;
     showExpression?: boolean;
+    sceneCharacterIds?: string[];  // when set, only show these characters in the dropdown
 }
 
 interface Emits {
@@ -55,16 +56,24 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
     label: 'Speaker',
-    showExpression: true
+    showExpression: true,
+    sceneCharacterIds: undefined
 });
 
 const emit = defineEmits<Emits>();
 
 const selectedExpression = ref('');
 
-const selectedCharacter = computed(() => {
-    return props.characters.find(c => c.id === props.modelValue);
-});
+// Only show characters assigned to the current scene (falls back to all if not set)
+const availableCharacters = computed(() =>
+    props.sceneCharacterIds
+        ? props.characters.filter(c => props.sceneCharacterIds!.includes(c.id))
+        : props.characters
+);
+
+const selectedCharacter = computed(() =>
+    props.characters.find(c => c.id === props.modelValue)
+);
 
 // When speaker changes, reset expression
 watch(() => props.modelValue, (newSpeakerId) => {

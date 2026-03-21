@@ -45,7 +45,8 @@
                         <h4>Speaker & Expression</h4>
                     </div>
                     <div class="speaker-input">
-                        <SpeakerSelect v-model="currentSpeaker" :characters="characters" label="Select Speaker"
+                        <SpeakerSelect v-model="currentSpeaker" :characters="characters"
+                            :scene-character-ids="sceneCharacterIds" label="Select Speaker"
                             @update:modelValue="handleSpeakerChange" @expression-change="handleExpressionChange" />
                     </div>
                 </div>
@@ -97,6 +98,7 @@ interface Props {
     selectedLineIndex?: number | null;
     selectedSpeakerId?: string | null;
     isDirty?: boolean;
+    sceneCharacterIds?: string[];
 }
 
 interface Emits {

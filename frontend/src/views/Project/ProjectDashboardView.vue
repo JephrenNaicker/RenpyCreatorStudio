@@ -26,7 +26,8 @@
             <div class="workspace-content scrollbar-thin">
                 <DialogueEditor :dialogue-lines="dialogueLines" :characters="projectCharacters"
                     :selected-line-index="selectedLineIndex" :selected-speaker-id="selectedCharacterId"
-                    :is-dirty="currentScene ? dirtyScenes.has(currentScene.id) : false" @add-line="addDialogueLine"
+                    :is-dirty="currentScene ? dirtyScenes.has(currentScene.id) : false"
+                    :scene-character-ids="currentScene?.character_ids" @add-line="addDialogueLine"
                     @edit-line="handleEditLine" @delete-line="deleteDialogueLine" @select-line="selectLine"
                     @speaker-change="handleSpeakerChange" @add-menu="addMenuChoice" @add-action="addAction" />
             </div>

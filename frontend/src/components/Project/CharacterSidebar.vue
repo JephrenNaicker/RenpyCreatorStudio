@@ -1,7 +1,13 @@
 <template>
     <aside class="sidebar">
-        <h3>Characters</h3>
 
+        <!-- Project Characters (roster) — collapsed feel, just dots + manage link -->
+        <div class="roster-header">
+            <h3>Characters</h3>
+            <button class="icon-button" @click="$emit('add-character')" title="Add character to project">
+                <span class="text-lg">+</span>
+            </button>
+        </div>
         <div class="character-list">
             <div v-for="char in characters" :key="char.id" class="character-item"
                 :class="{ active: selectedCharacterId === char.id }" @click="$emit('select-character', char)">
@@ -11,10 +17,7 @@
             </div>
         </div>
 
-        <button class="secondary small" @click="$emit('add-character')">
-            + Add Character to Project
-        </button>
-
+        <!-- Scenes -->
         <div class="sidebar-section">
             <div class="section-header">
                 <h4>Scenes</h4>
@@ -23,7 +26,6 @@
                 </button>
             </div>
 
-            <!-- props.scenes is the single source of truth — no localScenes -->
             <div v-if="scenes && scenes.length > 0" class="scene-list">
                 <div v-for="scene in scenes" :key="scene.id" class="scene-item" :class="{
                     active: selectedSceneId === scene.id,
@@ -38,21 +40,64 @@
 
                     <!-- Display mode -->
                     <template v-else>
-                        <div class="scene-content" @click="$emit('select-scene', scene)"
-                            @dblclick.stop="startEditing(scene)">
-                            <span class="scene-icon">🎬</span>
-                            <span class="scene-name">
-                                {{ scene.name || 'Untitled Scene' }}
-                                <span v-if="dirtySceneIds?.has(scene.id)" class="dirty-indicator"
-                                    title="Unsaved changes">*</span>
-                            </span>
+                        <div class="scene-main">
+                            <!-- Name row -->
+                            <div class="scene-top-row">
+                                <div class="scene-content" @click="$emit('select-scene', scene)"
+                                    @dblclick.stop="startEditing(scene)">
+                                    <span class="scene-icon">🎬</span>
+                                    <span class="scene-name">
+                                        {{ scene.name || 'Untitled Scene' }}
+                                        <span v-if="dirtySceneIds?.has(scene.id)" class="dirty-indicator"
+                                            title="Unsaved changes">*</span>
+                                    </span>
+                                </div>
+                                <div class="scene-actions">
+                                    <button class="rename-scene" @click.stop="startEditing(scene)" title="Rename scene">
+                                        <span>✎</span>
+                                    </button>
+                                    <button class="delete-scene" @click.stop="confirmDeleteScene(scene)"
+                                        title="Delete scene">
+                                        <span>✕</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Cast strip -->
+                            <div class="cast-strip">
+                                <!-- Assigned character dots -->
+                                <div class="cast-dots">
+                                    <span v-for="charId in scene.character_ids" :key="charId" class="cast-dot"
+                                        :style="{ background: getCharacterColor(charId) }"
+                                        :title="getCharacterName(charId)" />
+                                    <span v-if="scene.character_ids.length === 0" class="cast-empty">
+                                        No cast
+                                    </span>
+                                </div>
+
+                                <!-- Add character to scene button -->
+                                <button class="cast-add-btn" @click.stop="togglePicker(scene.id)"
+                                    title="Assign characters to scene">+</button>
+                            </div>
+
+                            <!-- Character picker popover -->
+                            <div v-if="pickerSceneId === scene.id" class="char-picker" @click.stop>
+                                <input v-model="pickerSearch" class="picker-search" placeholder="Search characters..."
+                                    @click.stop />
+                                <div class="picker-list">
+                                    <label v-for="char in filteredPickerCharacters" :key="char.id" class="picker-row">
+                                        <input type="checkbox" :checked="scene.character_ids.includes(char.id)"
+                                            @change="toggleCharacterInScene(scene, char.id)" class="picker-checkbox" />
+                                        <span class="cast-dot" :style="{ background: char.color }" />
+                                        <span class="picker-name">{{ char.name }}</span>
+                                        <span v-if="char.nickname" class="picker-nick">"{{ char.nickname }}"</span>
+                                    </label>
+                                    <p v-if="filteredPickerCharacters.length === 0" class="picker-empty">
+                                        No characters found
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        <button class="rename-scene" @click.stop="startEditing(scene)" title="Rename scene">
-                            <span class="text-gray-400 hover:text-sky-400">✎</span>
-                        </button>
-                        <button class="delete-scene" @click.stop="confirmDeleteScene(scene)" title="Delete scene">
-                            <span class="text-red-400 hover:text-red-300">✕</span>
-                        </button>
                     </template>
                 </div>
             </div>
@@ -79,7 +124,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import type { Character, Scene } from '@/utils/dummyData';
 
 interface Props {
@@ -102,23 +147,64 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-// Only editing state lives here — the scenes list is owned entirely by the parent via props
+// ── Editing state ──────────────────────────────────────────
 const editingSceneId = ref<string | null>(null);
 const editingSceneName = ref('');
+const editingSceneOriginalName = ref('');
 const sceneInput = ref<HTMLInputElement | null>(null);
-// Prevents @blur double-firing a save after @keyup.enter already committed
 const didCommit = ref(false);
 
-// Delete modal state
+// ── Delete modal ───────────────────────────────────────────
 const showDeleteModal = ref(false);
 const sceneToDelete = ref<Scene | null>(null);
 
+// ── Character picker popover ───────────────────────────────
+const pickerSceneId = ref<string | null>(null);
+const pickerSearch = ref('');
+
+const filteredPickerCharacters = computed(() => {
+    const q = pickerSearch.value.toLowerCase();
+    return q
+        ? props.characters.filter(c => c.name.toLowerCase().includes(q) || c.nickname?.toLowerCase().includes(q))
+        : props.characters;
+});
+
+const togglePicker = (sceneId: string) => {
+    if (pickerSceneId.value === sceneId) {
+        pickerSceneId.value = null;
+        pickerSearch.value = '';
+    } else {
+        pickerSceneId.value = sceneId;
+        pickerSearch.value = '';
+    }
+};
+
+const toggleCharacterInScene = (scene: Scene, charId: string) => {
+    const already = scene.character_ids.includes(charId);
+    const updated: Scene = {
+        ...scene,
+        character_ids: already
+            ? scene.character_ids.filter(id => id !== charId)
+            : [...scene.character_ids, charId]
+    };
+    emit('update-scene', updated);
+};
+
+// ── Helpers ────────────────────────────────────────────────
+const getCharacterColor = (charId: string) =>
+    props.characters.find(c => c.id === charId)?.color ?? '#475569';
+
+const getCharacterName = (charId: string) =>
+    props.characters.find(c => c.id === charId)?.name ?? 'Unknown';
+
+// ── Scene CRUD ─────────────────────────────────────────────
 const addNewScene = () => {
     const now = new Date().toISOString();
     const newScene: Scene = {
         id: Date.now().toString(),
         name: 'New Scene',
         project_id: props.scenes?.[0]?.project_id || 'default-project',
+        character_ids: [],
         dialogue_lines: [],
         created_at: now,
         updated_at: now
@@ -128,32 +214,17 @@ const addNewScene = () => {
     nextTick(() => startEditing(newScene));
 };
 
-// track the name the scene had before editing started
-const editingSceneOriginalName = ref('');
-
 const startEditing = (scene: Scene) => {
+    pickerSceneId.value = null; // close any open picker
     didCommit.value = false;
     editingSceneId.value = scene.id;
     editingSceneName.value = scene.name || '';
-    editingSceneOriginalName.value = scene.name || '';   // ← store original
+    editingSceneOriginalName.value = scene.name || '';
     nextTick(() => {
         const el = Array.isArray(sceneInput.value) ? sceneInput.value[0] : sceneInput.value;
         el?.focus();
         el?.select();
     });
-};
-
-const cancelEdit = () => {
-    if (didCommit.value) return;
-    didCommit.value = true;
-    // Only delete if it was a brand-new scene that was never saved with a real name
-    const scene = props.scenes?.find(s => s.id === editingSceneId.value);
-    if (scene && editingSceneOriginalName.value === 'New Scene') {
-        emit('delete-scene', scene.id);
-    }
-    editingSceneId.value = null;
-    editingSceneName.value = '';
-    editingSceneOriginalName.value = '';
 };
 
 const commitSave = (scene: Scene) => {
@@ -165,20 +236,31 @@ const commitSave = (scene: Scene) => {
     }
     editingSceneId.value = null;
     editingSceneName.value = '';
+    editingSceneOriginalName.value = '';
 };
 
-// Enter key: commit and mark so blur doesn't fire again
 const handleEnterKey = (scene: Scene) => {
     if (didCommit.value) return;
     didCommit.value = true;
     commitSave(scene);
 };
 
-// Blur: only save if Enter didn't already handle it
 const handleBlur = (scene: Scene) => {
     if (didCommit.value) return;
     didCommit.value = true;
     commitSave(scene);
+};
+
+const cancelEdit = () => {
+    if (didCommit.value) return;
+    didCommit.value = true;
+    const scene = props.scenes?.find(s => s.id === editingSceneId.value);
+    if (scene && editingSceneOriginalName.value === 'New Scene') {
+        emit('delete-scene', scene.id);
+    }
+    editingSceneId.value = null;
+    editingSceneName.value = '';
+    editingSceneOriginalName.value = '';
 };
 
 const confirmDeleteScene = (scene: Scene) => {
@@ -200,12 +282,6 @@ const deleteScene = () => {
 </script>
 
 <style scoped>
-.dirty-indicator {
-    color: #38bdf8;
-    font-weight: bold;
-    margin-left: 2px;
-}
-
 .sidebar {
     background: #020617;
     border-right: 1px solid #334155;
@@ -216,9 +292,20 @@ const deleteScene = () => {
     flex-direction: column;
 }
 
-h3,
+.roster-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.roster-header h3 {
+    margin: 0;
+    color: #f8fafc;
+}
+
 h4 {
-    margin-bottom: 1rem;
+    margin-bottom: 0;
     color: #f8fafc;
 }
 
@@ -258,6 +345,7 @@ h4 {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: #e2e8f0;
 }
 
 .expression-count {
@@ -266,10 +354,12 @@ h4 {
     flex-shrink: 0;
 }
 
+/* ── Scenes section ── */
 .sidebar-section {
-    margin-top: 2rem;
+    margin-top: 1rem;
     padding-top: 1.5rem;
     border-top: 1px solid #334155;
+    flex: 1;
 }
 
 .section-header {
@@ -277,10 +367,6 @@ h4 {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
-}
-
-.section-header h4 {
-    margin-bottom: 0;
 }
 
 .icon-button {
@@ -309,15 +395,11 @@ h4 {
 }
 
 .scene-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.5rem;
     border-radius: 6px;
-    cursor: pointer;
     font-size: 0.9rem;
     transition: all 0.2s;
     background: #0f172a;
+    border: 1px solid transparent;
 }
 
 .scene-item:hover {
@@ -325,8 +407,21 @@ h4 {
 }
 
 .scene-item.active {
-    background: rgba(56, 189, 248, 0.2);
-    border-left: 3px solid #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+/* ── Scene main layout ── */
+.scene-main {
+    display: flex;
+    flex-direction: column;
+}
+
+.scene-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.5rem 0.25rem;
 }
 
 .scene-content {
@@ -335,6 +430,7 @@ h4 {
     gap: 0.5rem;
     flex: 1;
     overflow: hidden;
+    cursor: pointer;
 }
 
 .scene-icon {
@@ -346,11 +442,182 @@ h4 {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: #e2e8f0;
 }
 
+.dirty-indicator {
+    color: #38bdf8;
+    font-weight: bold;
+    margin-left: 2px;
+}
+
+.scene-actions {
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+}
+
+.scene-item:hover .scene-actions {
+    opacity: 1;
+}
+
+.rename-scene,
+.delete-scene {
+    background: transparent;
+    border: none;
+    padding: 0.2rem 0.35rem;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.rename-scene {
+    color: #64748b;
+}
+
+.rename-scene:hover {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.delete-scene {
+    color: #64748b;
+}
+
+.delete-scene:hover {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* ── Cast strip ── */
+.cast-strip {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.5rem 0.5rem;
+}
+
+.cast-dots {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex: 1;
+    flex-wrap: wrap;
+}
+
+.cast-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+.cast-empty {
+    font-size: 0.75rem;
+    color: #475569;
+    font-style: italic;
+}
+
+.cast-add-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    line-height: 1;
+}
+
+.cast-add-btn:hover {
+    background: #2d3748;
+    color: #38bdf8;
+    border-color: #38bdf8;
+}
+
+/* ── Character picker popover ── */
+.char-picker {
+    margin: 0 0.5rem 0.5rem;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.picker-search {
+    width: 100%;
+    background: #0f172a;
+    border: none;
+    border-bottom: 1px solid #334155;
+    padding: 0.5rem 0.75rem;
+    color: #f8fafc;
+    font-size: 0.85rem;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.picker-search::placeholder {
+    color: #475569;
+}
+
+.picker-list {
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 0.25rem 0;
+}
+
+.picker-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.picker-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.picker-checkbox {
+    accent-color: #38bdf8;
+    flex-shrink: 0;
+}
+
+.picker-name {
+    color: #e2e8f0;
+    font-size: 0.85rem;
+    flex: 1;
+}
+
+.picker-nick {
+    color: #64748b;
+    font-size: 0.75rem;
+    font-style: italic;
+}
+
+.picker-empty {
+    color: #475569;
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 0.75rem;
+}
+
+/* ── Scene edit input ── */
 .scene-edit {
     flex: 1;
-    padding: 0.25rem 0;
+    padding: 0.5rem;
 }
 
 .scene-input {
@@ -362,83 +629,22 @@ h4 {
     color: #e2e8f0;
     font-size: 0.9rem;
     outline: none;
+    box-sizing: border-box;
 }
 
 .scene-input:focus {
-    border-color: #38bdf8;
     box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
 }
 
-.scene-item.editing {
-    background: #1e293b;
-    padding: 0.25rem 0.5rem;
-}
-
-.rename-scene {
-    background: transparent;
-    border: none;
-    padding: 0.25rem 0.5rem;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s;
-    border-radius: 4px;
-    flex-shrink: 0;
-}
-
-.scene-item:hover .rename-scene {
-    opacity: 0.6;
-}
-
-.rename-scene:hover {
-    opacity: 1 !important;
-    background: rgba(56, 189, 248, 0.1);
-}
-
-.delete-scene {
-    background: transparent;
-    border: none;
-    padding: 0.25rem 0.5rem;
-    cursor: pointer;
-    opacity: 0.5;
-    transition: opacity 0.2s;
-    border-radius: 4px;
-    flex-shrink: 0;
-}
-
-.delete-scene:hover {
-    opacity: 1;
-    background: rgba(239, 68, 68, 0.1);
-}
-
+/* ── Empty state ── */
 .empty-scenes {
     color: #6b7280;
 }
 
-.secondary {
-    background: #1e293b;
-    border: none;
-    color: #e2e8f0;
-    border-radius: 6px;
-    padding: 0.5rem 0.75rem;
-    width: 100%;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.secondary:hover {
-    background: #2d3748;
-}
-
-.small {
-    font-size: 0.85rem;
-}
-
+/* ── Modal ── */
 .modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
@@ -454,6 +660,7 @@ h4 {
     width: 90%;
     border: 1px solid #334155;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    color: #e2e8f0;
 }
 
 .btn-secondary {

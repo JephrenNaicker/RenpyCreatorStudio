@@ -39,6 +39,8 @@ export interface Scene {
     id: string;
     name: string;
     project_id: string;
+    character_ids: string[];  // characters assigned to this scene (many-to-many)
+    notes?: string;           // optional scene notes
     dialogue_lines: DialogueLine[];
     created_at: string;
     updated_at: string;
@@ -214,6 +216,8 @@ const initialScenes: Scene[] = [
         id: '1',
         name: 'First Encounter',
         project_id: '1',
+        character_ids: ['1', '2', '3'],  // Alice, Bob, Catherine
+        notes: 'Opening scene at the academy gates.',
         dialogue_lines: initialDialogueLines,
         created_at: '2024-01-20T10:00:00Z',
         updated_at: '2024-01-20T10:00:00Z'
@@ -222,6 +226,8 @@ const initialScenes: Scene[] = [
         id: '2',
         name: 'The Library',
         project_id: '1',
+        character_ids: ['1', '4'],       // Alice, David
+        notes: 'Alice discovers the forbidden section.',
         dialogue_lines: [],
         created_at: '2024-01-21T14:30:00Z',
         updated_at: '2024-01-21T14:30:00Z'
@@ -230,6 +236,7 @@ const initialScenes: Scene[] = [
         id: '3',
         name: 'Training Grounds',
         project_id: '1',
+        character_ids: ['1', '2', '3', '4'], // All characters
         dialogue_lines: [],
         created_at: '2024-01-22T09:15:00Z',
         updated_at: '2024-01-22T09:15:00Z'
