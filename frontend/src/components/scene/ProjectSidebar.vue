@@ -14,6 +14,9 @@
                 <span class="color-dot" :style="{ background: char.color }" />
                 <span class="character-name">{{ char.name }}</span>
                 <span class="expression-count">{{ char.expressions?.length || 0 }} 😀</span>
+                <button class="remove-character" @click.stop="confirmRemoveCharacter(char)" title="Remove from project">
+                    <span>✕</span>
+                </button>
             </div>
         </div>
 
@@ -110,13 +113,23 @@
         <!-- Delete Confirmation Modal -->
         <div v-if="showDeleteModal" class="modal-overlay" @click.self="cancelDelete">
             <div class="modal-content">
-                <h4 class="text-lg font-bold mb-4">Delete Scene</h4>
-                <p class="mb-6">Are you sure you want to delete "{{ sceneToDelete?.name || 'Untitled Scene' }}"? This
-                    action
-                    cannot be undone.</p>
+                <h4 class="text-lg font-bold mb-4">
+                    {{ charToRemove ? 'Remove Character' : 'Delete Scene' }}
+                </h4>
+                <p class="mb-6">
+                    Are you sure you want to
+                    <template v-if="charToRemove">
+                        remove "{{ charToRemove.name }}" from the project? They will also be unassigned from all scenes.
+                    </template>
+                    <template v-else>
+                        delete "{{ sceneToDelete?.name || 'Untitled Scene' }}"? This action cannot be undone.
+                    </template>
+                </p>
                 <div class="flex justify-end gap-3">
                     <button class="btn-secondary" @click="cancelDelete">Cancel</button>
-                    <button class="btn-danger" @click="deleteScene">Delete</button>
+                    <button class="btn-danger" @click="charToRemove ? confirmAction() : deleteScene()">
+                        {{ charToRemove ? 'Remove' : 'Delete' }}
+                    </button>
                 </div>
             </div>
         </div>
@@ -138,6 +151,7 @@ interface Props {
 interface Emits {
     (e: 'select-character', character: Character): void;
     (e: 'add-character'): void;
+    (e: 'remove-character', characterId: string): void;
     (e: 'select-scene', scene: Scene): void;
     (e: 'add-scene', scene: Scene): void;
     (e: 'delete-scene', sceneId: string): void;
@@ -158,6 +172,37 @@ const didCommit = ref(false);
 const showDeleteModal = ref(false);
 const sceneToDelete = ref<Scene | null>(null);
 
+const confirmAction = () => {
+    if (charToRemove.value) {
+        emit('remove-character', charToRemove.value.id);
+        charToRemove.value = null;
+        showDeleteModal.value = false;
+    } else {
+        deleteScene();
+    }
+};
+
+// ── Remove character from project ─────────────────────────
+const charToRemove = ref<Character | null>(null);
+
+const confirmRemoveCharacter = (char: Character) => {
+    charToRemove.value = char;
+    showDeleteModal.value = true;
+};
+
+// Update deleteScene to handle both cases:
+const deleteScene = () => {
+    if (charToRemove.value) {
+        emit('remove-character', charToRemove.value.id);
+        charToRemove.value = null;
+        showDeleteModal.value = false;
+        return;
+    }
+    if (sceneToDelete.value) {
+        emit('delete-scene', sceneToDelete.value.id);
+        cancelDelete();
+    }
+};
 // ── Character picker popover ───────────────────────────────
 const pickerSceneId = ref<string | null>(null);
 const pickerSearch = ref('');
@@ -273,15 +318,31 @@ const cancelDelete = () => {
     sceneToDelete.value = null;
 };
 
-const deleteScene = () => {
-    if (sceneToDelete.value) {
-        emit('delete-scene', sceneToDelete.value.id);
-        cancelDelete();
-    }
-};
 </script>
 
 <style scoped>
+.remove-character {
+    background: transparent;
+    border: none;
+    padding: 0.2rem 0.35rem;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #64748b;
+    opacity: 0;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.character-item:hover .remove-character {
+    opacity: 1;
+}
+
+.remove-character:hover {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.1);
+}
+
 .sidebar {
     background: #020617;
     border-right: 1px solid #334155;

@@ -1,10 +1,10 @@
 <template>
     <div class="dashboard-layout">
         <!-- Left Panel -->
-        <CharacterSidebar :characters="projectCharacters" :scenes="scenes" :selected-character-id="selectedCharacterId"
+        <ProjectSidebar :characters="projectCharacters" :scenes="scenes" :selected-character-id="selectedCharacterId"
             :dirty-scene-ids="dirtyScenes" @select-character="handleSelectCharacter"
-            @add-character="addCharacterToProject" @select-scene="selectScene" @add-scene="handleAddScene"
-            @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene" />
+            @remove-character="handleRemoveCharacter" @add-character="addCharacterToProject" @select-scene="selectScene"
+            @add-scene="handleAddScene" @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene" />
 
         <!-- Main Panel -->
         <main class="workspace-main">
@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import CharacterSidebar from '@/components/scene/CharacterSidebar.vue';
+import ProjectSidebar from '@/components/scene/ProjectSidebar.vue';
 import SceneWorkspace from '@/components/scene/SceneWorkspace.vue';
 import {
     dummyCharacters,
@@ -59,7 +59,7 @@ const scenes = ref<Scene[]>([...dummyScenes]);
 const sceneDialogueCache = ref<Record<string, DialogueLine[]>>({});
 const dirtyScenes = ref<Set<string>>(new Set());
 
-const projectCharacters = computed(() => dummyCharacters);
+const projectCharacters = ref<Character[]>([...dummyCharacters]);
 
 const selectedCharacter = computed<Character | null>(() =>
     selectedCharacterId.value
@@ -78,6 +78,20 @@ const handleSpeakerChange = (characterId: string | null) => {
 
 const addCharacterToProject = () => {
     alert('Character selection modal coming soon!');
+};
+
+const handleRemoveCharacter = (characterId: string) => {
+    // Remove from project roster
+    projectCharacters.value = projectCharacters.value.filter(c => c.id !== characterId);
+    // Cascade — unassign from all scenes too
+    scenes.value = scenes.value.map(s => ({
+        ...s,
+        character_ids: s.character_ids.filter(id => id !== characterId)
+    }));
+    // Clear selection if that character was selected
+    if (selectedCharacterId.value === characterId) {
+        selectedCharacterId.value = null;
+    }
 };
 
 const selectScene = (scene: Scene) => {
