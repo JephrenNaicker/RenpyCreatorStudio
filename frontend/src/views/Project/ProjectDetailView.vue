@@ -1,5 +1,5 @@
 <template>
-    <div class="project-detail-view">
+    <div v-if="project" class="project-detail-view">
         <!-- Project Header -->
         <div class="project-header">
             <div class="header-left">
@@ -108,12 +108,8 @@
                                 </span>
                             </div>
                             <div class="character-stats">
-                                <span class="stat-badge">
-                                    😀 {{ character.expressions || 0 }}
-                                </span>
-                                <span class="stat-badge">
-                                    👕 {{ character.outfits || 0 }}
-                                </span>
+                                <span class="stat-badge">😀 {{ character.expressions?.length || 0 }}</span>
+                                <span class="stat-badge">👕 {{ character.outfits?.length || 0 }}</span>
                             </div>
                         </div>
                     </div>
@@ -171,44 +167,56 @@
             </div>
         </div>
     </div>
+    <div v-else class="project-detail-view">
+        <div class="info-card">
+            <h3>Project Not Found</h3>
+            <p>The project you're looking for doesn't exist.</p>
+            <router-link to="/projects" class="btn-primary">Back to Projects</router-link>
+        </div>
+    </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import {
+    dummyProjects,
+    dummyCharacters,
+    dummyScenes,
+    type Character,
+} from '@/utils/dummyData';
 
 const route = useRoute();
 const router = useRouter();
 
-// Mock data - will be replaced with API calls
-const project = ref({
-    id: '1',
-    name: 'Mystic Academy',
-    main_plot: 'A mysterious school hiding magical secrets where students discover their supernatural abilities while navigating teenage drama and ancient prophecies.',
-    main_character_id: '1',
-    tags: ['fantasy', 'school', 'mystery', 'magic'],
-    created_at: '2024-01-15T10:30:00Z',
-    updated_at: '2024-01-20T14:45:00Z'
-});
+// Find project by route param
+const project = computed(() =>
+    dummyProjects.find(p => p.id === route.params.id) ?? dummyProjects[0]!
+);
 
-const mainCharacter = ref({
-    id: '1',
-    name: 'Alice',
-    nickname: 'Ali',
-    color: '#FF6B6B',
-    bio: 'A cheerful protagonist who loves adventure and has a mysterious past. She recently discovered she has elemental magic powers.',
-    expressions: ['happy', 'sad', 'angry', 'surprised', 'magical'],
-    outfits: ['casual', 'school', 'magical']
-});
+// Derive main character from project
+const mainCharacter = computed(() =>
+    project.value.main_character_id
+        ? dummyCharacters.find(c => c.id === project.value.main_character_id) ?? null
+        : null
+);
 
-const projectCharacters = ref([
-    { id: '1', name: 'Alice', nickname: 'Ali', color: '#FF6B6B', expressions: 5, outfits: 3 },
-    { id: '2', name: 'Bob', nickname: 'Bobby', color: '#4ECDC4', expressions: 3, outfits: 2 },
-    { id: '3', name: 'Catherine', nickname: 'Cat', color: '#FFD166', expressions: 4, outfits: 2 },
-    { id: '4', name: 'David', nickname: 'Dave', color: '#A78BFA', expressions: 3, outfits: 2 },
-    { id: '5', name: 'Elena', nickname: 'Elle', color: '#EF4444', expressions: 6, outfits: 4 }
-]);
+// All characters in the project roster
+const projectCharacters = computed(() => dummyCharacters);
 
+// Scenes belonging to this project
+const projectScenes = computed(() =>
+    dummyScenes.filter(s => s.project_id === project.value.id)
+);
+
+// Derived stats
+const characterCount = computed(() => projectCharacters.value.length);
+const sceneCount = computed(() => projectScenes.value.length);
+const dialogueLines = computed(() =>
+    projectScenes.value.reduce((total, scene) => total + scene.dialogue_lines.length, 0)
+);
+
+// Recent activity stays static for now — will come from API later
 const recentActivity = ref([
     { id: 1, icon: '💬', text: 'Added dialogue scene "First Encounter"', time: '2 hours ago' },
     { id: 2, icon: '👤', text: 'Created character "Professor Morgan"', time: '1 day ago' },
@@ -216,56 +224,34 @@ const recentActivity = ref([
     { id: 4, icon: '📝', text: 'Edited main plot description', time: '3 days ago' }
 ]);
 
-const characterCount = ref(5);
-const sceneCount = ref(12);
-const dialogueLines = ref(156);
-
 onMounted(() => {
-    // TODO: Fetch project details from API using route.params.id
     console.log('Loading project:', route.params.id);
 });
 
 const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+    return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric'
     });
 };
 
-const truncateText = (text: string, maxLength: number) => {
+const truncateText = (text: string | undefined, maxLength: number) => {
     if (!text) return '';
-    if (text.length <= maxLength) return text;
+    if (!text || text.length <= maxLength) return text ?? '';
     return text.substring(0, maxLength) + '...';
 };
 
 const deleteProject = () => {
     if (confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
-        // TODO: API call to delete project
+        // TODO: API call
         router.push('/projects');
     }
 };
 
-const startDialogue = () => {
-    router.push(`/projects/${project.value.id}/dashboard`);
-};
-
-const addScene = () => {
-    alert('Add scene feature coming soon!');
-};
-
-const exportProject = () => {
-    alert('Export feature coming soon!');
-};
-
-const manageAssets = () => {
-    alert('Asset management coming soon!');
-};
-
-const runExport = () => {
-    alert('Starting full project export...');
-};
+const startDialogue = () => router.push(`/projects/${project.value.id}/dashboard`);
+const addScene = () => router.push(`/projects/${project.value.id}/dashboard`);
+const exportProject = () => alert('Export feature coming soon!');
+const manageAssets = () => alert('Asset management coming soon!');
+const runExport = () => alert('Export feature coming soon!');
 </script>
 
 <style scoped>

@@ -127,7 +127,7 @@ const initialCharacters: Character[] = [
         age: 17,
         birth_date: '05/19',
         bio: 'The smart but socially awkward class president.',
-        voice_lines: [],  // Should be array of {line_name, audio_path} objects
+        voice_lines: [],
         outfits: [
             { name: 'formal', default_image: 'david_formal.png' },
             { name: 'casual', default_image: 'david_casual.png' }
@@ -240,6 +240,25 @@ const initialScenes: Scene[] = [
         dialogue_lines: [],
         created_at: '2024-01-22T09:15:00Z',
         updated_at: '2024-01-22T09:15:00Z'
+    },
+    {
+        id: '4',
+        name: 'Neon Alleyway',
+        project_id: '2',
+        character_ids: ['2'],
+        notes: 'Opening chase scene.',
+        dialogue_lines: [],
+        created_at: '2024-01-19T10:00:00Z',
+        updated_at: '2024-01-19T10:00:00Z'
+    },
+    {
+        id: '5',
+        name: 'The Hideout',
+        project_id: '2',
+        character_ids: ['2', '4'],
+        dialogue_lines: [],
+        created_at: '2024-01-19T12:00:00Z',
+        updated_at: '2024-01-19T12:00:00Z'
     }
 ];
 
