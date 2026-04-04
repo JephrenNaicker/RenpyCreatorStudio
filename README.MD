@@ -8,26 +8,47 @@ RenpyCreatorStudio/
 frontend/
 │   ├── src/
 │   ├── assets/
+│   │   ├── base.css
+│   │   ├── main.css            #old css page
+│   │   ├── tailwind.css           # tailwind
 │   ├── components/
 │   │   ├── layout/
 │   │   │   ├── AppHeader.vue        # Navbar with dropdown
 │   │   │   └── AppLayout.vue        # Layout wrapper
+│   │   ├── character/
+│   │   │   ├── AssetLibraryPanel.vue
+│   │   │   ├── CharacterInfoPanel.vue
+│   │   │   ├── CharacterPreviewPanel.vue
+│   │   ├── scene/
+│   │   │   ├─ ProjectSidebar.vue
+│   │   │   ├── SceneWorkspace.vue
+│   │   │   ├── CastSelector.vue
 │   ├── views/
+│   ├── character/
 │   │   ├── CharacterCreator.vue     # Create characters
 │   │   ├── CharacterListView.vue    # List all characters
 │   │   ├── CharacterDetailView.vue  # View/Edit character
-│   │   └── HomeView.vue             # Dashboard
+|   │   projects/
+│   │   ├── ProjectListView.vue
+│   │   ├── ProjectCreateView.vue
+│   │   ├── ProjectDetailView.vue
+│   │   └── ProjectSceneEditorView.vue
+│   └── HomeView.vue             # Dashboard
 │   ├── router/
 │   │   └── index.ts                 # Vue Router setup
 │   ├── services/
 │   │   └── api.ts                 # python FASTapi
+│   ├── utils/
+│   │   └── dummyData              # test data
 │   │ App.vue                      # Updated with layout
 │   └── main.ts
 │   ├── .env.example             # Frontend env vars
 │   ├── index.html
 │   ├── package.json
+│   ├── postcss.config.json
 │   ├── vite.config.ts
 │   ├── tsconfig.json
+│   ├── tailwind.config.js
 │   ├── Dockerfile              # Frontend Dockerfile
 │   └── README.md
 │
