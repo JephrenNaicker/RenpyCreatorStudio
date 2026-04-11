@@ -140,68 +140,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { dummyCharacters, type Character } from '@/utils/dummyData';
 
 const route = useRoute();
 const router = useRouter();
-const character = ref<any>(null);
+
+// Find character by route param — replace with API call later
+const character = computed<Character | null>(() =>
+    dummyCharacters.find(c => c.id === route.params.id) ?? null
+);
+
 const showExportModal = ref(false);
 const exportCode = ref('');
-
-// Mock data - will be replaced with API call
-const mockCharacter = {
-    id: '1',
-    name: 'Alice',
-    nickname: 'Ali',
-    color: '#FF6B6B',
-    age: 18,
-    birth_date: '03/15',
-    bio: 'A cheerful protagonist who loves adventure and has a mysterious past. She always looks on the bright side and has a strong sense of justice.',
-    voice_lines: [
-        { line_name: 'greeting', audio_path: 'audio/alice/greeting.ogg' },
-        { line_name: 'surprise', audio_path: 'audio/alice/surprise.ogg' }
-    ],
-    outfits: [
-        { name: 'casual', default_image: 'alice_casual.png' },
-        { name: 'formal', default_image: 'alice_formal.png' }
-    ],
-    expressions: [
-        { name: 'happy', image_path: 'alice_happy.png', outfit: 'casual' },
-        { name: 'sad', image_path: 'alice_sad.png', outfit: 'casual' },
-        { name: 'angry', image_path: 'alice_angry.png', outfit: 'casual' },
-        { name: 'elegant', image_path: 'alice_elegant.png', outfit: 'formal' }
-    ]
-};
-
-onMounted(() => {
-    // TODO: Fetch character from API using route.params.id
-    character.value = mockCharacter;
-});
 
 const goBack = () => {
     router.push('/characters');
 };
 
 const showExportPreview = () => {
-    // Generate Ren'Py code
-    exportCode.value = `# Ren'Py Character Definition
-define ${character.value.name.toLowerCase()} = Character(
-    "${character.value.name}",
-    color="${character.value.color}",
+    if (!character.value) return;
+    const c = character.value;
+    const varName = c.name.toLowerCase();
+    const expressions = (c.expressions ?? [])
+        .map(e => `image ${varName} ${e.name} = "${e.image_path}"`)
+        .join('\n');
+
+    exportCode.value =
+        `# Ren'Py Character Definition
+define ${varName} = Character(
+    "${c.name}",
+    color="${c.color}",
     what_prefix='"',
     what_suffix='"',
 )
 
 # Expressions
-image ${character.value.name.toLowerCase()} happy = "alice_happy.png"
-image ${character.value.name.toLowerCase()} sad = "alice_sad.png"
-image ${character.value.name.toLowerCase()} angry = "alice_angry.png"
+${expressions || `# No expressions defined yet`}
 
 # Usage in script
 label start:
-    ${character.value.name.toLowerCase()} "Hello, I'm ${character.value.name}!"
-    ${character.value.name.toLowerCase()} happy "I'm happy to meet you!"
+    ${varName} "Hello, I'm ${c.name}!"
 `;
     showExportModal.value = true;
 };
@@ -235,7 +215,7 @@ const exportCharacter = () => {
 .character-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     margin-bottom: 2rem;
     padding-bottom: 1.5rem;
     border-bottom: 1px solid #334155;
