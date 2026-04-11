@@ -15,6 +15,7 @@ import CharacterCreator from '../views/character/CharacterCreatorView.vue';
 import ProjectListView from '../views/project/ProjectListView.vue';
 import ProjectCreateView from '../views/project/ProjectCreateView.vue';
 import ProjectDetailView from '../views/project/ProjectDetailView.vue';
+import ProjectEditView from '../views/project/ProjectEditView.vue';
 import ProjectSceneEditorView from '../views/project/ProjectSceneEditorView.vue';
 
 const router = createRouter({
@@ -78,8 +79,15 @@ const router = createRouter({
           meta: { layout: 'dashboard' }
         },
         {
-          path: 'projects/:id/dashboard',
-          name: 'project-dashboard',
+          path: 'projects/:id/edit',
+          name: 'project-edit',
+          component: ProjectEditView,
+          props: true,
+          meta: { layout: 'dashboard' }
+        },
+        {
+          path: 'projects/:id/scenes',
+          name: 'project-scenes',
           component: ProjectSceneEditorView,
           props: true,
           meta: { layout: 'dashboard' }

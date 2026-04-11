@@ -13,8 +13,8 @@
             </div>
 
             <div class="header-actions">
-                <router-link :to="`/projects/${project.id}/dashboard`" class="btn-primary">
-                    📝 Open Dashboard
+                <router-link :to="`/projects/${project.id}/scenes`" class="btn-primary">
+                    📝 Open Scene Editor
                 </router-link>
                 <router-link :to="`/projects/${project.id}/edit`" class="btn-secondary">
                     ✏️ Edit Project
