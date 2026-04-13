@@ -73,8 +73,8 @@
             <router-link :to="`/projects/${project.id}`" class="btn-primary hover:opacity-90">
               View
             </router-link>
-            <router-link :to="`/projects/${project.id}/dashboard`" class="btn-secondary">
-              Dashboard
+            <router-link :to="`/projects/${project.id}/scenes`" class="btn-secondary">
+              Scene Editor
             </router-link>
           </div>
         </div>

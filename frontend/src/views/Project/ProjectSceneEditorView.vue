@@ -10,16 +10,19 @@
         <main class="workspace-main">
             <div class="workspace-header">
                 <h2 class="workspace-title">
-                    {{ selectedCharacter ? `Writing as ${selectedCharacter.name}` : 'Continue Writing' }}
+                    {{ currentProject?.name ?? 'Scene Editor' }}
                     <span v-if="currentScene" class="scene-badge">
                         🎬 {{ currentScene.name }}
                     </span>
                 </h2>
 
-                <div class="flex gap-2 mb-6">
+                <div class="flex items-center gap-2 mb-6">
                     <button class="tool-btn" @click="saveScene">💾 Save Scene</button>
                     <button class="tool-btn" @click="exportScene">📤 Export</button>
                     <button class="tool-btn" @click="undo">↩️ Undo</button>
+                    <button class="tool-btn ml-auto" @click="router.push(`/projects/${route.params.id}`)">
+                        ← Back to Project
+                    </button>
                 </div>
             </div>
 
@@ -37,19 +40,21 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import ProjectSidebar from '@/components/scene/ProjectSidebar.vue';
 import SceneWorkspace from '@/components/scene/SceneWorkspace.vue';
 import {
     dummyCharacters,
     dummyScenes,
     dummyDialogueLines,
+    dummyProjects,
     type Character,
     type DialogueLine,
     type Scene,
 } from '@/utils/dummyData';
 
 const route = useRoute();
+const router = useRouter();
 
 const selectedCharacterId = ref<string | null>(null);
 const selectedLineIndex = ref<number | null>(null);
@@ -61,6 +66,9 @@ const dirtyScenes = ref<Set<string>>(new Set());
 
 const projectCharacters = ref<Character[]>([...dummyCharacters]);
 
+const currentProject = computed(() =>
+    dummyProjects.find(p => p.id === route.params.id) ?? null
+);
 const selectedCharacter = computed<Character | null>(() =>
     selectedCharacterId.value
         ? projectCharacters.value.find(c => c.id === selectedCharacterId.value) || null
