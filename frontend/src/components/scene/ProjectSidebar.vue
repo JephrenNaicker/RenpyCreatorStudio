@@ -1,112 +1,128 @@
 <template>
-    <aside class="sidebar">
-
-        <!-- Project Characters (roster) — collapsed feel, just dots + manage link -->
-        <div class="roster-header">
-            <h3>Characters</h3>
-            <button class="icon-button" @click="$emit('add-character')" title="Add character to project">
-                <span class="text-lg">+</span>
+    <aside class="sidebar" :class="{ collapsed: isSidebarCollapsed }">
+        <!-- Sidebar Header with Collapse Button -->
+        <div class="sidebar-header">
+            <button class="collapse-btn" @click="toggleSidebar"
+                :title="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+                <span v-if="isSidebarCollapsed">☰</span>
+                <span v-else>←</span>
             </button>
         </div>
-        <div class="character-list">
-            <div v-for="char in characters" :key="char.id" class="character-item"
-                :class="{ active: selectedCharacterId === char.id }" @click="$emit('select-character', char)">
-                <span class="color-dot" :style="{ background: char.color }" />
-                <span class="character-name">{{ char.name }}</span>
-                <span class="expression-count">{{ char.expressions?.length || 0 }} 😀</span>
-                <button class="remove-character" @click.stop="confirmRemoveCharacter(char)" title="Remove from project">
-                    <span>✕</span>
-                </button>
-            </div>
-        </div>
 
-        <!-- Scenes -->
-        <div class="sidebar-section">
-            <div class="section-header">
-                <h4>Scenes</h4>
-                <button class="icon-button" @click="addNewScene" title="Add new scene">
+        <div v-if="!isSidebarCollapsed" class="sidebar-content">
+            <!-- Project Characters (roster) -->
+            <div class="roster-header">
+                <h3>Characters</h3>
+                <button class="icon-button" @click="$emit('add-character')" title="Add character to project">
                     <span class="text-lg">+</span>
                 </button>
             </div>
-
-            <div v-if="scenes && scenes.length > 0" class="scene-list">
-                <div v-for="scene in scenes" :key="scene.id" class="scene-item" :class="{
-                    active: selectedSceneId === scene.id,
-                    editing: editingSceneId === scene.id
-                }">
-                    <!-- Editing mode -->
-                    <div v-if="editingSceneId === scene.id" class="scene-edit">
-                        <input ref="sceneInput" v-model="editingSceneName" type="text" class="scene-input"
-                            placeholder="Scene name" @keyup.enter="handleEnterKey(scene)" @keyup.escape="cancelEdit"
-                            @blur="handleBlur(scene)" maxlength="50" />
-                    </div>
-
-                    <!-- Display mode -->
-                    <template v-else>
-                        <div class="scene-main">
-                            <!-- Name row -->
-                            <div class="scene-top-row">
-                                <div class="scene-content" @click="$emit('select-scene', scene)"
-                                    @dblclick.stop="startEditing(scene)">
-                                    <span class="scene-icon">🎬</span>
-                                    <span class="scene-name">
-                                        {{ scene.name || 'Untitled Scene' }}
-                                        <span v-if="dirtySceneIds?.has(scene.id)" class="dirty-indicator"
-                                            title="Unsaved changes">*</span>
-                                    </span>
-                                </div>
-                                <div class="scene-actions">
-                                    <button class="rename-scene" @click.stop="startEditing(scene)" title="Rename scene">
-                                        <span>✎</span>
-                                    </button>
-                                    <button class="delete-scene" @click.stop="confirmDeleteScene(scene)"
-                                        title="Delete scene">
-                                        <span>✕</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Cast strip -->
-                            <div class="cast-strip">
-                                <!-- Assigned character dots -->
-                                <div class="cast-dots">
-                                    <span v-for="charId in scene.character_ids" :key="charId" class="cast-dot"
-                                        :style="{ background: getCharacterColor(charId) }"
-                                        :title="getCharacterName(charId)" />
-                                    <span v-if="scene.character_ids.length === 0" class="cast-empty">
-                                        No cast
-                                    </span>
-                                </div>
-
-                                <!-- Add character to scene button -->
-                                <button class="cast-add-btn" @click.stop="togglePicker(scene.id)"
-                                    title="Assign characters to scene">+</button>
-                            </div>
-
-                            <!-- Character picker popover -->
-                            <div v-if="pickerSceneId === scene.id" class="char-picker" @click.stop>
-                                <input v-model="pickerSearch" class="picker-search" placeholder="Search characters..."
-                                    @click.stop />
-                                <div class="picker-list">
-                                    <label v-for="char in filteredPickerCharacters" :key="char.id" class="picker-row">
-                                        <input type="checkbox" :checked="scene.character_ids.includes(char.id)"
-                                            @change="toggleCharacterInScene(scene, char.id)" class="picker-checkbox" />
-                                        <span class="cast-dot" :style="{ background: char.color }" />
-                                        <span class="picker-name">{{ char.name }}</span>
-                                        <span v-if="char.nickname" class="picker-nick">"{{ char.nickname }}"</span>
-                                    </label>
-                                    <p v-if="filteredPickerCharacters.length === 0" class="picker-empty">
-                                        No characters found
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
+            <div class="character-list">
+                <div v-for="char in characters" :key="char.id" class="character-item"
+                    :class="{ active: selectedCharacterId === char.id }" @click="$emit('select-character', char)">
+                    <span class="color-dot" :style="{ background: char.color }" />
+                    <span class="character-name">{{ char.name }}</span>
+                    <span class="expression-count">{{ char.expressions?.length || 0 }} 😀</span>
+                    <button class="remove-character" @click.stop="confirmRemoveCharacter(char)"
+                        title="Remove from project">
+                        <span>✕</span>
+                    </button>
                 </div>
             </div>
 
-            <div v-else class="empty-scenes">
-                <p class="text-sm text-gray-500 text-center py-4">No scenes yet. Click + to add one.</p>
+            <!-- Scenes -->
+            <div class="sidebar-section">
+                <div class="section-header">
+                    <h4>Scenes</h4>
+                    <button class="icon-button" @click="addNewScene" title="Add new scene">
+                        <span class="text-lg">+</span>
+                    </button>
+                </div>
+
+                <div v-if="scenes && scenes.length > 0" class="scene-list">
+                    <div v-for="scene in scenes" :key="scene.id" class="scene-item" :class="{
+                        active: selectedSceneId === scene.id,
+                        editing: editingSceneId === scene.id
+                    }">
+                        <!-- Editing mode -->
+                        <div v-if="editingSceneId === scene.id" class="scene-edit">
+                            <input ref="sceneInput" v-model="editingSceneName" type="text" class="scene-input"
+                                placeholder="Scene name" @keyup.enter="handleEnterKey(scene)" @keyup.escape="cancelEdit"
+                                @blur="handleBlur(scene)" maxlength="50" />
+                        </div>
+
+                        <!-- Display mode -->
+                        <template v-else>
+                            <div class="scene-main">
+                                <!-- Name row -->
+                                <div class="scene-top-row">
+                                    <div class="scene-content" @click="$emit('select-scene', scene)"
+                                        @dblclick.stop="startEditing(scene)">
+                                        <span class="scene-icon">🎬</span>
+                                        <span class="scene-name">
+                                            {{ scene.name || 'Untitled Scene' }}
+                                            <span v-if="dirtySceneIds?.has(scene.id)" class="dirty-indicator"
+                                                title="Unsaved changes">*</span>
+                                        </span>
+                                    </div>
+                                    <div class="scene-actions">
+                                        <button class="rename-scene" @click.stop="startEditing(scene)"
+                                            title="Rename scene">
+                                            <span>✎</span>
+                                        </button>
+                                        <button class="delete-scene" @click.stop="confirmDeleteScene(scene)"
+                                            title="Delete scene">
+                                            <span>✕</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Cast strip -->
+                                <div class="cast-strip">
+                                    <!-- Assigned character dots -->
+                                    <div class="cast-dots">
+                                        <span v-for="charId in scene.character_ids" :key="charId" class="cast-dot"
+                                            :style="{ background: getCharacterColor(charId) }"
+                                            :title="getCharacterName(charId)" />
+                                        <span v-if="scene.character_ids.length === 0" class="cast-empty">
+                                            No cast
+                                        </span>
+                                    </div>
+
+                                    <!-- Add character to scene button -->
+                                    <button class="cast-add-btn" @click.stop="togglePicker(scene.id)"
+                                        :title="pickerSceneId === scene.id ? 'Close picker' : 'Assign characters to scene'">
+                                        <span>{{ pickerSceneId === scene.id ? '−' : '+' }}</span>
+                                    </button>
+                                </div>
+
+                                <!-- Character picker popover -->
+                                <div v-if="pickerSceneId === scene.id" class="char-picker" @click.stop>
+                                    <input v-model="pickerSearch" class="picker-search"
+                                        placeholder="Search characters..." @click.stop />
+                                    <div class="picker-list">
+                                        <label v-for="char in filteredPickerCharacters" :key="char.id"
+                                            class="picker-row">
+                                            <input type="checkbox" :checked="scene.character_ids.includes(char.id)"
+                                                @change="toggleCharacterInScene(scene, char.id)"
+                                                class="picker-checkbox" />
+                                            <span class="cast-dot" :style="{ background: char.color }" />
+                                            <span class="picker-name">{{ char.name }}</span>
+                                            <span v-if="char.nickname" class="picker-nick">"{{ char.nickname }}"</span>
+                                        </label>
+                                        <p v-if="filteredPickerCharacters.length === 0" class="picker-empty">
+                                            No characters found
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div v-else class="empty-scenes">
+                    <p class="text-sm text-gray-500 text-center py-4">No scenes yet. Click + to add one.</p>
+                </div>
             </div>
         </div>
 
@@ -160,6 +176,13 @@ interface Emits {
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
+
+// ── Sidebar collapse state ─────────────────────────────────
+const isSidebarCollapsed = ref(false);
+
+const toggleSidebar = () => {
+    isSidebarCollapsed.value = !isSidebarCollapsed.value;
+};
 
 // ── Editing state ──────────────────────────────────────────
 const editingSceneId = ref<string | null>(null);
@@ -321,6 +344,89 @@ const cancelDelete = () => {
 </script>
 
 <style scoped>
+.sidebar {
+    position: relative;
+    background: #020617;
+    border-right: 1px solid #334155;
+    overflow-y: auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s ease;
+    width: 280px;
+}
+
+.sidebar.collapsed {
+    width: 48px;
+    min-width: 48px;
+}
+
+/* Sidebar Header */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 1rem;
+    border-bottom: 1px solid #334155;
+    background: #020617;
+}
+
+.collapse-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #e2e8f0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.collapse-btn:hover {
+    background: #38bdf8;
+    border-color: #38bdf8;
+    color: white;
+    transform: scale(1.05);
+}
+
+.sidebar-content {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+/* Hide content when collapsed */
+.collapsed .sidebar-content {
+    display: none;
+}
+
+.collapsed .sidebar-header {
+    justify-content: center;
+    padding: 1rem 0;
+}
+
+.collapsed .collapse-btn {
+    margin: 0;
+}
+
+/* Rest of your existing styles remain the same */
+.roster-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.roster-header h3 {
+    margin: 0;
+    color: #f8fafc;
+}
+
 .remove-character {
     background: transparent;
     border: none;
@@ -341,16 +447,6 @@ const cancelDelete = () => {
 .remove-character:hover {
     color: #f87171;
     background: rgba(239, 68, 68, 0.1);
-}
-
-.sidebar {
-    background: #020617;
-    border-right: 1px solid #334155;
-    padding: 1rem;
-    overflow-y: auto;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
 }
 
 .roster-header {
