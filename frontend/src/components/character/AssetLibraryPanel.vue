@@ -36,7 +36,7 @@
                             <div class="flex-1 min-w-0">
                                 <input v-model="outfit.name" placeholder="Outfit Name"
                                     class="bg-transparent border-none outfit-tag-name placeholder-gray-500 focus:outline-none focus:ring-0 w-full truncate"
-                                    @input="updateOutfit(index, outfit)" />
+                                    @input="handleOutfitUpdate(index, 'name', outfit.name)" />
                                 <div class="mt-1">
                                     <span class="outfit-badge text-xs">
                                         {{ getExpressionCountForOutfit(outfit.name) }} expression(s)
@@ -70,12 +70,14 @@
                         <div class="asset-card-header">
                             <div class="flex-1 min-w-0">
                                 <input v-model="exp.name" placeholder="Expression Name"
-                                    class="asset-card-title-input mb-2" @input="updateExpression(index, exp)" />
+                                    class="asset-card-title-input mb-2"
+                                    @input="handleExpressionUpdate(index, 'name', exp.name)" />
 
                                 <!-- Outfit Tag -->
                                 <div class="flex items-center gap-2">
                                     <span class="text-xs text-gray-500">Outfit:</span>
-                                    <select v-model="exp.outfit" @change="updateExpression(index, exp)"
+                                    <select v-model="exp.outfit"
+                                        @change="handleExpressionUpdate(index, 'outfit', exp.outfit)"
                                         class="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-sky-400 min-w-[120px]">
                                         <option value="">Default</option>
                                         <option v-for="outfit in character.outfits" :key="outfit.name"
@@ -98,7 +100,7 @@
                             <div v-if="exp.image_path"
                                 class="relative h-full w-full flex items-center justify-center bg-gray-900">
                                 <img :src="getImageSrc(exp.image_path)" :alt="exp.name"
-                                    class="w-full h-full object-contain scale-[1.20]" /> <!-- Custom scale -->
+                                    class="w-full h-full object-contain scale-[1.20]" />
                                 <div
                                     class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                                     <span class="text-white text-sm font-medium truncate block">{{ exp.name }}</span>
@@ -168,7 +170,8 @@
                             <div class="flex-1 min-w-0">
                                 <!-- Voice Line Name -->
                                 <input v-model="voice.line_name" placeholder="Voice Line Name"
-                                    class="asset-card-title-input mb-3" @input="updateVoiceLine(index, voice)" />
+                                    class="asset-card-title-input mb-3"
+                                    @input="handleVoiceUpdate(index, 'line_name', voice.line_name)" />
 
                                 <!-- Audio Player/Upload -->
                                 <div class="audio-player-compact">
@@ -213,7 +216,8 @@
                                 <!-- Audio Path (if exists) -->
                                 <input v-if="voice.audio_path" v-model="voice.audio_path"
                                     class="w-full mt-2 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-sky-400"
-                                    placeholder="/audio/voice.mp3" @input="updateVoiceLine(index, voice)" />
+                                    placeholder="/audio/voice.mp3"
+                                    @input="handleVoiceUpdate(index, 'audio_path', voice.audio_path)" />
 
                                 <input type="file" :id="`voiceFile_${index}`"
                                     @change="(e) => handleVoiceFileSelect(e, index)" accept="audio/*" class="hidden" />
@@ -262,6 +266,7 @@ const props = defineProps<{
     character: Character;
 }>();
 
+// Updated emits with the new events
 const emit = defineEmits<{
     'add-expression': [];
     'remove-expression': [index: number];
@@ -272,11 +277,31 @@ const emit = defineEmits<{
     'upload-image': [files: File[], index: number];
     'upload-audio': [files: File[], index: number];
     'select-preview-expression': [expressionName: string];
+    // NEW EMITS FOR EDITING
+    'update-expression': [index: number, expression: any];
+    'update-outfit': [index: number, outfit: any];
+    'update-voice': [index: number, voice: any];
 }>();
 
 const activeTab = ref<'expressions' | 'voice'>('expressions');
 
-// Helper methods
+// NEW: Helper methods for updates
+const handleExpressionUpdate = (index: number, field: string, value: any) => {
+    const updatedExpression = { ...props.character.expressions[index], [field]: value };
+    emit('update-expression', index, updatedExpression);
+};
+
+const handleOutfitUpdate = (index: number, field: string, value: any) => {
+    const updatedOutfit = { ...props.character.outfits[index], [field]: value };
+    emit('update-outfit', index, updatedOutfit);
+};
+
+const handleVoiceUpdate = (index: number, field: string, value: any) => {
+    const updatedVoice = { ...props.character.voice_lines[index], [field]: value };
+    emit('update-voice', index, updatedVoice);
+};
+
+// Existing methods - these now use the new update methods
 const addExpression = () => {
     emit('add-expression');
 };
@@ -316,22 +341,17 @@ const removeVoice = (index: number) => {
     }
 };
 
+// Keep these for backward compatibility, but now they use the update emits
 const updateExpression = (index: number, exp: any) => {
-    if (props.character?.expressions?.[index]) {
-        props.character.expressions[index] = { ...exp };
-    }
+    emit('update-expression', index, exp);
 };
 
 const updateOutfit = (index: number, outfit: any) => {
-    if (props.character?.outfits?.[index]) {
-        props.character.outfits[index] = { ...outfit };
-    }
+    emit('update-outfit', index, outfit);
 };
 
 const updateVoiceLine = (index: number, voice: any) => {
-    if (props.character?.voice_lines?.[index]) {
-        props.character.voice_lines[index] = { ...voice };
-    }
+    emit('update-voice', index, voice);
 };
 
 const getExpressionCountForOutfit = (outfitName: string) => {
@@ -343,27 +363,21 @@ const getFileName = (path: string) => {
     return path.split('/').pop() || path;
 };
 
-// Update getImageSrc to use placeholder images
 const getImageSrc = (path: string) => {
     if (!path) return '';
 
-    // If it's a blob URL (temporary), return as is
     if (path.startsWith('blob:')) {
         return path;
     }
 
-    // If it's a base64 string, return as is
     if (path.startsWith('data:')) {
         return path;
     }
 
-    // If it's a path to a real image
     if (path.startsWith('http')) {
         return path;
     }
 
-    // For dummy data, use placeholder images
-    // You can use free placeholder services
     return `https://picsum.photos/400/400?random=${encodeURIComponent(path)}`;
 };
 
@@ -380,9 +394,14 @@ const handleExpressionFileSelect = (event: Event, index: number) => {
     if (input?.files?.length) {
         const files = Array.from(input.files);
         if (props.character?.expressions?.[index] && files[0]) {
-            // Create object URL for preview
             const objectUrl = URL.createObjectURL(files[0]);
-            props.character.expressions[index].image_path = objectUrl;
+
+            // Update the expression with the new image
+            const updatedExpression = {
+                ...props.character.expressions[index],
+                image_path: objectUrl
+            };
+            emit('update-expression', index, updatedExpression);
             emit('select-preview-expression', props.character.expressions[index].name);
         }
         emit('upload-image', files, index);
@@ -402,14 +421,16 @@ const handleVoiceFileSelect = (event: Event, index: number) => {
         const files = Array.from(input.files);
         if (props.character?.voice_lines?.[index] && files[0]) {
             const objectUrl = URL.createObjectURL(files[0]);
-            props.character.voice_lines[index].audio_path = objectUrl;
+
+            // Update the voice line with the new audio
+            const updatedVoice = {
+                ...props.character.voice_lines[index],
+                audio_path: objectUrl
+            };
+            emit('update-voice', index, updatedVoice);
         }
         emit('upload-audio', files, index);
     }
-};
-
-const isAudioFile = (path: string) => {
-    return /\.(mp3|wav|ogg|m4a)$/i.test(path) || path.startsWith('blob:');
 };
 
 const playAudio = (path: string) => {

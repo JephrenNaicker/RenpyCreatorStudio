@@ -10,6 +10,7 @@ import HomeView from '../views/HomeView.vue';
 import CharacterListView from '../views/character/CharacterListView.vue';
 import CharacterDetailView from '../views/character/CharacterDetailView.vue';
 import CharacterCreator from '../views/character/CharacterCreatorView.vue';
+import CharacterEditorView from '../views/character/CharacterEditorView.vue';
 
 // Projects
 import ProjectListView from '../views/project/ProjectListView.vue';
@@ -54,7 +55,7 @@ const router = createRouter({
         {
           path: 'characters/:id/edit',
           name: 'character-edit',
-          component: CharacterCreator,
+          component: CharacterEditorView,
           props: true,
           meta: { layout: 'dashboard' }
         },

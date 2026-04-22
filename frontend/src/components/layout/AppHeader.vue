@@ -46,11 +46,6 @@
                     </div>
                 </div>
 
-                <router-link to="/dialogue" class="nav-item">
-                    <span class="nav-icon">💬</span>
-                    <span class="nav-text">Dialogue</span>
-                </router-link>
-
                 <router-link to="/export" class="nav-item">
                     <span class="nav-icon">📤</span>
                     <span class="nav-text">Export</span>
