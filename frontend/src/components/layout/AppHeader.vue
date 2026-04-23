@@ -134,11 +134,28 @@ onUnmounted(() => {
     font-size: 1.5rem;
 }
 
+/* In AppHeader.vue scoped styles */
 .logo-text {
     background: linear-gradient(135deg, #38bdf8, #818cf8);
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
     background-clip: text;
+    color: transparent;
+    display: inline-block;
+    font-weight: bold;
+}
+
+/* Override active styles for logo link */
+.router-link-active,
+.router-link-exact-active {
+    background: transparent !important;
+}
+
+.router-link-active .logo-text,
+.router-link-exact-active .logo-text {
+    background: linear-gradient(135deg, #38bdf8, #818cf8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
 }
 
 .nav-menu {
