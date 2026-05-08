@@ -1,18 +1,19 @@
 <template>
-    <div v-if="project" class="project-detail-view">
+    <div v-if="project" class="max-w-[1400px] mx-auto p-8 px-4">
         <!-- Project Header -->
-        <div class="project-header">
+        <div class="flex justify-between items-start mb-8 pb-6 border-b border-gray-700 flex-wrap gap-6">
             <div class="header-left">
-                <h1>{{ project.name }}</h1>
-                <div class="project-tags">
-                    <span v-for="tag in project.tags" :key="tag" class="tag">
+                <h1 class="text-4xl text-slate-50 mb-2">{{ project.name }}</h1>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <span v-for="tag in project.tags" :key="tag"
+                        class="bg-sky-400/20 text-sky-400 px-3 py-1 rounded-full text-sm font-medium">
                         {{ tag }}
                     </span>
-                    <span class="project-date">Created {{ formatDate(project.created_at) }}</span>
+                    <span class="text-slate-400 text-sm">Created {{ formatDate(project.created_at) }}</span>
                 </div>
             </div>
 
-            <div class="header-actions">
+            <div class="flex gap-4 flex-wrap">
                 <router-link :to="`/projects/${project.id}/scenes`" class="btn-primary">
                     📝 Open Scene Editor
                 </router-link>
@@ -26,61 +27,64 @@
         </div>
 
         <!-- Project Content -->
-        <div class="project-content">
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8">
             <!-- Left Column -->
-            <div class="content-left">
+            <div class="flex flex-col gap-6">
                 <!-- Project Overview -->
-                <div class="info-card">
-                    <h3>📖 Project Overview</h3>
-                    <p class="project-plot">{{ project.main_plot }}</p>
+                <div class="card">
+                    <h3 class="text-xl text-slate-50 mb-5 flex items-center gap-2">📖 Project Overview</h3>
+                    <p class="text-slate-300 leading-relaxed mb-6">{{ project.main_plot }}</p>
 
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-value">{{ characterCount }}</span>
-                            <span class="stat-label">Characters</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                        <div class="flex flex-col items-center p-4 bg-white/5 rounded-lg">
+                            <span class="text-3xl font-bold text-sky-400">{{ characterCount }}</span>
+                            <span class="text-sm text-slate-400 mt-1">Characters</span>
                         </div>
-                        <div class="stat-item">
-                            <span class="stat-value">{{ sceneCount }}</span>
-                            <span class="stat-label">Scenes</span>
+                        <div class="flex flex-col items-center p-4 bg-white/5 rounded-lg">
+                            <span class="text-3xl font-bold text-sky-400">{{ sceneCount }}</span>
+                            <span class="text-sm text-slate-400 mt-1">Scenes</span>
                         </div>
-                        <div class="stat-item">
-                            <span class="stat-value">{{ dialogueLines }}</span>
-                            <span class="stat-label">Dialogue Lines</span>
+                        <div class="flex flex-col items-center p-4 bg-white/5 rounded-lg">
+                            <span class="text-3xl font-bold text-sky-400">{{ dialogueLines }}</span>
+                            <span class="text-sm text-slate-400 mt-1">Dialogue Lines</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Main Character -->
-                <div v-if="mainCharacter" class="info-card">
-                    <h3>🌟 Main Character</h3>
-                    <div class="character-card">
-                        <div class="character-color" :style="{ backgroundColor: mainCharacter.color }"></div>
-                        <div class="character-info">
-                            <h4>{{ mainCharacter.name }}</h4>
-                            <p v-if="mainCharacter.nickname" class="character-nickname">
+                <div v-if="mainCharacter" class="card">
+                    <h3 class="text-xl text-slate-50 mb-5 flex items-center gap-2">🌟 Main Character</h3>
+                    <div class="flex items-center gap-4 p-4 bg-white/5 rounded-lg border-l-4"
+                        :style="{ borderLeftColor: mainCharacter.color }">
+                        <div class="w-10 h-10 rounded-lg" :style="{ backgroundColor: mainCharacter.color }"></div>
+                        <div class="flex-1">
+                            <h4 class="text-lg text-slate-50 mb-1">{{ mainCharacter.name }}</h4>
+                            <p v-if="mainCharacter.nickname" class="text-sky-400 text-sm italic mb-2">
                                 "{{ mainCharacter.nickname }}"
                             </p>
-                            <p class="character-meta">
+                            <p class="text-slate-400 text-sm mb-2">
                                 {{ mainCharacter.expressions?.length || 0 }} expressions •
                                 {{ mainCharacter.outfits?.length || 0 }} outfits
                             </p>
-                            <p class="character-bio">{{ truncateText(mainCharacter.bio, 120) }}</p>
+                            <p class="text-slate-300 text-sm leading-relaxed">{{ truncateText(mainCharacter.bio, 120) }}
+                            </p>
                         </div>
-                        <router-link :to="`/characters/${mainCharacter.id}`" class="btn-small">
+                        <router-link :to="`/characters/${mainCharacter.id}`" class="btn-small bg-sky-400 text-gray-900">
                             View
                         </router-link>
                     </div>
                 </div>
 
                 <!-- Recent Activity -->
-                <div class="info-card">
-                    <h3>📅 Recent Activity</h3>
-                    <div class="activity-list">
-                        <div v-for="activity in recentActivity" :key="activity.id" class="activity-item">
-                            <span class="activity-icon">{{ activity.icon }}</span>
-                            <div class="activity-content">
-                                <p class="activity-text">{{ activity.text }}</p>
-                                <span class="activity-time">{{ activity.time }}</span>
+                <div class="card">
+                    <h3 class="text-xl text-slate-50 mb-5 flex items-center gap-2">📅 Recent Activity</h3>
+                    <div class="flex flex-col gap-4">
+                        <div v-for="activity in recentActivity" :key="activity.id"
+                            class="flex items-start gap-4 p-3 rounded-lg hover:bg-white/5 transition-colors">
+                            <span class="text-xl opacity-80">{{ activity.icon }}</span>
+                            <div class="flex-1">
+                                <p class="text-slate-50 text-sm mb-1">{{ activity.text }}</p>
+                                <span class="text-slate-400 text-xs">{{ activity.time }}</span>
                             </div>
                         </div>
                     </div>
@@ -88,90 +92,103 @@
             </div>
 
             <!-- Right Column -->
-            <div class="content-right">
+            <div class="flex flex-col gap-6">
                 <!-- Project Characters -->
-                <div class="info-card">
-                    <div class="card-header-row">
-                        <h3>👥 Project Characters</h3>
-                        <router-link to="/characters" class="btn-small">
-                            + Add Character
-                        </router-link>
+                <div class="card">
+                    <div class="flex justify-between items-center mb-5">
+                        <h3 class="text-xl text-slate-50 flex items-center gap-2">👥 Project Characters</h3>
+                        <CharacterPickerDropdown :characters="allCharacters"
+                            :selected-character-ids="projectCharacterIds" button-label="Add Character"
+                            :show-label="true" multi-select @create="handleCreateCharacter"
+                            @update:selectedIds="handleAddCharactersToProject" />
                     </div>
 
-                    <div v-if="projectCharacters.length > 0" class="characters-list">
-                        <div v-for="character in projectCharacters" :key="character.id" class="character-row">
-                            <div class="character-preview">
-                                <div class="character-color-dot" :style="{ backgroundColor: character.color }"></div>
-                                <span class="character-name">{{ character.name }}</span>
-                                <span v-if="character.nickname" class="character-nickname-small">
+                    <div v-if="projectCharacters.length > 0" class="flex flex-col gap-3">
+                        <div v-for="character in projectCharacters" :key="character.id"
+                            class="flex justify-between items-center p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: character.color }"></div>
+                                <span class="text-slate-50 font-medium">{{ character.name }}</span>
+                                <span v-if="character.nickname" class="text-slate-400 text-sm italic">
                                     ({{ character.nickname }})
                                 </span>
                             </div>
-                            <div class="character-stats">
-                                <span class="stat-badge">😀 {{ character.expressions?.length || 0 }}</span>
-                                <span class="stat-badge">👕 {{ character.outfits?.length || 0 }}</span>
+                            <div class="flex gap-2">
+                                <span class="bg-sky-400/10 text-sky-400 px-2 py-1 rounded-full text-xs">😀 {{
+                                    character.expressions?.length || 0 }}</span>
+                                <span class="bg-sky-400/10 text-sky-400 px-2 py-1 rounded-full text-xs">👕 {{
+                                    character.outfits?.length || 0 }}</span>
                             </div>
                         </div>
                     </div>
-                    <p v-else class="empty-message">No characters assigned to this project yet.</p>
+                    <p v-else class="text-slate-500 italic text-center py-8">No characters assigned to this project yet.
+                    </p>
                 </div>
 
                 <!-- Quick Actions -->
-                <div class="info-card">
-                    <h3>⚡ Quick Actions</h3>
-                    <div class="quick-actions">
-                        <button @click="startDialogue" class="quick-action-btn">
-                            <span class="action-icon">💬</span>
-                            <span class="action-text">Write Dialogue</span>
+                <div class="card">
+                    <h3 class="text-xl text-slate-50 mb-5 flex items-center gap-2">⚡ Quick Actions</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button @click="startDialogue"
+                            class="flex flex-col items-center gap-3 p-6 bg-white/5 border border-gray-700 rounded-xl text-slate-300 hover:bg-sky-400/10 hover:border-sky-400 hover:text-slate-50 transition-all hover:-translate-y-0.5">
+                            <span class="text-3xl">💬</span>
+                            <span class="text-sm text-center">Write Dialogue</span>
                         </button>
-                        <button @click="addScene" class="quick-action-btn">
-                            <span class="action-icon">🎬</span>
-                            <span class="action-text">Add Scene</span>
+                        <button @click="addScene"
+                            class="flex flex-col items-center gap-3 p-6 bg-white/5 border border-gray-700 rounded-xl text-slate-300 hover:bg-sky-400/10 hover:border-sky-400 hover:text-slate-50 transition-all hover:-translate-y-0.5">
+                            <span class="text-3xl">🎬</span>
+                            <span class="text-sm text-center">Add Scene</span>
                         </button>
-                        <button @click="exportProject" class="quick-action-btn">
-                            <span class="action-icon">📤</span>
-                            <span class="action-text">Export Project</span>
+                        <button @click="exportProject"
+                            class="flex flex-col items-center gap-3 p-6 bg-white/5 border border-gray-700 rounded-xl text-slate-300 hover:bg-sky-400/10 hover:border-sky-400 hover:text-slate-50 transition-all hover:-translate-y-0.5">
+                            <span class="text-3xl">📤</span>
+                            <span class="text-sm text-center">Export Project</span>
                         </button>
-                        <button @click="manageAssets" class="quick-action-btn">
-                            <span class="action-icon">🖼️</span>
-                            <span class="action-text">Manage Assets</span>
+                        <button @click="manageAssets"
+                            class="flex flex-col items-center gap-3 p-6 bg-white/5 border border-gray-700 rounded-xl text-slate-300 hover:bg-sky-400/10 hover:border-sky-400 hover:text-slate-50 transition-all hover:-translate-y-0.5">
+                            <span class="text-3xl">🖼️</span>
+                            <span class="text-sm text-center">Manage Assets</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Export Status -->
-                <div class="info-card">
-                    <h3>📊 Export Status</h3>
-                    <div class="export-status">
-                        <div class="status-item">
-                            <span class="status-label">Ren'Py Script:</span>
-                            <span class="status-value ready">Ready</span>
+                <div class="card">
+                    <h3 class="text-xl text-slate-50 mb-5 flex items-center gap-2">📊 Export Status</h3>
+                    <div class="flex flex-col gap-3 mb-6">
+                        <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span class="text-slate-300 text-sm">Ren'Py Script:</span>
+                            <span
+                                class="text-sm font-medium px-3 py-1 rounded-full bg-green-500/20 text-green-400">Ready</span>
                         </div>
-                        <div class="status-item">
-                            <span class="status-label">Character Definitions:</span>
-                            <span class="status-value ready">Ready</span>
+                        <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span class="text-slate-300 text-sm">Character Definitions:</span>
+                            <span
+                                class="text-sm font-medium px-3 py-1 rounded-full bg-green-500/20 text-green-400">Ready</span>
                         </div>
-                        <div class="status-item">
-                            <span class="status-label">Asset References:</span>
-                            <span class="status-value missing">Missing 3</span>
+                        <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span class="text-slate-300 text-sm">Asset References:</span>
+                            <span class="text-sm font-medium px-3 py-1 rounded-full bg-red-500/20 text-red-400">Missing
+                                3</span>
                         </div>
-                        <div class="status-item">
-                            <span class="status-label">Scene Transitions:</span>
-                            <span class="status-value pending">Pending</span>
+                        <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span class="text-slate-300 text-sm">Scene Transitions:</span>
+                            <span
+                                class="text-sm font-medium px-3 py-1 rounded-full bg-amber-500/20 text-amber-400">Pending</span>
                         </div>
                     </div>
-                    <button class="btn-primary full-width" @click="runExport">
+                    <button class="btn-primary w-full justify-center" @click="runExport">
                         🚀 Export Complete Project
                     </button>
                 </div>
             </div>
         </div>
     </div>
-    <div v-else class="project-detail-view">
-        <div class="info-card">
-            <h3>Project Not Found</h3>
-            <p>The project you're looking for doesn't exist.</p>
-            <router-link to="/projects" class="btn-primary">Back to Projects</router-link>
+    <div v-else class="max-w-[1400px] mx-auto p-8 px-4">
+        <div class="card">
+            <h3 class="text-xl text-slate-50 mb-4">Project Not Found</h3>
+            <p class="text-slate-400 mb-4">The project you're looking for doesn't exist.</p>
+            <router-link to="/projects" class="btn-primary inline-block">Back to Projects</router-link>
         </div>
     </div>
 </template>
@@ -179,6 +196,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import CharacterPickerDropdown from '@/components/character/CharacterPickerDropdown.vue';
 import {
     dummyProjects,
     dummyCharacters,
@@ -247,457 +265,63 @@ const deleteProject = () => {
     }
 };
 
+const allCharacters = ref<Character[]>(dummyCharacters);
+
+// Track project character IDs
+const projectCharacterIds = computed(() =>
+    projectCharacters.value.map(c => c.id)
+);
+
+// Handle creating a new character
+const handleCreateCharacter = async (characterData: Omit<Character, 'id'>) => {
+    // Generate a new ID (in real app, this would be from API)
+    const newCharacter: Character = {
+        ...characterData,
+        id: `char_${Date.now()}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    };
+
+    // Add to all characters
+    allCharacters.value.push(newCharacter);
+
+    // Auto-add to project characters
+    // In a real app, you'd make an API call to associate the character with the project
+    console.log('Created new character:', newCharacter);
+
+    // You might want to show a success message
+    alert(`Character "${newCharacter.name}" created successfully!`);
+};
+
+// Handle adding characters to project
+const handleAddCharactersToProject = (characterIds: string[]) => {
+    // Get currently selected IDs vs previously selected IDs
+    const currentIds = projectCharacters.value.map(c => c.id);
+    const addedIds = characterIds.filter(id => !currentIds.includes(id));
+    const removedIds = currentIds.filter(id => !characterIds.includes(id));
+
+    // Handle additions
+    if (addedIds.length > 0) {
+        const addedCharacters = allCharacters.value.filter(c => addedIds.includes(c.id));
+        console.log('Added characters to project:', addedCharacters);
+        // In a real app, you'd make an API call to associate these characters
+        alert(`Added ${addedCharacters.map(c => c.name).join(', ')} to project`);
+    }
+
+    // Handle removals
+    if (removedIds.length > 0) {
+        const removedCharacters = allCharacters.value.filter(c => removedIds.includes(c.id));
+        console.log('Removed characters from project:', removedCharacters);
+        // In a real app, you'd make an API call to remove these associations
+        alert(`Removed ${removedCharacters.map(c => c.name).join(', ')} from project`);
+    }
+};
+
+
+
 const startDialogue = () => router.push(`/projects/${project.value.id}/dashboard`);
 const addScene = () => router.push(`/projects/${project.value.id}/dashboard`);
 const exportProject = () => alert('Export feature coming soon!');
 const manageAssets = () => alert('Asset management coming soon!');
 const runExport = () => alert('Export feature coming soon!');
 </script>
-
-<style scoped>
-.project-detail-view {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-}
-
-.project-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid #334155;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-}
-
-.header-left h1 {
-    font-size: 2.5rem;
-    color: #f8fafc;
-    margin-bottom: 0.5rem;
-}
-
-.project-tags {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-}
-
-.tag {
-    background: rgba(56, 189, 248, 0.2);
-    color: #38bdf8;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.85rem;
-    font-weight: 500;
-}
-
-.project-date {
-    color: #94a3b8;
-    font-size: 0.9rem;
-}
-
-.header-actions {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-
-.btn-primary,
-.btn-secondary,
-.btn-danger {
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 500;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-
-.btn-primary {
-    background: #38bdf8;
-    color: #020617;
-}
-
-.btn-secondary {
-    background: transparent;
-    border: 1px solid #334155;
-    color: #cbd5e1;
-}
-
-.btn-danger {
-    background: transparent;
-    border: 1px solid #7f1d1d;
-    color: #fecaca;
-}
-
-.btn-primary:hover,
-.btn-secondary:hover,
-.btn-danger:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-}
-
-/* Project Content Layout */
-.project-content {
-    display: grid;
-    grid-template-columns: 1fr 400px;
-    gap: 2rem;
-}
-
-/* Left Column */
-.content-left {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.info-card {
-    background: #020617;
-    border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 1.5rem;
-}
-
-.info-card h3 {
-    font-size: 1.25rem;
-    color: #f8fafc;
-    margin-bottom: 1.25rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.project-plot {
-    color: #cbd5e1;
-    line-height: 1.6;
-    margin-bottom: 1.5rem;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin-top: 1rem;
-}
-
-.stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-}
-
-.stat-value {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #38bdf8;
-}
-
-.stat-label {
-    font-size: 0.9rem;
-    color: #94a3b8;
-    margin-top: 0.25rem;
-}
-
-/* Character Card in Main Character Section */
-.character-card {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    border-left: 4px solid #FF6B6B;
-}
-
-.character-color {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-}
-
-.character-info {
-    flex: 1;
-}
-
-.character-info h4 {
-    font-size: 1.1rem;
-    color: #f8fafc;
-    margin-bottom: 0.25rem;
-}
-
-.character-nickname {
-    color: #38bdf8;
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-    font-style: italic;
-}
-
-.character-meta {
-    color: #94a3b8;
-    font-size: 0.85rem;
-    margin-bottom: 0.5rem;
-}
-
-.character-bio {
-    color: #cbd5e1;
-    font-size: 0.9rem;
-    line-height: 1.4;
-}
-
-.btn-small {
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: 0.85rem;
-    background: #38bdf8;
-    color: #020617;
-    border: none;
-    cursor: pointer;
-}
-
-/* Activity List */
-.activity-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.activity-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 0.75rem;
-    border-radius: 8px;
-    transition: background 0.2s;
-}
-
-.activity-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.activity-icon {
-    font-size: 1.2rem;
-    opacity: 0.8;
-}
-
-.activity-content {
-    flex: 1;
-}
-
-.activity-text {
-    color: #f8fafc;
-    font-size: 0.95rem;
-    margin-bottom: 0.25rem;
-}
-
-.activity-time {
-    color: #94a3b8;
-    font-size: 0.8rem;
-}
-
-/* Right Column */
-.content-right {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.card-header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.25rem;
-}
-
-.characters-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.character-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    transition: background 0.2s;
-}
-
-.character-row:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.character-preview {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.character-color-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-}
-
-.character-name {
-    color: #f8fafc;
-    font-weight: 500;
-}
-
-.character-nickname-small {
-    color: #94a3b8;
-    font-size: 0.85rem;
-    font-style: italic;
-}
-
-.character-stats {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.stat-badge {
-    background: rgba(56, 189, 248, 0.1);
-    color: #38bdf8;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-}
-
-.empty-message {
-    color: #64748b;
-    font-style: italic;
-    text-align: center;
-    padding: 2rem 0;
-}
-
-/* Quick Actions */
-.quick-actions {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-}
-
-.quick-action-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1.5rem 0.5rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid #334155;
-    border-radius: 12px;
-    color: #cbd5e1;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.quick-action-btn:hover {
-    background: rgba(56, 189, 248, 0.1);
-    border-color: #38bdf8;
-    color: #f8fafc;
-    transform: translateY(-2px);
-}
-
-.action-icon {
-    font-size: 2rem;
-}
-
-.action-text {
-    font-size: 0.9rem;
-    text-align: center;
-}
-
-/* Export Status */
-.export-status {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-}
-
-.status-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-}
-
-.status-label {
-    color: #cbd5e1;
-    font-size: 0.9rem;
-}
-
-.status-value {
-    font-size: 0.85rem;
-    font-weight: 500;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-}
-
-.status-value.ready {
-    background: rgba(34, 197, 94, 0.2);
-    color: #4ade80;
-}
-
-.status-value.missing {
-    background: rgba(239, 68, 68, 0.2);
-    color: #f87171;
-}
-
-.status-value.pending {
-    background: rgba(251, 191, 36, 0.2);
-    color: #fbbf24;
-}
-
-.full-width {
-    width: 100%;
-    justify-content: center;
-}
-
-/* Responsive */
-@media (max-width: 1024px) {
-    .project-content {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 768px) {
-    .project-header {
-        flex-direction: column;
-    }
-
-    .header-actions {
-        width: 100%;
-        justify-content: stretch;
-    }
-
-    .btn-primary,
-    .btn-secondary,
-    .btn-danger {
-        flex: 1;
-        justify-content: center;
-    }
-
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .quick-actions {
-        grid-template-columns: 1fr;
-    }
-}
-</style>

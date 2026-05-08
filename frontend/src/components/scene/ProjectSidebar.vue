@@ -13,9 +13,9 @@
             <!-- Project Characters (roster) -->
             <div class="roster-header">
                 <h3>Characters</h3>
-                <button class="icon-button" @click="$emit('add-character')" title="Add character to project">
-                    <span class="text-lg">+</span>
-                </button>
+                <CharacterPickerDropdown :characters="allCharacters" :selected-character-ids="selectedCharacterIds"
+                    button-label="" :show-label="false" multi-select @create="handleCreateCharacter"
+                    @update:selectedIds="handleAddCharactersToProject" />
             </div>
             <div class="character-list">
                 <div v-for="char in characters" :key="char.id" class="character-item"
@@ -155,6 +155,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue';
 import type { Character, Scene } from '@/utils/dummyData';
+import CharacterPickerDropdown from '@/components/character/CharacterPickerDropdown.vue';
 
 interface Props {
     characters: Character[];
@@ -162,6 +163,7 @@ interface Props {
     selectedCharacterId?: string | null;
     selectedSceneId?: string | null;
     dirtySceneIds?: Set<string>;
+    allCharacters?: Character[];
 }
 
 interface Emits {
@@ -172,10 +174,28 @@ interface Emits {
     (e: 'add-scene', scene: Scene): void;
     (e: 'delete-scene', sceneId: string): void;
     (e: 'update-scene', scene: Scene): void;
+    (e: 'add-characters', characterIds: string[]): void;
+    (e: 'create-character', character: Omit<Character, 'id'>): void;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
+
+
+// Computed for selected IDs
+const selectedCharacterIds = computed(() =>
+    props.characters.map(c => c.id)
+);
+
+// Handlers
+const handleAddCharactersToProject = (characterIds: string[]) => {
+    emit('add-characters', characterIds);
+};
+
+const handleCreateCharacter = (characterData: Omit<Character, 'id'>) => {
+    emit('create-character', characterData);
+};
+
 
 // ── Sidebar collapse state ─────────────────────────────────
 const isSidebarCollapsed = ref(false);
