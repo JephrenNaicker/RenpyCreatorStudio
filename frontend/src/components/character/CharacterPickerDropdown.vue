@@ -47,13 +47,13 @@
                     </div>
                 </div>
 
-                <!-- Create New Character Section -->
+                <!-- Quick Create Character Section -->
                 <div class="create-section">
                     <div class="divider"></div>
                     <button class="create-btn" @click="handleCreateNew">
                         <span class="create-icon">✨</span>
                         <span class="create-text">
-                            Create new character "{{ searchQuery || 'Untitled' }}"
+                            Quick Create "{{ searchQuery || 'Untitled' }}"
                         </span>
                     </button>
                 </div>
@@ -63,7 +63,7 @@
         <!-- Quick Create Modal -->
         <div v-if="showCreateModal" class="modal-overlay" @click.self="closeCreateModal">
             <div class="create-modal">
-                <h3 class="modal-title">Create New Character</h3>
+                <h3 class="modal-title">Quick Create Character</h3>
 
                 <div class="form-group">
                     <label class="form-label">Character Name *</label>
@@ -87,10 +87,19 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button class="btn-secondary" @click="closeCreateModal">Cancel</button>
-                    <button class="btn-primary" @click="confirmCreateCharacter" :disabled="!newCharacter.name.trim()">
-                        Create Character
-                    </button>
+                    <div class="modal-actions-left">
+                        <button class="btn-advanced" @click="goToAdvancedCreator">
+                            <span class="advanced-icon">⚙️</span>
+                            Advanced Creation
+                        </button>
+                    </div>
+                    <div class="modal-actions-right">
+                        <button class="btn-secondary" @click="closeCreateModal">Cancel</button>
+                        <button class="btn-primary" @click="confirmCreateCharacter"
+                            :disabled="!newCharacter.name.trim()">
+                            Quick Create
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -99,6 +108,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { useRouter } from 'vue-router';
 import type { Character } from '@/utils/dummyData';
 
 interface Props {
@@ -107,6 +117,7 @@ interface Props {
     buttonLabel?: string;
     showLabel?: boolean;
     multiSelect?: boolean;
+    projectId?: string; // Optional project ID to pass to character creator
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -115,6 +126,7 @@ const props = withDefaults(defineProps<Props>(), {
     buttonLabel: 'Add Character',
     showLabel: true,
     multiSelect: false,
+    projectId: undefined,
 });
 
 const emit = defineEmits<{
@@ -122,6 +134,8 @@ const emit = defineEmits<{
     (e: 'create', character: Omit<Character, 'id'>): void;
     (e: 'update:selectedIds', ids: string[]): void;
 }>();
+
+const router = useRouter();
 
 // Refs for click outside detection
 const dropdownContainer = ref<HTMLElement | null>(null);
@@ -214,6 +228,16 @@ const handleCreateNew = () => {
     }
     showCreateModal.value = true;
     closeDropdown();
+};
+
+// Go to advanced character creator
+const goToAdvancedCreator = () => {
+    closeCreateModal();
+    // Navigate to character creator, optionally with pre-filled name and project context
+    const route = props.projectId
+        ? `/characters/new?name=${encodeURIComponent(newCharacter.value.name || '')}&projectId=${props.projectId}`
+        : `/characters/new?name=${encodeURIComponent(newCharacter.value.name || '')}`;
+    router.push(route);
 };
 
 // Confirm create character
@@ -515,7 +539,7 @@ onUnmounted(() => {
     background: #1e293b;
     border-radius: 12px;
     padding: 1.5rem;
-    width: 400px;
+    width: 480px;
     max-width: 90%;
     border: 1px solid #334155;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
@@ -583,9 +607,44 @@ onUnmounted(() => {
 
 .modal-actions {
     display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
     margin-top: 1.5rem;
+}
+
+.modal-actions-left {
+    flex: 1;
+}
+
+.modal-actions-right {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-advanced {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+}
+
+.btn-advanced:hover {
+    background: #2d3748;
+    border-color: #38bdf8;
+    color: #38bdf8;
+    transform: translateY(-1px);
+}
+
+.advanced-icon {
+    font-size: 1rem;
 }
 
 .btn-secondary {

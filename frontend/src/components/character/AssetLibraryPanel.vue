@@ -6,13 +6,15 @@
                 <h3 class="panel-title">Asset Library</h3>
                 <p class="text-sm text-gray-400">Manage expressions and voice lines</p>
             </div>
-            <div class="tab-group">
-                <button type="button" class="tab-button" @click="activeTab = 'expressions'"
-                    :class="{ 'tab-button-active': activeTab === 'expressions' }">
+            <div class="tab-group" role="tablist" aria-label="Asset library tabs">
+                <button id="tab-expressions" type="button" class="tab-button" @click="activeTab = 'expressions'"
+                    :class="{ 'tab-button-active': activeTab === 'expressions' }"
+                    :aria-selected="activeTab === 'expressions'" aria-controls="panel-expressions" role="tab">
                     Expressions
                 </button>
-                <button type="button" class="tab-button" @click="activeTab = 'voice'"
-                    :class="{ 'tab-button-active': activeTab === 'voice' }">
+                <button id="tab-voice" type="button" class="tab-button" @click="activeTab = 'voice'"
+                    :class="{ 'tab-button-active': activeTab === 'voice' }" :aria-selected="activeTab === 'voice'"
+                    aria-controls="panel-voice" role="tab">
                     Voice Lines
                 </button>
             </div>
@@ -21,12 +23,14 @@
         <!-- Tab Content -->
         <div class="flex-1 overflow-y-auto scrollbar-thin">
             <!-- Expressions Tab -->
-            <div v-if="activeTab === 'expressions'" class="p-4 space-y-6">
+            <div v-if="activeTab === 'expressions'" id="panel-expressions" class="p-4 space-y-6" role="tabpanel"
+                aria-labelledby="tab-expressions">
                 <!-- Outfit Tags Section (At the top) -->
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-4">
                         <h4 class="subsection-title mb-0">Outfit Tags</h4>
-                        <button type="button" @click="addOutfit" class="btn-secondary btn-small">
+                        <button id="btn-add-outfit" type="button" @click="addOutfit" class="btn-secondary btn-small"
+                            aria-label="Add new outfit tag">
                             + Add Tag
                         </button>
                     </div>
@@ -34,17 +38,19 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
                         <div v-for="(outfit, index) in character.outfits" :key="index" class="outfit-tag-card">
                             <div class="flex-1 min-w-0">
-                                <input v-model="outfit.name" placeholder="Outfit Name"
+                                <input :id="`outfit-name-${index}`" v-model="outfit.name" placeholder="Outfit Name"
                                     class="bg-transparent border-none outfit-tag-name placeholder-gray-500 focus:outline-none focus:ring-0 w-full truncate"
-                                    @input="handleOutfitUpdate(index, 'name', outfit.name)" />
+                                    @input="handleOutfitUpdate(index, 'name', outfit.name)"
+                                    :aria-label="`Outfit name ${index + 1}`" />
                                 <div class="mt-1">
                                     <span class="outfit-badge text-xs">
                                         {{ getExpressionCountForOutfit(outfit.name) }} expression(s)
                                     </span>
                                 </div>
                             </div>
-                            <button type="button" @click="removeOutfit(index)"
-                                class="text-gray-400 hover:text-red-400 p-1 rounded hover:bg-red-900/20 transition-colors flex-shrink-0">
+                            <button :id="`btn-remove-outfit-${index}`" type="button" @click="removeOutfit(index)"
+                                class="text-gray-400 hover:text-red-400 p-1 rounded hover:bg-red-900/20 transition-colors flex-shrink-0"
+                                :aria-label="`Remove outfit ${outfit.name || index + 1}`">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M6 18L18 6M6 6l12 12" />
@@ -55,30 +61,33 @@
                 </div>
 
                 <!-- Quick Add Expression -->
-                <div class="upload-widget-simple" @click="addExpression">
+                <button id="btn-add-expression" type="button" class="upload-widget-simple w-full text-left"
+                    @click="addExpression" aria-label="Add new expression">
                     <svg class="w-8 h-8 mx-auto text-gray-500 mb-2" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
                     </svg>
                     <p class="upload-widget-title">Add Expression</p>
                     <p class="upload-widget-hint">Click to add a new expression</p>
-                </div>
+                </button>
 
                 <!-- Expression Cards Grid -->
                 <div v-if="character.expressions.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div v-for="(exp, index) in character.expressions" :key="index" class="expression-card">
                         <div class="asset-card-header">
                             <div class="flex-1 min-w-0">
-                                <input v-model="exp.name" placeholder="Expression Name"
+                                <input :id="`expression-name-${index}`" v-model="exp.name" placeholder="Expression Name"
                                     class="asset-card-title-input mb-2"
-                                    @input="handleExpressionUpdate(index, 'name', exp.name)" />
+                                    @input="handleExpressionUpdate(index, 'name', exp.name)"
+                                    :aria-label="`Expression name ${index + 1}`" />
 
                                 <!-- Outfit Tag -->
                                 <div class="flex items-center gap-2">
                                     <span class="text-xs text-gray-500">Outfit:</span>
-                                    <select v-model="exp.outfit"
+                                    <select :id="`expression-outfit-${index}`" v-model="exp.outfit"
                                         @change="handleExpressionUpdate(index, 'outfit', exp.outfit)"
-                                        class="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-sky-400 min-w-[120px]">
+                                        class="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-sky-400 min-w-[120px]"
+                                        :aria-label="`Select outfit for expression ${exp.name || index + 1}`">
                                         <option value="">Default</option>
                                         <option v-for="outfit in character.outfits" :key="outfit.name"
                                             :value="outfit.name">
@@ -87,7 +96,9 @@
                                     </select>
                                 </div>
                             </div>
-                            <button type="button" @click="removeExpression(index)" class="asset-card-delete-btn">
+                            <button :id="`btn-remove-expression-${index}`" type="button"
+                                @click="removeExpression(index)" class="asset-card-delete-btn"
+                                :aria-label="`Remove expression ${exp.name || index + 1}`">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M6 18L18 6M6 6l12 12" />
@@ -105,15 +116,19 @@
                                     class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                                     <span class="text-white text-sm font-medium truncate block">{{ exp.name }}</span>
                                 </div>
-                                <button type="button" @click="triggerExpressionFileInput(index)"
-                                    class="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded transition-colors">
+                                <button :id="`btn-change-expression-image-${index}`" type="button"
+                                    @click="triggerExpressionFileInput(index)"
+                                    class="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded transition-colors"
+                                    :aria-label="`Change image for expression ${exp.name || index + 1}`">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                     </svg>
                                 </button>
                             </div>
-                            <div v-else class="expression-upload-area" @click="triggerExpressionFileInput(index)">
+                            <button v-else type="button" class="expression-upload-area w-full"
+                                @click="triggerExpressionFileInput(index)"
+                                :aria-label="`Upload image for expression ${exp.name || index + 1}`">
                                 <svg class="w-12 h-12 text-gray-600 mb-2" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -121,7 +136,7 @@
                                 </svg>
                                 <span class="text-sm text-gray-400 font-medium">Upload Image</span>
                                 <span class="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 5MB</span>
-                            </div>
+                            </button>
                         </div>
 
                         <!-- File Path (if exists) -->
@@ -129,8 +144,9 @@
                             <p class="text-xs text-gray-400 truncate">{{ getFileName(exp.image_path) }}</p>
                         </div>
 
-                        <input type="file" :id="`expressionFile_${index}`"
-                            @change="(e) => handleExpressionFileSelect(e, index)" accept="image/*" class="hidden" />
+                        <input :id="`expression-file-${index}`" type="file"
+                            @change="(e) => handleExpressionFileSelect(e, index)" accept="image/*" class="hidden"
+                            :aria-label="`File input for expression ${exp.name || index + 1}`" />
                     </div>
                 </div>
 
@@ -151,9 +167,11 @@
             </div>
 
             <!-- Voice Lines Tab -->
-            <div v-if="activeTab === 'voice'" class="p-4 space-y-6">
+            <div v-if="activeTab === 'voice'" id="panel-voice" class="p-4 space-y-6" role="tabpanel"
+                aria-labelledby="tab-voice">
                 <!-- Quick Add Voice Line -->
-                <div class="upload-widget-simple" @click="addVoice">
+                <button id="btn-add-voice" type="button" class="upload-widget-simple w-full text-left" @click="addVoice"
+                    aria-label="Add new voice line">
                     <svg class="w-8 h-8 mx-auto text-gray-500 mb-2" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -161,7 +179,7 @@
                     </svg>
                     <p class="upload-widget-title">Add Voice Line</p>
                     <p class="upload-widget-hint">Click to add a new voice clip</p>
-                </div>
+                </button>
 
                 <!-- Voice Line Cards -->
                 <div v-if="character.voice_lines.length > 0" class="space-y-3">
@@ -169,14 +187,17 @@
                         <div class="flex items-start justify-between">
                             <div class="flex-1 min-w-0">
                                 <!-- Voice Line Name -->
-                                <input v-model="voice.line_name" placeholder="Voice Line Name"
-                                    class="asset-card-title-input mb-3"
-                                    @input="handleVoiceUpdate(index, 'line_name', voice.line_name)" />
+                                <input :id="`voice-name-${index}`" v-model="voice.line_name"
+                                    placeholder="Voice Line Name" class="asset-card-title-input mb-3"
+                                    @input="handleVoiceUpdate(index, 'line_name', voice.line_name)"
+                                    :aria-label="`Voice line name ${index + 1}`" />
 
                                 <!-- Audio Player/Upload -->
                                 <div class="audio-player-compact">
-                                    <button v-if="voice.audio_path" type="button" @click="playAudio(voice.audio_path)"
-                                        class="w-8 h-8 rounded-full bg-sky-400/20 flex items-center justify-center text-sky-400 hover:bg-sky-400/30 transition-colors flex-shrink-0">
+                                    <button v-if="voice.audio_path" :id="`btn-play-voice-${index}`" type="button"
+                                        @click="playAudio(voice.audio_path)"
+                                        class="w-8 h-8 rounded-full bg-sky-400/20 flex items-center justify-center text-sky-400 hover:bg-sky-400/30 transition-colors flex-shrink-0"
+                                        :aria-label="`Play voice line ${voice.line_name || index + 1}`">
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd"
                                                 d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
@@ -203,8 +224,10 @@
                                         </div>
                                     </div>
 
-                                    <button type="button" @click="triggerVoiceFileInput(index)"
-                                        class="btn-secondary btn-small whitespace-nowrap flex-shrink-0">
+                                    <button :id="`btn-upload-voice-${index}`" type="button"
+                                        @click="triggerVoiceFileInput(index)"
+                                        class="btn-secondary btn-small whitespace-nowrap flex-shrink-0"
+                                        :aria-label="`${voice.audio_path ? 'Change' : 'Upload'} audio for voice line ${voice.line_name || index + 1}`">
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -214,17 +237,20 @@
                                 </div>
 
                                 <!-- Audio Path (if exists) -->
-                                <input v-if="voice.audio_path" v-model="voice.audio_path"
+                                <input v-if="voice.audio_path" :id="`voice-path-${index}`" v-model="voice.audio_path"
                                     class="w-full mt-2 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-sky-400"
                                     placeholder="/audio/voice.mp3"
-                                    @input="handleVoiceUpdate(index, 'audio_path', voice.audio_path)" />
+                                    @input="handleVoiceUpdate(index, 'audio_path', voice.audio_path)"
+                                    :aria-label="`Audio file path for voice line ${voice.line_name || index + 1}`" />
 
-                                <input type="file" :id="`voiceFile_${index}`"
-                                    @change="(e) => handleVoiceFileSelect(e, index)" accept="audio/*" class="hidden" />
+                                <input :id="`voice-file-${index}`" type="file"
+                                    @change="(e) => handleVoiceFileSelect(e, index)" accept="audio/*" class="hidden"
+                                    :aria-label="`File input for voice line ${voice.line_name || index + 1}`" />
                             </div>
 
-                            <button type="button" @click="removeVoice(index)"
-                                class="asset-card-delete-btn ml-3 flex-shrink-0">
+                            <button :id="`btn-remove-voice-${index}`" type="button" @click="removeVoice(index)"
+                                class="asset-card-delete-btn ml-3 flex-shrink-0"
+                                :aria-label="`Remove voice line ${voice.line_name || index + 1}`">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M6 18L18 6M6 6l12 12" />
@@ -285,7 +311,7 @@ const emit = defineEmits<{
 
 const activeTab = ref<'expressions' | 'voice'>('expressions');
 
-// NEW: Helper methods for updates
+// Helper methods for updates
 const handleExpressionUpdate = (index: number, field: string, value: any) => {
     const updatedExpression = { ...props.character.expressions[index], [field]: value };
     emit('update-expression', index, updatedExpression);
@@ -301,7 +327,7 @@ const handleVoiceUpdate = (index: number, field: string, value: any) => {
     emit('update-voice', index, updatedVoice);
 };
 
-// Existing methods - these now use the new update methods
+// Existing methods
 const addExpression = () => {
     emit('add-expression');
 };
@@ -341,19 +367,6 @@ const removeVoice = (index: number) => {
     }
 };
 
-// Keep these for backward compatibility, but now they use the update emits
-const updateExpression = (index: number, exp: any) => {
-    emit('update-expression', index, exp);
-};
-
-const updateOutfit = (index: number, outfit: any) => {
-    emit('update-outfit', index, outfit);
-};
-
-const updateVoiceLine = (index: number, voice: any) => {
-    emit('update-voice', index, voice);
-};
-
 const getExpressionCountForOutfit = (outfitName: string) => {
     if (!outfitName || !props.character?.expressions) return 0;
     return props.character.expressions.filter(exp => exp.outfit === outfitName).length;
@@ -383,7 +396,7 @@ const getImageSrc = (path: string) => {
 
 // File handling
 const triggerExpressionFileInput = (index: number) => {
-    const fileInput = document.getElementById(`expressionFile_${index}`) as HTMLInputElement;
+    const fileInput = document.getElementById(`expression-file-${index}`) as HTMLInputElement;
     if (fileInput) {
         fileInput.click();
     }
@@ -409,7 +422,7 @@ const handleExpressionFileSelect = (event: Event, index: number) => {
 };
 
 const triggerVoiceFileInput = (index: number) => {
-    const fileInput = document.getElementById(`voiceFile_${index}`) as HTMLInputElement;
+    const fileInput = document.getElementById(`voice-file-${index}`) as HTMLInputElement;
     if (fileInput) {
         fileInput.click();
     }

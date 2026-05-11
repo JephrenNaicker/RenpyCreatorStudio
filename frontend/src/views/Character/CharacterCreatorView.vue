@@ -6,8 +6,9 @@
                 <h1 class="section-title mb-0">Create Character</h1>
                 <p class="text-gray-400 text-sm">Design your character's appearance, expressions, and voice lines</p>
             </div>
-            <button type="button" @click="createCharacter" class="btn-primary px-6 py-3 text-base font-medium"
-                :disabled="!character.name.trim()" :class="{ 'opacity-50 cursor-not-allowed': !character.name.trim() }">
+            <button id="btn-create-character" type="button" @click="createCharacter"
+                class="btn-primary px-6 py-3 text-base font-medium" :disabled="!character.name.trim()"
+                :class="{ 'opacity-50 cursor-not-allowed': !character.name.trim() }" aria-label="Create character">
                 Create Character
             </button>
         </div>
@@ -22,7 +23,8 @@
                     </div>
                     <CharacterInfoPanel v-model:name="character.name" v-model:nickname="character.nickname"
                         v-model:color="character.color" v-model:age="character.age"
-                        v-model:birth_date="character.birth_date" v-model:bio="character.bio" />
+                        v-model:birthDate="character.birthDate" v-model:bio="character.bio" :character-id="characterId"
+                        :metadata="characterMetadata" @validate="handleValidation" />
                 </div>
             </div>
 
@@ -36,17 +38,19 @@
                             <span class="text-xs text-gray-400">Live Preview</span>
                         </div>
                     </div>
-                    <CharacterPreviewPanel :character="character" :selected-outfit="selectedOutfit"
+                    <CharacterPreviewPanel :character="previewCharacter" :selected-outfit="selectedOutfit"
                         :selected-expression="selectedExpression" @select-outfit="selectOutfit"
                         @select-expression="selectExpression" @set-default-expression="setDefaultExpression" />
                 </div>
 
                 <!-- Panel 3: Asset Library (Bottom) -->
                 <div class="panel">
-                    <AssetLibraryPanel :character="character" @add-expression="addExpression"
+                    <AssetLibraryPanel :character="assetLibraryCharacter" @add-expression="addExpression"
                         @remove-expression="removeExpression" @add-outfit="addOutfit" @remove-outfit="removeOutfit"
                         @add-voice="addVoice" @remove-voice="removeVoice" @upload-image="handleImageUpload"
-                        @upload-audio="handleAudioUpload" @select-preview-expression="selectExpression" />
+                        @upload-audio="handleAudioUpload" @select-preview-expression="selectExpression"
+                        @update-expression="handleUpdateExpression" @update-outfit="handleUpdateOutfit"
+                        @update-voice="handleUpdateVoice" />
                 </div>
             </div>
         </div>
@@ -54,11 +58,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { characterAPI } from '@/services/api';
 import CharacterInfoPanel from '@/components/character/CharacterInfoPanel.vue';
 import CharacterPreviewPanel from '@/components/character/CharacterPreviewPanel.vue';
 import AssetLibraryPanel from '@/components/character/AssetLibraryPanel.vue';
+
+const route = useRoute();
+const router = useRouter();
 
 // Define types
 interface VoiceLine {
@@ -75,37 +83,72 @@ interface Expression {
     file?: File;
 }
 
+interface Outfit {
+    name: string;
+    default_image?: string;
+}
+
 interface CharacterData {
     project_id: string;
     name: string;
     nickname: string;
     color: string;
     age: number | null;
-    birth_date: string;
+    birthDate: string;
     bio: string;
     voice_lines: VoiceLine[];
-    outfits: { name: string; default_image: string }[];
+    outfits: Outfit[];
     expressions: Expression[];
 }
 
+// Validation errors
+const validationErrors = ref<Record<string, string>>({});
+
 // Character data
+const characterId = ref<string>(''); // Will be set after creation
+const characterMetadata = ref<{ createdAt?: string; updatedAt?: string }>({});
+
 const character = ref<CharacterData>({
-    project_id: 'test-project',
-    name: '',
+    project_id: (route.query.projectId as string) || 'test-project',
+    name: (route.query.name as string) || '', // Pre-fill from query param
     nickname: '',
-    color: '#4F46E5',
+    color: '#38bdf8', // Changed default color
     age: null,
-    birth_date: '',
+    birthDate: '',
     bio: '',
     voice_lines: [],
     outfits: [],
     expressions: []
 });
 
+// Computed for preview panel (formats data for preview)
+const previewCharacter = computed(() => ({
+    name: character.value.name,
+    nickname: character.value.nickname,
+    color: character.value.color,
+    age: character.value.age,
+    birthDate: character.value.birthDate,
+    bio: character.value.bio,
+    expressions: character.value.expressions,
+    outfits: character.value.outfits
+}));
+
+// Computed for asset library (provides the character data it expects)
+const assetLibraryCharacter = computed(() => ({
+    expressions: character.value.expressions,
+    outfits: character.value.outfits,
+    voice_lines: character.value.voice_lines
+}));
+
 // UI State
 const activeAssetTab = ref<'expressions' | 'outfits' | 'voice'>('expressions');
 const selectedOutfit = ref<string>('');
 const selectedExpression = ref<string>('');
+
+// Validation handler
+const handleValidation = (errors: Record<string, string>) => {
+    validationErrors.value = errors;
+};
 
 // Methods
 const selectOutfit = (outfitName: string) => {
@@ -171,16 +214,45 @@ const removeExpression = (i: number) => {
     }
 };
 
-// File upload handlers
-const handleImageUpload = (files: File[], index: number) => {
-    console.log('Uploading images:', files, 'for index:', index);
+// Update handlers for real-time updates
+const handleUpdateExpression = (index: number, updatedExpression: Expression) => {
+    character.value.expressions[index] = updatedExpression;
 };
 
-const handleAudioUpload = (files: File[]) => {
-    console.log('Uploading audio files:', files);
+const handleUpdateOutfit = (index: number, updatedOutfit: Outfit) => {
+    character.value.outfits[index] = updatedOutfit;
+};
+
+const handleUpdateVoice = (index: number, updatedVoice: VoiceLine) => {
+    character.value.voice_lines[index] = updatedVoice;
+};
+
+// File upload handlers
+const handleImageUpload = (files: File[], index: number) => {
+    if (files[0] && character.value.expressions[index]) {
+        // Store the file for later upload
+        character.value.expressions[index].file = files[0];
+        // Create preview URL
+        character.value.expressions[index].image_path = URL.createObjectURL(files[0]);
+    }
+};
+
+const handleAudioUpload = (files: File[], index: number) => {
+    if (files[0] && character.value.voice_lines[index]) {
+        // Store the file for later upload
+        character.value.voice_lines[index].file = files[0];
+        // Create preview URL
+        character.value.voice_lines[index].audio_path = URL.createObjectURL(files[0]);
+    }
 };
 
 const createCharacter = async () => {
+    // Check for validation errors
+    if (validationErrors.value.name) {
+        alert(validationErrors.value.name);
+        return;
+    }
+
     if (!character.value.name.trim()) {
         alert('Please enter a character name');
         return;
@@ -189,22 +261,19 @@ const createCharacter = async () => {
     try {
         const formData = new FormData();
 
-        const charData: Omit<CharacterData, 'voice_lines' | 'expressions'> & {
-            voice_lines: Omit<VoiceLine, 'file'>[];
-            expressions: Omit<Expression, 'file'>[];
-        } = {
+        const charData = {
             project_id: character.value.project_id,
             name: character.value.name,
             nickname: character.value.nickname,
             color: character.value.color,
             age: character.value.age,
-            birth_date: character.value.birth_date,
+            birth_date: character.value.birthDate, // Convert back for API
             bio: character.value.bio,
             voice_lines: character.value.voice_lines.map(voice => ({
                 line_name: voice.line_name,
                 audio_path: voice.audio_path
             })),
-            outfits: [...character.value.outfits],
+            outfits: character.value.outfits,
             expressions: character.value.expressions.map(exp => ({
                 name: exp.name,
                 image_path: exp.image_path,
@@ -215,20 +284,31 @@ const createCharacter = async () => {
 
         formData.append('character', JSON.stringify(charData));
 
+        // Append expression image files
         character.value.expressions.forEach((exp, index) => {
             if (exp.file) {
                 formData.append(`expression_${index}`, exp.file);
             }
         });
 
+        // Append voice audio files
         character.value.voice_lines.forEach((voice, index) => {
             if (voice.file) {
                 formData.append(`voice_${index}`, voice.file);
             }
         });
 
-        await characterAPI.create(formData);
+        const response = await characterAPI.create(formData);
+
+        // Show success message
         alert('Character created successfully!');
+
+        // Navigate back to project or characters list
+        if (character.value.project_id && character.value.project_id !== 'test-project') {
+            router.push(`/projects/${character.value.project_id}`);
+        } else {
+            router.push('/characters');
+        }
     } catch (error) {
         console.error('Error creating character:', error);
         alert('Failed to create character. Please try again.');

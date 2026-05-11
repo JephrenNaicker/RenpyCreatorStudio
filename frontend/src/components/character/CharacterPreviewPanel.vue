@@ -6,16 +6,19 @@
             <!-- Left: Avatar Preview - Centered with larger size -->
             <div class="flex items-center justify-center bg-gray-800/30 rounded-lg p-6">
                 <div v-if="currentDisplayImage" class="relative group">
-                    <img :src="getImageSrc(currentDisplayImage)" :alt="character.name || 'Character'"
+                    <img :id="`avatar-${character.name || 'character'}`" :src="getImageSrc(currentDisplayImage)"
+                        :alt="character.name || 'Character'"
                         class="max-h-80 w-auto object-contain rounded-lg shadow-2xl"
                         :style="{ filter: `drop-shadow(0 8px 24px ${character.color}80)` }" />
 
                     <!-- Default/Make Default badge on image -->
                     <div class="absolute -bottom-3 -right-3 flex gap-2">
                         <button v-if="currentDisplayImage && !isCurrentImageDefault && selectedExpression"
+                            :id="`btn-make-default-${selectedExpression.replace(/\s+/g, '-')}`"
                             @click="$emit('set-default-expression', selectedExpression)" class="px-3 py-1.5 text-xs rounded-md bg-yellow-600/90 text-black font-medium 
                                    hover:bg-yellow-500 transition-all shadow-xl flex items-center gap-1.5
-                                   opacity-0 group-hover:opacity-100 backdrop-blur-sm">
+                                   opacity-0 group-hover:opacity-100 backdrop-blur-sm"
+                            aria-label="Set as default expression">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path
                                     d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -23,7 +26,7 @@
                             Make Default
                         </button>
                         <span v-if="isCurrentImageDefault" class="px-3 py-1.5 text-xs rounded-md bg-yellow-500 text-black font-medium 
-                                   shadow-xl flex items-center gap-1.5">
+                                   shadow-xl flex items-center gap-1.5" role="status" aria-label="Default expression">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path
                                     d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -47,7 +50,7 @@
                 </div>
             </div>
 
-            <!-- Right: Character Info Panel (unchanged) -->
+            <!-- Right: Character Info Panel -->
             <div class="flex flex-col space-y-4">
 
                 <!-- Name Section -->
@@ -71,9 +74,9 @@
                         <span class="text-gray-500 block text-xs">Age</span>
                         <span class="text-white font-medium">{{ character.age }}</span>
                     </div>
-                    <div v-if="character.birth_date" class="text-sm">
+                    <div v-if="character.birthDate" class="text-sm">
                         <span class="text-gray-500 block text-xs">Born</span>
-                        <span class="text-white font-medium">{{ character.birth_date }}</span>
+                        <span class="text-white font-medium">{{ character.birthDate }}</span>
                     </div>
                     <div class="text-sm">
                         <span class="text-gray-500 block text-xs">Expressions</span>
@@ -91,14 +94,16 @@
                         <span>Outfits</span>
                         <span class="text-xs text-gray-500">({{ character.outfits.length }})</span>
                     </h4>
-                    <div class="flex flex-wrap gap-2">
-                        <button v-for="outfit in character.outfits" :key="outfit.name"
-                            @click="$emit('select-outfit', outfit.name)"
+                    <div class="flex flex-wrap gap-2" role="group" aria-label="Outfit selector">
+                        <button v-for="(outfit, outfitIndex) in character.outfits"
+                            :id="`outfit-btn-${outfit.name ? outfit.name.replace(/\s+/g, '-') : outfitIndex}`"
+                            :key="outfitIndex" @click="$emit('select-outfit', outfit.name)"
                             class="px-3 py-1.5 text-xs rounded-lg transition-all duration-200" :class="[
                                 selectedOutfit === outfit.name
                                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
                                     : 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:border-gray-600'
-                            ]">
+                            ]" :aria-label="`Select outfit: ${outfit.name || 'Unnamed'}`"
+                            :aria-pressed="selectedOutfit === outfit.name">
                             {{ outfit.name || 'Unnamed' }}
                         </button>
                     </div>
@@ -112,14 +117,16 @@
                             <span class="text-xs text-gray-500">({{ character.expressions.length }})</span>
                         </h4>
                         <span v-if="!selectedExpression && hasDefaultExpression"
-                            class="text-[10px] px-2 py-0.5 bg-yellow-600/20 text-yellow-400 rounded-full">
+                            class="text-[10px] px-2 py-0.5 bg-yellow-600/20 text-yellow-400 rounded-full" role="status">
                             Showing default
                         </span>
                     </div>
 
-                    <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto scrollbar-thin p-1">
-                        <button v-for="exp in filteredExpressions" :key="exp.name"
-                            @click="$emit('select-expression', exp.name)"
+                    <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto scrollbar-thin p-1" role="group"
+                        aria-label="Expression selector">
+                        <button v-for="(exp, expIndex) in filteredExpressions"
+                            :id="`expression-btn-${exp.name ? exp.name.replace(/\s+/g, '-') : expIndex}`"
+                            :key="expIndex" @click="$emit('select-expression', exp.name)"
                             class="px-3 py-1.5 text-xs rounded-lg transition-all duration-200 flex items-center gap-1.5"
                             :class="[
                                 selectedExpression === exp.name
@@ -127,10 +134,13 @@
                                     : exp.isDefault
                                         ? 'bg-yellow-600/20 text-yellow-400 border border-yellow-600/50 hover:bg-yellow-600/30'
                                         : 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 hover:border-gray-600'
-                            ]">
+                            ]"
+                            :aria-label="`Select expression: ${exp.name || 'Unnamed'}${exp.isDefault ? ' (default)' : ''}`"
+                            :aria-pressed="selectedExpression === exp.name">
                             {{ exp.name || 'Unnamed' }}
-                            <span v-if="exp.isDefault" class="text-[10px]">★</span>
-                            <span v-if="!exp.image_path" class="text-[10px] opacity-50">(no img)</span>
+                            <span v-if="exp.isDefault" class="text-[10px]" aria-label="Default expression">★</span>
+                            <span v-if="!exp.image_path" class="text-[10px] opacity-50" aria-label="No image">(no
+                                img)</span>
                         </button>
                     </div>
                 </div>
@@ -158,8 +168,9 @@ interface Character {
     nickname: string;
     color: string;
     age: number | null;
-    birth_date: string;
-    outfits: Array<{ name: string; default_image: string }>;
+    birthDate: string;  // Changed from birth_date
+    bio?: string;
+    outfits: Array<{ name: string; default_image?: string }>;
     expressions: Array<{
         name: string;
         image_path: string;
@@ -175,9 +186,9 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-    'select-outfit': [outfitName: string];
-    'select-expression': [expressionName: string];
-    'set-default-expression': [expressionName: string];
+    (e: 'select-outfit', outfitName: string): void;
+    (e: 'select-expression', expressionName: string): void;
+    (e: 'set-default-expression', expressionName: string): void;
 }>();
 
 const hasDefaultExpression = computed(() =>
@@ -208,7 +219,7 @@ const currentDisplayImage = computed(() => {
 const filteredExpressions = computed(() => {
     if (!props.selectedOutfit) return props.character.expressions;
     return props.character.expressions.filter(exp =>
-        exp.outfit === props.selectedOutfit || exp.outfit === ''
+        exp.outfit === props.selectedOutfit || exp.outfit === '' || !exp.outfit
     );
 });
 
