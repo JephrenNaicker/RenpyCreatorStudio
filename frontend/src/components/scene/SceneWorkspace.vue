@@ -1,35 +1,40 @@
 <template>
-    <div class="dialogue-editor">
+    <div class="dialogue-editor" id="dialogue-editor">
         <!-- Main container for side-by-side layout -->
-        <div class="editor-layout">
+        <div class="editor-layout" id="editor-layout">
             <!-- Left panel: Dialogue History -->
-            <div class="dialogue-history-container">
-                <div class="dialogue-history-header">
+            <div class="dialogue-history-container" id="dialogue-history-container">
+                <div class="dialogue-history-header" id="dialogue-history-header">
                     <!-- Replace the dialogue-history-header h4: -->
-                    <h4>Dialogue History<span v-if="isDirty" class="dirty-indicator" title="Unsaved changes"> *</span>
+                    <h4 id="dialogue-history-title">Dialogue History<span v-if="isDirty" class="dirty-indicator"
+                            title="Unsaved changes" id="dirty-indicator"> *</span>
                     </h4>
-                    <span class="line-count">{{ dialogueLines.length }} lines</span>
+                    <span class="line-count" id="line-count">{{ dialogueLines.length }} lines</span>
                 </div>
-                <div class="dialogue-history">
+                <div class="dialogue-history" id="dialogue-history">
                     <div v-for="(line, index) in dialogueLines" :key="line.id || index" class="dialogue-line" :class="{
                         narrator: !line.character,
                         selected: selectedLineIndex === index
-                    }" @click="$emit('select-line', index)">
-                        <div class="line-header">
-                            <div class="speaker" :style="{ color: line.character?.color || '#94a3b8' }">
+                    }" @click="$emit('select-line', index)" :id="`dialogue-line-${index}`">
+                        <div class="line-header" :id="`line-header-${index}`">
+                            <div class="speaker" :style="{ color: line.character?.color || '#94a3b8' }"
+                                :id="`speaker-${index}`">
                                 {{ line.character?.name || 'Narrator' }}
                             </div>
-                            <div v-if="line.expression" class="expression">
+                            <div v-if="line.expression" class="expression" :id="`expression-${index}`">
                                 {{ getExpressionEmoji(line.expression) }}
-                                <span class="expression-name">{{ line.expression }}</span>
+                                <span class="expression-name" :id="`expression-name-${index}`">{{ line.expression
+                                    }}</span>
                             </div>
                         </div>
-                        <div class="text">{{ line.text }}</div>
-                        <div class="line-actions">
-                            <button class="icon-btn" @click.stop="startEdit(index)" title="Edit">
+                        <div class="text" :id="`dialogue-text-${index}`">{{ line.text }}</div>
+                        <div class="line-actions" :id="`line-actions-${index}`">
+                            <button class="icon-btn" @click.stop="startEdit(index)" title="Edit"
+                                :id="`edit-btn-${index}`">
                                 ✏️
                             </button>
-                            <button class="icon-btn danger" @click.stop="$emit('delete-line', index)" title="Delete">
+                            <button class="icon-btn danger" @click.stop="$emit('delete-line', index)" title="Delete"
+                                :id="`delete-btn-${index}`">
                                 🗑️
                             </button>
                         </div>
@@ -38,46 +43,50 @@
             </div>
 
             <!-- Right panel: Speaker Selection and Input -->
-            <div class="input-panel">
+            <div class="input-panel" id="input-panel">
                 <!-- Speaker Selection Section -->
-                <div class="speaker-section">
-                    <div class="section-header">
-                        <h4>Speaker & Expression</h4>
+                <div class="speaker-section" id="speaker-section">
+                    <div class="section-header" id="speaker-section-header">
+                        <h4 id="speaker-section-title">Speaker & Expression</h4>
                     </div>
-                    <div class="speaker-input">
+                    <div class="speaker-input" id="speaker-input">
                         <CastSelector v-model="currentSpeaker" :characters="characters"
                             :scene-character-ids="sceneCharacterIds" label="Select Speaker"
-                            @update:modelValue="handleSpeakerChange" @expression-change="handleExpressionChange" />
+                            @update:modelValue="handleSpeakerChange" @expression-change="handleExpressionChange"
+                            id="cast-selector" />
                     </div>
                 </div>
 
                 <!-- Dialogue Input Section -->
-                <div class="dialogue-input-section">
-                    <div class="section-header">
-                        <h4>Dialogue Text</h4>
+                <div class="dialogue-input-section" id="dialogue-input-section">
+                    <div class="section-header" id="dialogue-input-header">
+                        <h4 id="dialogue-input-title">Dialogue Text</h4>
                     </div>
-                    <div class="textarea-wrapper">
+                    <div class="textarea-wrapper" id="textarea-wrapper">
                         <textarea ref="textAreaRef" v-model="currentText" placeholder="Type dialogue here..."
-                            @keydown.enter.prevent="addLine" rows="4" class="dialogue-textarea" />
-                        <div class="textarea-hint">
+                            @keydown.enter.prevent="addLine" rows="4" class="dialogue-textarea"
+                            id="dialogue-textarea" />
+                        <div class="textarea-hint" id="textarea-hint">
                             Press Enter to submit, Shift+Enter for new line
                         </div>
                     </div>
 
-                    <div class="input-actions">
-                        <button v-if="!isEditing" class="btn primary" @click="addLine" :disabled="!currentText.trim()">
+                    <div class="input-actions" id="input-actions">
+                        <button v-if="!isEditing" class="btn primary" @click="addLine" :disabled="!currentText.trim()"
+                            id="add-line-btn">
                             Add Line
                         </button>
-                        <button v-else class="btn primary" @click="updateLine" :disabled="!currentText.trim()">
+                        <button v-else class="btn primary" @click="updateLine" :disabled="!currentText.trim()"
+                            id="update-line-btn">
                             Update Line
                         </button>
-                        <button v-if="isEditing" class="btn secondary" @click="cancelEdit">
+                        <button v-if="isEditing" class="btn secondary" @click="cancelEdit" id="cancel-edit-btn">
                             Cancel
                         </button>
-                        <button class="btn secondary" @click="$emit('add-menu')">
+                        <button class="btn secondary" @click="$emit('add-menu')" id="add-menu-btn">
                             Add Menu Choice
                         </button>
-                        <button class="btn secondary" @click="$emit('add-action')">
+                        <button class="btn secondary" @click="$emit('add-action')" id="add-action-btn">
                             Add Action
                         </button>
                     </div>

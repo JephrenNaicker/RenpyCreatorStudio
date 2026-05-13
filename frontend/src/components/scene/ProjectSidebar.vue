@@ -1,116 +1,124 @@
 <template>
-    <aside class="sidebar" :class="{ collapsed: isSidebarCollapsed }">
+    <aside class="sidebar" :class="{ collapsed: isSidebarCollapsed }" id="project-sidebar">
         <!-- Sidebar Header with Collapse Button -->
-        <div class="sidebar-header">
+        <div class="sidebar-header" id="sidebar-header">
             <button class="collapse-btn" @click="toggleSidebar"
-                :title="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+                :title="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'" id="sidebar-collapse-btn">
                 <span v-if="isSidebarCollapsed">☰</span>
                 <span v-else>←</span>
             </button>
         </div>
 
-        <div v-if="!isSidebarCollapsed" class="sidebar-content">
+        <div v-if="!isSidebarCollapsed" class="sidebar-content" id="sidebar-content">
             <!-- Project Characters (roster) -->
-            <div class="roster-header">
-                <h3>Characters</h3>
+            <div class="roster-header" id="roster-header">
+                <h3 id="characters-title">Characters</h3>
                 <CharacterPickerDropdown :characters="allCharacters" :selected-character-ids="selectedCharacterIds"
                     button-label="" :show-label="false" multi-select @create="handleCreateCharacter"
-                    @update:selectedIds="handleAddCharactersToProject" />
+                    @update:selectedIds="handleAddCharactersToProject" id="character-picker-dropdown" />
             </div>
-            <div class="character-list">
+            <div class="character-list" id="character-list">
                 <div v-for="char in characters" :key="char.id" class="character-item"
-                    :class="{ active: selectedCharacterId === char.id }" @click="$emit('select-character', char)">
-                    <span class="color-dot" :style="{ background: char.color }" />
-                    <span class="character-name">{{ char.name }}</span>
-                    <span class="expression-count">{{ char.expressions?.length || 0 }} 😀</span>
+                    :class="{ active: selectedCharacterId === char.id }" @click="$emit('select-character', char)"
+                    :id="`character-item-${char.id}`">
+                    <span class="color-dot" :style="{ background: char.color }" :id="`character-color-${char.id}`" />
+                    <span class="character-name" :id="`character-name-${char.id}`">{{ char.name }}</span>
+                    <span class="expression-count" :id="`character-expressions-${char.id}`">{{ char.expressions?.length
+                        || 0 }} 😀</span>
                     <button class="remove-character" @click.stop="confirmRemoveCharacter(char)"
-                        title="Remove from project">
+                        title="Remove from project" :id="`remove-character-btn-${char.id}`">
                         <span>✕</span>
                     </button>
                 </div>
             </div>
 
             <!-- Scenes -->
-            <div class="sidebar-section">
-                <div class="section-header">
-                    <h4>Scenes</h4>
-                    <button class="icon-button" @click="addNewScene" title="Add new scene">
+            <div class="sidebar-section" id="scenes-section">
+                <div class="section-header" id="scenes-section-header">
+                    <h4 id="scenes-title">Scenes</h4>
+                    <button class="icon-button" @click="addNewScene" title="Add new scene" id="add-scene-btn">
                         <span class="text-lg">+</span>
                     </button>
                 </div>
 
-                <div v-if="scenes && scenes.length > 0" class="scene-list">
+                <div v-if="scenes && scenes.length > 0" class="scene-list" id="scene-list">
                     <div v-for="scene in scenes" :key="scene.id" class="scene-item" :class="{
                         active: selectedSceneId === scene.id,
                         editing: editingSceneId === scene.id
-                    }">
+                    }" :id="`scene-item-${scene.id}`">
                         <!-- Editing mode -->
-                        <div v-if="editingSceneId === scene.id" class="scene-edit">
+                        <div v-if="editingSceneId === scene.id" class="scene-edit" :id="`scene-edit-${scene.id}`">
                             <input ref="sceneInput" v-model="editingSceneName" type="text" class="scene-input"
                                 placeholder="Scene name" @keyup.enter="handleEnterKey(scene)" @keyup.escape="cancelEdit"
-                                @blur="handleBlur(scene)" maxlength="50" />
+                                @blur="handleBlur(scene)" maxlength="50" :id="`scene-name-input-${scene.id}`" />
                         </div>
 
                         <!-- Display mode -->
                         <template v-else>
-                            <div class="scene-main">
+                            <div class="scene-main" :id="`scene-main-${scene.id}`">
                                 <!-- Name row -->
-                                <div class="scene-top-row">
+                                <div class="scene-top-row" :id="`scene-top-row-${scene.id}`">
                                     <div class="scene-content" @click="$emit('select-scene', scene)"
-                                        @dblclick.stop="startEditing(scene)">
-                                        <span class="scene-icon">🎬</span>
-                                        <span class="scene-name">
+                                        @dblclick.stop="startEditing(scene)" :id="`scene-content-${scene.id}`">
+                                        <span class="scene-icon" :id="`scene-icon-${scene.id}`">🎬</span>
+                                        <span class="scene-name" :id="`scene-name-${scene.id}`">
                                             {{ scene.name || 'Untitled Scene' }}
                                             <span v-if="dirtySceneIds?.has(scene.id)" class="dirty-indicator"
-                                                title="Unsaved changes">*</span>
+                                                title="Unsaved changes"
+                                                :id="`scene-dirty-indicator-${scene.id}`">*</span>
                                         </span>
                                     </div>
-                                    <div class="scene-actions">
+                                    <div class="scene-actions" :id="`scene-actions-${scene.id}`">
                                         <button class="rename-scene" @click.stop="startEditing(scene)"
-                                            title="Rename scene">
+                                            title="Rename scene" :id="`rename-scene-btn-${scene.id}`">
                                             <span>✎</span>
                                         </button>
                                         <button class="delete-scene" @click.stop="confirmDeleteScene(scene)"
-                                            title="Delete scene">
+                                            title="Delete scene" :id="`delete-scene-btn-${scene.id}`">
                                             <span>✕</span>
                                         </button>
                                     </div>
                                 </div>
 
                                 <!-- Cast strip -->
-                                <div class="cast-strip">
+                                <div class="cast-strip" :id="`cast-strip-${scene.id}`">
                                     <!-- Assigned character dots -->
-                                    <div class="cast-dots">
+                                    <div class="cast-dots" :id="`cast-dots-${scene.id}`">
                                         <span v-for="charId in scene.character_ids" :key="charId" class="cast-dot"
                                             :style="{ background: getCharacterColor(charId) }"
-                                            :title="getCharacterName(charId)" />
-                                        <span v-if="scene.character_ids.length === 0" class="cast-empty">
+                                            :title="getCharacterName(charId)" :id="`cast-dot-${scene.id}-${charId}`" />
+                                        <span v-if="scene.character_ids.length === 0" class="cast-empty"
+                                            :id="`cast-empty-${scene.id}`">
                                             No cast
                                         </span>
                                     </div>
 
                                     <!-- Add character to scene button -->
                                     <button class="cast-add-btn" @click.stop="togglePicker(scene.id)"
-                                        :title="pickerSceneId === scene.id ? 'Close picker' : 'Assign characters to scene'">
+                                        :title="pickerSceneId === scene.id ? 'Close picker' : 'Assign characters to scene'"
+                                        :id="`cast-add-btn-${scene.id}`">
                                         <span>{{ pickerSceneId === scene.id ? '−' : '+' }}</span>
                                     </button>
                                 </div>
 
                                 <!-- Character picker popover -->
-                                <div v-if="pickerSceneId === scene.id" class="char-picker" @click.stop>
+                                <div v-if="pickerSceneId === scene.id" class="char-picker" @click.stop
+                                    :id="`char-picker-${scene.id}`">
                                     <input v-model="pickerSearch" class="picker-search"
-                                        placeholder="Search characters..." @click.stop />
-                                    <div class="picker-list">
+                                        placeholder="Search characters..." @click.stop
+                                        :id="`picker-search-${scene.id}`" />
+                                    <div class="picker-list" :id="`picker-list-${scene.id}`">
                                         <label v-for="char in filteredPickerCharacters" :key="char.id"
-                                            class="picker-row">
+                                            class="picker-row" :id="`picker-row-${scene.id}-${char.id}`">
                                             <input type="checkbox" :checked="scene.character_ids.includes(char.id)"
-                                                @change="toggleCharacterInScene(scene, char.id)"
-                                                class="picker-checkbox" />
+                                                @change="toggleCharacterInScene(scene, char.id)" class="picker-checkbox"
+                                                :id="`picker-checkbox-${scene.id}-${char.id}`" />
                                             <span class="cast-dot" :style="{ background: char.color }" />
                                             <span class="picker-name">{{ char.name }}</span>
                                             <span v-if="char.nickname" class="picker-nick">"{{ char.nickname }}"</span>
                                         </label>
-                                        <p v-if="filteredPickerCharacters.length === 0" class="picker-empty">
+                                        <p v-if="filteredPickerCharacters.length === 0" class="picker-empty"
+                                            :id="`picker-empty-${scene.id}`">
                                             No characters found
                                         </p>
                                     </div>
@@ -120,19 +128,19 @@
                     </div>
                 </div>
 
-                <div v-else class="empty-scenes">
+                <div v-else class="empty-scenes" id="empty-scenes">
                     <p class="text-sm text-gray-500 text-center py-4">No scenes yet. Click + to add one.</p>
                 </div>
             </div>
         </div>
 
         <!-- Delete Confirmation Modal -->
-        <div v-if="showDeleteModal" class="modal-overlay" @click.self="cancelDelete">
-            <div class="modal-content">
-                <h4 class="text-lg font-bold mb-4">
+        <div v-if="showDeleteModal" class="modal-overlay" @click.self="cancelDelete" id="delete-modal-overlay">
+            <div class="modal-content" id="delete-modal-content">
+                <h4 class="text-lg font-bold mb-4" id="delete-modal-title">
                     {{ charToRemove ? 'Remove Character' : 'Delete Scene' }}
                 </h4>
-                <p class="mb-6">
+                <p class="mb-6" id="delete-modal-message">
                     Are you sure you want to
                     <template v-if="charToRemove">
                         remove "{{ charToRemove.name }}" from the project? They will also be unassigned from all scenes.
@@ -141,9 +149,10 @@
                         delete "{{ sceneToDelete?.name || 'Untitled Scene' }}"? This action cannot be undone.
                     </template>
                 </p>
-                <div class="flex justify-end gap-3">
-                    <button class="btn-secondary" @click="cancelDelete">Cancel</button>
-                    <button class="btn-danger" @click="charToRemove ? confirmAction() : deleteScene()">
+                <div class="flex justify-end gap-3" id="delete-modal-actions">
+                    <button class="btn-secondary" @click="cancelDelete" id="delete-modal-cancel-btn">Cancel</button>
+                    <button class="btn-danger" @click="charToRemove ? confirmAction() : deleteScene()"
+                        id="delete-modal-confirm-btn">
                         {{ charToRemove ? 'Remove' : 'Delete' }}
                     </button>
                 </div>

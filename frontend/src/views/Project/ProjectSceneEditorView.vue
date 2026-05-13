@@ -1,11 +1,11 @@
 <template>
     <div id="scene-editor-layout" class="flex h-screen bg-gray-950">
         <!-- Left Panel -->
-        <ProjectSidebar :id="`project-sidebar-${route.params.id}`" :characters="projectCharacters" :scenes="scenes"
-            :selected-character-id="selectedCharacterId" :dirty-scene-ids="dirtyScenes"
-            @select-character="handleSelectCharacter" @remove-character="handleRemoveCharacter"
-            @add-character="addCharacterToProject" @select-scene="selectScene" @add-scene="handleAddScene"
-            @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene" />
+        <ProjectSidebar :id="`project-sidebar-${route.params.id}`"
+            :characters="projectCharacters" :scenes="scenes" :selected-character-id="selectedCharacterId"
+            :dirty-scene-ids="dirtyScenes" @select-character="handleSelectCharacter"
+            @remove-character="handleRemoveCharacter" @add-character="addCharacterToProject" @select-scene="selectScene"
+            @add-scene="handleAddScene" @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene" />
 
         <!-- Main Panel -->
         <main id="workspace-main" class="flex-1 flex flex-col overflow-hidden">
@@ -19,7 +19,7 @@
                         </span>
                     </h2>
 
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2" id="workspace-actions">
                         <button :id="currentScene ? `save-scene-${currentScene.id}` : 'save-scene-disabled'"
                             class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm"
                             @click="saveScene">
@@ -45,9 +45,9 @@
             </div>
 
             <div id="workspace-content" class="flex-1 overflow-y-auto p-4">
-                <SceneWorkspace :id="currentScene ? `scene-workspace-${currentScene.id}` : 'scene-workspace-empty'"
-                    :dialogue-lines="dialogueLines" :characters="projectCharacters"
-                    :selected-line-index="selectedLineIndex" :selected-speaker-id="selectedCharacterId"
+                <SceneWorkspace id="scene-workspace-component" :key="currentScene?.id" :dialogue-lines="dialogueLines"
+                    :characters="projectCharacters" :selected-line-index="selectedLineIndex"
+                    :selected-speaker-id="selectedCharacterId"
                     :is-dirty="currentScene ? dirtyScenes.has(currentScene.id) : false"
                     :scene-character-ids="currentScene?.character_ids" @add-line="addDialogueLine"
                     @edit-line="handleEditLine" @delete-line="deleteDialogueLine" @select-line="selectLine"
