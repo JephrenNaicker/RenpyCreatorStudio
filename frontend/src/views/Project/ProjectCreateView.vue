@@ -1,135 +1,152 @@
 <template>
-    <div class="create-page">
+    <div class="create-page" id="project-create-page">
 
         <!-- Background grid atmosphere -->
-        <div class="bg-grid" aria-hidden="true" />
+        <div class="bg-grid" aria-hidden="true" id="bg-grid" />
 
-        <div class="create-container">
+        <div class="create-container" id="create-container">
 
             <!-- Header -->
-            <div class="create-header">
-                <button class="back-btn" @click="router.back()">
+            <div class="create-header" id="create-header">
+                <button class="back-btn" @click="router.back()" id="back-button">
                     ← Back
                 </button>
-                <div class="header-text">
-                    <h1 class="create-title">New Project</h1>
-                    <p class="create-subtitle">Set the stage for your visual novel</p>
+                <div class="header-text" id="header-text">
+                    <h1 class="create-title" id="create-title">New Project</h1>
+                    <p class="create-subtitle" id="create-subtitle">Set the stage for your visual novel</p>
                 </div>
             </div>
 
             <!-- Form card -->
-            <form @submit.prevent="createProject" class="create-card">
+            <form @submit.prevent="createProject" class="create-card" id="create-project-form">
 
                 <!-- Step 1: Identity -->
-                <div class="form-section">
-                    <div class="section-label">
-                        <span class="section-number">01</span>
-                        <span class="section-title">Identity</span>
+                <div class="form-section" id="form-section-identity">
+                    <div class="section-label" id="section-label-identity">
+                        <span class="section-number" id="section-number-identity">01</span>
+                        <span class="section-title" id="section-title-identity">Identity</span>
                     </div>
 
-                    <div class="form-group">
-                        <label class="input-label">
-                            Project Name <span class="required">*</span>
+                    <div class="form-group" id="form-group-name">
+                        <label class="input-label" id="name-label">
+                            Project Name <span class="required" id="required-star">*</span>
                         </label>
                         <input v-model="project.name" class="input" placeholder="e.g. Mystic Academy, Crimson Horizons…"
-                            required maxlength="80" />
-                        <span class="char-counter" :class="{ 'character-counter-warning': project.name.length > 60 }">
+                            required maxlength="80" id="project-name-input" />
+                        <span class="char-counter" :class="{ 'character-counter-warning': project.name.length > 60 }"
+                            id="name-char-counter">
                             {{ project.name.length }}/80
                         </span>
                     </div>
                 </div>
 
                 <!-- Divider -->
-                <div class="section-divider" />
+                <div class="section-divider" id="divider-1" />
 
                 <!-- Step 2: Story -->
-                <div class="form-section">
-                    <div class="section-label">
-                        <span class="section-number">02</span>
-                        <span class="section-title">Story</span>
+                <div class="form-section" id="form-section-story">
+                    <div class="section-label" id="section-label-story">
+                        <span class="section-number" id="section-number-story">02</span>
+                        <span class="section-title" id="section-title-story">Story</span>
                     </div>
 
-                    <div class="form-group">
-                        <label class="input-label">Main Plot / Context</label>
+                    <div class="form-group" id="form-group-plot">
+                        <label class="input-label" id="plot-label">Main Plot / Context</label>
                         <textarea v-model="project.main_plot" class="input plot-textarea" rows="4"
-                            placeholder="Short overview of the story world, theme, or premise…" maxlength="500" />
+                            placeholder="Short overview of the story world, theme, or premise…" maxlength="500"
+                            id="main-plot-textarea" />
                         <span class="char-counter"
-                            :class="{ 'character-counter-warning': project.main_plot.length > 400 }">
+                            :class="{ 'character-counter-warning': project.main_plot.length > 400 }"
+                            id="plot-char-counter">
                             {{ project.main_plot.length }}/500
                         </span>
                     </div>
 
-                    <div class="form-group">
-                        <label class="input-label">
+                    <div class="form-group" id="form-group-main-character">
+                        <label class="input-label" id="main-character-label">
                             Main Character
-                            <span class="text-gray-500 font-normal">(optional)</span>
+                            <span class="text-gray-500 font-normal" id="optional-badge">(optional)</span>
                         </label>
 
                         <!-- Trigger button -->
-                        <button type="button" class="char-picker-trigger" @click="showCharPicker = !showCharPicker">
+                        <button type="button" class="char-picker-trigger" @click="showCharPicker = !showCharPicker"
+                            id="char-picker-trigger">
                             <template v-if="selectedCharacter">
-                                <span class="cast-dot" :style="{ background: selectedCharacter.color }" />
-                                <span class="picker-name">{{ selectedCharacter.name }}</span>
-                                <span v-if="selectedCharacter.nickname" class="picker-nick">"{{
-                                    selectedCharacter.nickname }}"</span>
+                                <span class="cast-dot" :style="{ background: selectedCharacter.color }"
+                                    id="selected-character-dot" />
+                                <span class="picker-name" id="selected-character-name">{{
+                                    selectedCharacter.name }}</span>
+                                <span v-if="selectedCharacter.nickname" class="picker-nick"
+                                    id="selected-character-nickname">"{{
+                                        selectedCharacter.nickname }}"</span>
                             </template>
-                            <span v-else class="text-gray-500">None — decide later</span>
-                            <span class="ml-auto text-gray-500 text-xs">{{ showCharPicker ? '▲' : '▼' }}</span>
+                            <span v-else class="text-gray-500" id="no-character-selected">None — decide
+                                later</span>
+                            <span class="ml-auto text-gray-500 text-xs" id="picker-toggle-icon">{{
+                                showCharPicker ? '▲' : '▼' }}</span>
                         </button>
 
                         <!-- Picker popover -->
-                        <div v-if="showCharPicker" class="char-picker">
+                        <div v-if="showCharPicker" class="char-picker" id="char-picker-popover">
                             <input v-model="characterSearch" class="picker-search" placeholder="Search characters..."
-                                @click.stop />
-                            <div class="picker-list">
+                                @click.stop id="char-search-input" />
+                            <div class="picker-list" id="char-picker-list">
                                 <!-- None option -->
-                                <label class="picker-row">
+                                <label class="picker-row" id="char-option-none">
                                     <input type="radio" v-model="project.main_character_id" value=""
-                                        class="picker-checkbox" />
-                                    <span class="picker-name text-gray-500">None</span>
+                                        class="picker-checkbox" id="char-radio-none" />
+                                    <span class="picker-name text-gray-500" id="char-name-none">None</span>
                                 </label>
-                                <label v-for="char in filteredCharacters" :key="char.id" class="picker-row">
+                                <label v-for="char in filteredCharacters" :key="char.id" class="picker-row"
+                                    :id="`char-option-${char.id}`" :data-character-id="char.id">
                                     <input type="radio" v-model="project.main_character_id" :value="char.id"
-                                        class="picker-checkbox" />
-                                    <span class="cast-dot" :style="{ background: char.color }" />
-                                    <span class="picker-name">{{ char.name }}</span>
-                                    <span v-if="char.nickname" class="picker-nick">"{{ char.nickname }}"</span>
+                                        class="picker-checkbox" :id="`char-radio-${char.id}`" />
+                                    <span class="cast-dot" :style="{ background: char.color }"
+                                        :id="`char-dot-${char.id}`" />
+                                    <span class="picker-name" :id="`char-name-${char.id}`">{{ char.name
+                                        }}</span>
+                                    <span v-if="char.nickname" class="picker-nick" :id="`char-nickname-${char.id}`">"{{
+                                        char.nickname
+                                        }}"</span>
                                 </label>
-                                <p v-if="filteredCharacters.length === 0" class="picker-empty">No characters found</p>
+                                <p v-if="filteredCharacters.length === 0" class="picker-empty" id="char-picker-empty">No
+                                    characters
+                                    found</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Divider -->
-                <div class="section-divider" />
+                <div class="section-divider" id="divider-2" />
 
                 <!-- Step 3: Tags -->
-                <div class="form-section">
-                    <div class="section-label">
-                        <span class="section-number">03</span>
-                        <span class="section-title">Tags</span>
-                        <span class="tag-count">{{ project.tags.length }}/5</span>
+                <div class="form-section" id="form-section-tags">
+                    <div class="section-label" id="section-label-tags">
+                        <span class="section-number" id="section-number-tags">03</span>
+                        <span class="section-title" id="section-title-tags">Tags</span>
+                        <span class="tag-count" id="tag-count">{{ project.tags.length }}/5</span>
                     </div>
 
-                    <div class="form-group">
-                        <div class="tag-input-row">
+                    <div class="form-group" id="form-group-tags">
+                        <div class="tag-input-row" id="tag-input-row">
                             <input v-model="tagInput" class="input tag-input" placeholder="fantasy, romance, sci-fi…"
-                                :disabled="project.tags.length >= 5" @keydown.enter.prevent="addTag" />
+                                :disabled="project.tags.length >= 5" @keydown.enter.prevent="addTag" id="tag-input" />
                             <button type="button" class="add-tag-btn" @click="addTag"
-                                :disabled="project.tags.length >= 5 || !tagInput.trim()">
+                                :disabled="project.tags.length >= 5 || !tagInput.trim()" id="add-tag-button">
                                 Add
                             </button>
                         </div>
 
                         <!-- Tag chips -->
                         <Transition name="fade">
-                            <div v-if="project.tags.length > 0" class="tag-row">
+                            <div v-if="project.tags.length > 0" class="tag-row" id="tags-container">
                                 <TransitionGroup name="tag">
-                                    <span v-for="(tag, index) in project.tags" :key="tag" class="tag-chip">
+                                    <span v-for="(tag, index) in project.tags" :key="tag" class="tag-chip"
+                                        :id="`tag-chip-${index}`" :data-tag-value="tag">
                                         # {{ tag }}
                                         <button type="button" class="tag-remove" @click="removeTag(index)"
-                                            title="Remove tag">
+                                            title="Remove tag" :id="`remove-tag-${index}`">
                                             ✕
                                         </button>
                                     </span>
@@ -137,19 +154,19 @@
                             </div>
                         </Transition>
 
-                        <p v-if="project.tags.length === 0" class="input-hint">
+                        <p v-if="project.tags.length === 0" class="input-hint" id="tags-hint">
                             Add up to 5 genre tags to help organise your projects
                         </p>
                     </div>
                 </div>
 
                 <!-- Actions -->
-                <div class="form-actions">
-                    <button type="button" class="cancel-btn" @click="router.back()">
+                <div class="form-actions" id="form-actions">
+                    <button type="button" class="cancel-btn" @click="router.back()" id="cancel-button">
                         Cancel
                     </button>
-                    <button type="submit" class="submit-btn" :disabled="!project.name.trim()">
-                        <span class="submit-icon">✦</span>
+                    <button type="submit" class="submit-btn" :disabled="!project.name.trim()" id="submit-button">
+                        <span class="submit-icon" id="submit-icon">✦</span>
                         Create Project
                     </button>
                 </div>
@@ -160,29 +177,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { dummyCharacters } from '@/utils/dummyData';
+import type { Character } from '@/utils/dummyData';
 
 const router = useRouter();
 
+// Reactive state
 const showCharPicker = ref(false);
 const characterSearch = ref('');
+const isLoading = ref(false);
+const error = ref<string | null>(null);
+const formTouched = ref(false);
 
-const filteredCharacters = computed(() => {
-    const q = characterSearch.value.toLowerCase();
-    return q
-        ? dummyCharacters.filter(c =>
-            c.name.toLowerCase().includes(q) ||
-            c.nickname?.toLowerCase().includes(q)
-        )
-        : dummyCharacters;
-});
-
-const selectedCharacter = computed(() =>
-    dummyCharacters.find(c => c.id === project.value.main_character_id)
-);
-
+// Project data
 const project = ref({
     name: '',
     main_plot: '',
@@ -192,7 +201,98 @@ const project = ref({
 
 const tagInput = ref('');
 
+// Load characters (could be from API)
+const characters = ref<Character[]>([]);
+
+const loadCharacters = async () => {
+    try {
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 50));
+        characters.value = [...dummyCharacters];
+    } catch (err) {
+        console.error('Failed to load characters:', err);
+        error.value = 'Failed to load characters';
+    }
+};
+
+// Filtered characters for picker
+const filteredCharacters = computed(() => {
+    const q = characterSearch.value.toLowerCase();
+    return q
+        ? characters.value.filter(c =>
+            c.name.toLowerCase().includes(q) ||
+            c.nickname?.toLowerCase().includes(q)
+        )
+        : characters.value;
+});
+
+// Selected character object
+const selectedCharacter = computed(() =>
+    characters.value.find(c => c.id === project.value.main_character_id)
+);
+
+// Form validation
+const isFormValid = computed(() => {
+    return project.value.name.trim().length > 0;
+});
+
+// Auto-save draft to localStorage (for testing)
+const saveDraft = () => {
+    const draft = {
+        name: project.value.name,
+        main_plot: project.value.main_plot,
+        main_character_id: project.value.main_character_id,
+        tags: [...project.value.tags],
+        timestamp: Date.now()
+    };
+    localStorage.setItem('project_draft', JSON.stringify(draft));
+};
+
+// Load draft from localStorage
+const loadDraft = () => {
+    const saved = localStorage.getItem('project_draft');
+    if (saved) {
+        try {
+            const draft = JSON.parse(saved);
+            // Only load if less than 24 hours old
+            if (Date.now() - draft.timestamp < 24 * 60 * 60 * 1000) {
+                project.value.name = draft.name || '';
+                project.value.main_plot = draft.main_plot || '';
+                project.value.main_character_id = draft.main_character_id || '';
+                project.value.tags = draft.tags || [];
+            }
+        } catch (err) {
+            console.error('Failed to load draft:', err);
+        }
+    }
+};
+
+// Clear draft
+const clearDraft = () => {
+    localStorage.removeItem('project_draft');
+};
+
+// Watch for changes to auto-save draft (debounced)
+let saveTimeout: number;
+watch(project, () => {
+    if (formTouched.value) {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+            saveDraft();
+        }, 500);
+    }
+}, { deep: true });
+
+// Mark form as touched on first input
+const markTouched = () => {
+    if (!formTouched.value) {
+        formTouched.value = true;
+    }
+};
+
+// Add tag
 const addTag = () => {
+    markTouched();
     const trimmed = tagInput.value.trim().toLowerCase();
     if (!trimmed || project.value.tags.length >= 5) return;
     if (project.value.tags.includes(trimmed)) return; // no dupes
@@ -200,15 +300,101 @@ const addTag = () => {
     tagInput.value = '';
 };
 
+// Remove tag
 const removeTag = (index: number) => {
+    markTouched();
     project.value.tags.splice(index, 1);
 };
 
+// Create project
 const createProject = async () => {
-    console.log('Creating project:', project.value);
-    // TODO: API call
-    router.push('/projects');
+    if (!isFormValid.value) {
+        error.value = 'Project name is required';
+        return;
+    }
+
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+        // Prepare project data
+        const projectData = {
+            ...project.value,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        console.log('Creating project:', projectData);
+
+        // TODO: API call to create project
+        // const response = await api.createProject(projectData);
+
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Clear draft on success
+        clearDraft();
+
+        // Redirect to projects list
+        router.push('/projects');
+    } catch (err) {
+        console.error('Failed to create project:', err);
+        error.value = 'Failed to create project. Please try again.';
+    } finally {
+        isLoading.value = false;
+    }
 };
+
+// Reset form (for testing)
+const resetForm = () => {
+    project.value = {
+        name: '',
+        main_plot: '',
+        main_character_id: '',
+        tags: []
+    };
+    tagInput.value = '';
+    characterSearch.value = '';
+    showCharPicker.value = false;
+    formTouched.value = false;
+    error.value = null;
+    clearDraft();
+};
+
+// Close picker when clicking outside (for better UX)
+const handleClickOutside = (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (showCharPicker.value && !target.closest('.char-picker') && !target.closest('.char-picker-trigger')) {
+        showCharPicker.value = false;
+    }
+};
+
+// Lifecycle
+onMounted(() => {
+    loadCharacters();
+    loadDraft();
+    document.addEventListener('click', handleClickOutside);
+});
+
+// Cleanup
+import { onUnmounted } from 'vue';
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside);
+    clearTimeout(saveTimeout);
+});
+
+// Expose methods for testing in development
+if (import.meta.env.DEV) {
+    // @ts-ignore - Expose for testing purposes
+    window.__PROJECT_CREATE_VIEW__ = {
+        resetForm,
+        loadDraft,
+        saveDraft,
+        clearDraft,
+        getProjectData: () => project.value,
+        isFormValid: () => isFormValid.value
+    };
+}
 </script>
 
 <style scoped>
@@ -412,6 +598,10 @@ const createProject = async () => {
     margin-top: -0.1rem;
 }
 
+.character-counter-warning {
+    color: #fbbf24;
+}
+
 /* ── Select ── */
 .select-wrapper {
     position: relative;
@@ -573,35 +763,7 @@ const createProject = async () => {
     opacity: 0.8;
 }
 
-/* ── Transitions ── */
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.2s;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
-}
-
-.tag-enter-active {
-    transition: all 0.2s ease;
-}
-
-.tag-leave-active {
-    transition: all 0.15s ease;
-}
-
-.tag-enter-from {
-    opacity: 0;
-    transform: scale(0.85);
-}
-
-.tag-leave-to {
-    opacity: 0;
-    transform: scale(0.85);
-}
-
+/* ── Character Picker ── */
 .char-picker-trigger {
     width: 100%;
     display: flex;
@@ -696,6 +858,58 @@ const createProject = async () => {
     font-size: 0.8rem;
     text-align: center;
     padding: 0.75rem;
+}
+
+/* Error state */
+.error-message {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: #f87171;
+    font-size: 0.85rem;
+    margin-top: 1rem;
+}
+
+/* Loading state */
+.loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    z-index: 10;
+}
+
+/* ── Transitions ── */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.2s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+.tag-enter-active {
+    transition: all 0.2s ease;
+}
+
+.tag-leave-active {
+    transition: all 0.15s ease;
+}
+
+.tag-enter-from {
+    opacity: 0;
+    transform: scale(0.85);
+}
+
+.tag-leave-to {
+    opacity: 0;
+    transform: scale(0.85);
 }
 
 /* ── Responsive ── */
