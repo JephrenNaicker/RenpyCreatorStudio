@@ -3,16 +3,19 @@
         <!-- Header with Update Button -->
         <div class="action-bar mb-8">
             <div>
-                <h1 class="section-title mb-0">Edit Character</h1>
-                <p class="text-gray-400 text-sm">Update your character's appearance, expressions, and voice lines</p>
+                <h1 id="page-title" class="section-title mb-0">Edit Character</h1>
+                <p id="page-description" class="text-gray-400 text-sm">Update your character's appearance, expressions,
+                    and voice lines</p>
             </div>
             <div class="flex gap-3">
-                <button type="button" @click="deleteCharacter" class="btn-danger px-6 py-3 text-base font-medium">
+                <button id="btn-delete-character" type="button" @click="deleteCharacter"
+                    class="btn-danger px-6 py-3 text-base font-medium" aria-label="Delete character permanently">
                     Delete Character
                 </button>
-                <button type="button" @click="updateCharacter" class="btn-primary px-6 py-3 text-base font-medium"
-                    :disabled="!character.name.trim()"
-                    :class="{ 'opacity-50 cursor-not-allowed': !character.name.trim() }">
+                <button id="btn-update-character" type="button" @click="updateCharacter"
+                    class="btn-primary px-6 py-3 text-base font-medium" :disabled="!character.name.trim() || !isValid"
+                    :class="{ 'opacity-50 cursor-not-allowed': !character.name.trim() || !isValid }"
+                    aria-label="Save character changes">
                     Update Character
                 </button>
             </div>
@@ -27,11 +30,12 @@
                         <h3 class="panel-title">Character Info</h3>
                     </div>
                     <CharacterInfoPanel :name="character.name" :nickname="character.nickname" :color="character.color"
-                        :age="character.age" :birth_date="character.birth_date" :bio="character.bio"
+                        :age="character.age" :birth-date="character.birthDate" :bio="character.bio"
+                        :character-id="character.id" :metadata="characterMetadata"
                         @update:name="updateField('name', $event)" @update:nickname="updateField('nickname', $event)"
                         @update:color="updateField('color', $event)" @update:age="updateField('age', $event)"
-                        @update:birth_date="updateField('birth_date', $event)"
-                        @update:bio="updateField('bio', $event)" />
+                        @update:birthDate="updateField('birthDate', $event)" @update:bio="updateField('bio', $event)"
+                        @validate="handleValidation" />
                 </div>
             </div>
 
@@ -43,17 +47,18 @@
                         <h3 class="panel-title">Preview</h3>
                         <div class="flex gap-2">
                             <span class="text-xs text-gray-400">Live Preview</span>
-                            <span v-if="hasUnsavedChanges" class="text-xs text-yellow-400">* Unsaved changes</span>
+                            <span v-if="hasUnsavedChanges" id="unsaved-indicator" class="text-xs text-yellow-400">*
+                                Unsaved changes</span>
                         </div>
                     </div>
-                    <CharacterPreviewPanel :character="character" :selected-outfit="selectedOutfit"
+                    <CharacterPreviewPanel :character="previewCharacter" :selected-outfit="selectedOutfit"
                         :selected-expression="selectedExpression" @select-outfit="selectOutfit"
                         @select-expression="selectExpression" @set-default-expression="setDefaultExpression" />
                 </div>
 
                 <!-- Panel 3: Asset Library (Bottom) -->
                 <div class="panel">
-                    <AssetLibraryPanel :character="character" @add-expression="addExpression"
+                    <AssetLibraryPanel :character="assetLibraryCharacter" @add-expression="addExpression"
                         @remove-expression="removeExpression" @add-outfit="addOutfit" @remove-outfit="removeOutfit"
                         @add-voice="addVoice" @remove-voice="removeVoice" @upload-image="handleImageUpload"
                         @upload-audio="handleAudioUpload" @select-preview-expression="selectExpression"
@@ -65,24 +70,35 @@
 
         <!-- Unsaved Changes Warning Modal -->
         <div v-if="showUnsavedModal" class="modal-overlay" @click.self="closeUnsavedModal">
-            <div class="modal">
+            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="unsaved-modal-title">
                 <div class="modal-header">
-                    <h3>Unsaved Changes</h3>
-                    <button class="modal-close" @click="closeUnsavedModal">✕</button>
+                    <h3 id="unsaved-modal-title">Unsaved Changes</h3>
+                    <button id="btn-close-unsaved-modal" class="modal-close" @click="closeUnsavedModal"
+                        aria-label="Close modal">
+                        ✕
+                    </button>
                 </div>
                 <div class="modal-content">
                     <p>You have unsaved changes. Do you want to save them before leaving?</p>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn-secondary" @click="discardAndLeave">Discard</button>
-                    <button class="btn-secondary" @click="closeUnsavedModal">Cancel</button>
-                    <button class="btn-primary" @click="saveAndLeave">Save & Leave</button>
+                    <button id="btn-discard-changes" class="btn-secondary" @click="discardAndLeave"
+                        aria-label="Discard unsaved changes">
+                        Discard
+                    </button>
+                    <button id="btn-cancel-leave" class="btn-secondary" @click="closeUnsavedModal"
+                        aria-label="Cancel and stay on page">
+                        Cancel
+                    </button>
+                    <button id="btn-save-and-leave" class="btn-primary" @click="saveAndLeave"
+                        aria-label="Save changes and leave">
+                        Save & Leave
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 </template>
-
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
@@ -115,7 +131,7 @@ interface Expression {
 
 interface Outfit {
     name: string;
-    default_image: string;
+    default_image?: string;
     _isNew?: boolean;
     _isDeleted?: boolean;
 }
@@ -127,12 +143,19 @@ interface CharacterData {
     nickname: string;
     color: string;
     age: number | null;
-    birth_date: string;
+    birthDate: string;  // Internal camelCase for components
     bio: string;
     voice_lines: VoiceLine[];
     outfits: Outfit[];
     expressions: Expression[];
 }
+
+// Validation state
+const validationErrors = ref<Record<string, string>>({});
+const isValid = computed(() => Object.keys(validationErrors.value).length === 0);
+
+// Character metadata
+const characterMetadata = ref<{ createdAt?: string; updatedAt?: string }>({});
 
 // Original character data for comparison
 const originalCharacter = ref<CharacterData | null>(null);
@@ -140,20 +163,44 @@ const character = ref<CharacterData>({
     project_id: 'test-project',
     name: '',
     nickname: '',
-    color: '#4F46E5',
+    color: '#38bdf8',
     age: null,
-    birth_date: '',
+    birthDate: '',
     bio: '',
     voice_lines: [],
     outfits: [],
     expressions: []
 });
 
+// Computed for preview panel
+const previewCharacter = computed(() => ({
+    name: character.value.name,
+    nickname: character.value.nickname,
+    color: character.value.color,
+    age: character.value.age,
+    birthDate: character.value.birthDate,
+    bio: character.value.bio,
+    expressions: character.value.expressions,
+    outfits: character.value.outfits
+}));
+
+// Computed for asset library
+const assetLibraryCharacter = computed(() => ({
+    expressions: character.value.expressions,
+    outfits: character.value.outfits,
+    voice_lines: character.value.voice_lines
+}));
+
 // UI State
 const selectedOutfit = ref<string>('');
 const selectedExpression = ref<string>('');
 const showUnsavedModal = ref(false);
 const pendingNavigation = ref<string | null>(null);
+
+// Validation handler
+const handleValidation = (errors: Record<string, string>) => {
+    validationErrors.value = errors;
+};
 
 // Computed
 const hasUnsavedChanges = computed(() => {
@@ -166,30 +213,58 @@ const updateField = (field: keyof CharacterData, value: any) => {
     (character.value as any)[field] = value;
 };
 
+// Helper to convert snake_case from API to camelCase for internal use
+const convertSnakeToCamel = (char: Character): CharacterData => {
+    return {
+        id: char.id,
+        project_id: 'test-project',
+        name: char.name,
+        nickname: char.nickname || '',
+        color: char.color,
+        age: char.age || null,
+        birthDate: char.birth_date || '',  // Convert snake_case to camelCase
+        bio: char.bio || '',
+        voice_lines: char.voice_lines || [],
+        outfits: char.outfits || [],
+        expressions: char.expressions?.map((exp: any) => ({
+            name: exp.name,
+            image_path: exp.image_path || '',
+            outfit: exp.outfit || '',
+            isDefault: exp.isDefault || false
+        })) || []
+    };
+};
+
+// Helper to convert camelCase to snake_case for API
+// const convertCamelToSnake = (char: CharacterData) => {
+//     return {
+//         id: char.id,
+//         project_id: char.project_id,
+//         name: char.name,
+//         nickname: char.nickname,
+//         color: char.color,
+//         age: char.age,
+//         birth_date: char.birthDate,  // Convert camelCase to snake_case
+//         bio: char.bio,
+//         voice_lines: char.voice_lines,
+//         outfits: char.outfits,
+//         expressions: char.expressions
+//     };
+// };
+
 // Character CRUD operations
 const loadCharacter = async (id: string) => {
     try {
-        // Find character in dummy data
         const foundCharacter = dummyCharacters.find((c: Character) => c.id === id);
 
         if (foundCharacter) {
-            character.value = {
-                id: foundCharacter.id,
-                project_id: 'test-project',
-                name: foundCharacter.name,
-                nickname: foundCharacter.nickname || '',
-                color: foundCharacter.color,
-                age: foundCharacter.age || null,
-                birth_date: foundCharacter.birth_date || '',
-                bio: foundCharacter.bio || '',
-                voice_lines: foundCharacter.voice_lines || [],
-                outfits: foundCharacter.outfits || [],
-                expressions: foundCharacter.expressions?.map((exp: any) => ({
-                    name: exp.name,
-                    image_path: exp.image_path || '',
-                    outfit: exp.outfit || '',
-                    isDefault: exp.name === foundCharacter.expressions?.[0]?.name
-                })) || []
+            // Convert from API snake_case to internal camelCase
+            character.value = convertSnakeToCamel(foundCharacter);
+
+            // Set metadata
+            characterMetadata.value = {
+                createdAt: foundCharacter.created_at,
+                updatedAt: foundCharacter.updated_at
             };
 
             // Set default selected expression
@@ -218,8 +293,13 @@ const updateCharacter = async () => {
         return;
     }
 
+    if (validationErrors.value.name) {
+        alert(validationErrors.value.name);
+        return;
+    }
+
     try {
-        // Prepare data for API
+        // Prepare data for API (convert camelCase to snake_case)
         const charData = {
             id: character.value.id,
             project_id: character.value.project_id,
@@ -227,7 +307,7 @@ const updateCharacter = async () => {
             nickname: character.value.nickname,
             color: character.value.color,
             age: character.value.age,
-            birth_date: character.value.birth_date,
+            birth_date: character.value.birthDate,  // Convert camelCase to snake_case for API
             bio: character.value.bio,
             voice_lines: character.value.voice_lines
                 .filter(v => !v._isDeleted)
@@ -241,8 +321,6 @@ const updateCharacter = async () => {
         };
 
         // TODO: Call API to update
-        // await characterAPI.update(character.value.id!, charData);
-
         console.log('Updated character data:', charData);
         alert('Character updated successfully!');
 
@@ -261,7 +339,7 @@ const deleteCharacter = async () => {
     if (confirm(`Are you sure you want to delete "${character.value.name}"? This action cannot be undone.`)) {
         try {
             // TODO: Call API to delete
-            // await characterAPI.delete(character.value.id!);
+            console.log('Deleting character:', character.value.id);
             alert('Character deleted successfully!');
             router.push('/characters');
         } catch (error) {
@@ -378,17 +456,13 @@ const handleAudioUpload = (files: File[], index: number) => {
 };
 
 // Navigation guards
-// Navigation guards - REPLACE ALL of this section
 const saveAndLeave = async () => {
     await updateCharacter();
     closeUnsavedModal();
 };
 
 const discardAndLeave = () => {
-    // Close modal
     showUnsavedModal.value = false;
-
-    // Navigate immediately
     if (pendingNavigation.value) {
         router.push(pendingNavigation.value);
         pendingNavigation.value = null;
@@ -397,14 +471,13 @@ const discardAndLeave = () => {
 
 const closeUnsavedModal = () => {
     showUnsavedModal.value = false;
-    // Don't clear pendingNavigation here - let discardAndLeave handle it
 };
 
 onBeforeRouteLeave((to, from, next) => {
     if (hasUnsavedChanges.value) {
         showUnsavedModal.value = true;
         pendingNavigation.value = to.fullPath;
-        next(false); // Block navigation until user decides
+        next(false);
     } else {
         next();
     }
@@ -424,8 +497,6 @@ onMounted(() => {
     } else {
         router.push('/characters');
     }
-
-    // Add navigation guard
     window.addEventListener('beforeunload', handleBeforeUnload);
 });
 
@@ -574,6 +645,10 @@ onBeforeUnmount(() => {
     padding: 0.75rem 1.5rem;
     border-radius: 8px;
     cursor: pointer;
+}
+
+.btn-secondary:hover {
+    background: #1e293b;
 }
 
 /* Utility classes */

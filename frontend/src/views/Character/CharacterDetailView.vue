@@ -3,21 +3,24 @@
         <!-- Character Header -->
         <div class="character-header">
             <div class="header-left">
-                <div class="character-color" :style="{ backgroundColor: character.color }"></div>
+                <div class="character-color" :style="{ backgroundColor: character.color }"
+                    :aria-label="`Character color: ${character.color}`"></div>
                 <div class="character-title">
-                    <h1>{{ character.name }}</h1>
-                    <p v-if="character.nickname" class="character-nickname">
+                    <h1 id="character-name">{{ character.name }}</h1>
+                    <p v-if="character.nickname" id="character-nickname" class="character-nickname">
                         "{{ character.nickname }}"
                     </p>
                 </div>
             </div>
 
             <div class="header-actions">
-                <router-link :to="`/characters/${character.id}/edit`" class="btn-primary">
+                <router-link :id="`edit-character-${character.id}`" :to="`/characters/${character.id}/edit`"
+                    class="btn-primary" aria-label="Edit character">
                     <span class="btn-icon">✏️</span>
                     Edit Character
                 </router-link>
-                <button class="btn-secondary" @click="goBack">
+                <button id="btn-back-to-list" class="btn-secondary" @click="goBack"
+                    aria-label="Go back to characters list">
                     ← Back to List
                 </button>
             </div>
@@ -30,69 +33,74 @@
                 <h3 class="card-title">Basic Information</h3>
                 <div class="info-item">
                     <span class="info-label">Name:</span>
-                    <span class="info-value">{{ character.name }}</span>
+                    <span id="detail-character-name" class="info-value">{{ character.name }}</span>
                 </div>
                 <div v-if="character.nickname" class="info-item">
                     <span class="info-label">Nickname:</span>
-                    <span class="info-value">{{ character.nickname }}</span>
+                    <span id="detail-character-nickname" class="info-value">{{ character.nickname }}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Color:</span>
                     <div class="color-display">
-                        <span class="color-preview" :style="{ backgroundColor: character.color }"></span>
-                        <span class="color-code">{{ character.color }}</span>
+                        <span class="color-preview" :style="{ backgroundColor: character.color }"
+                            :aria-label="`Color preview: ${character.color}`"></span>
+                        <span id="character-color-code" class="color-code">{{ character.color }}</span>
                     </div>
                 </div>
                 <div v-if="character.age" class="info-item">
                     <span class="info-label">Age:</span>
-                    <span class="info-value">{{ character.age }}</span>
+                    <span id="character-age" class="info-value">{{ character.age }}</span>
                 </div>
-                <div v-if="character.birth_date" class="info-item">
+                <div v-if="character.birthDate" class="info-item">
                     <span class="info-label">Birth Date:</span>
-                    <span class="info-value">{{ character.birth_date }}</span>
+                    <span id="character-birth-date" class="info-value">{{ character.birthDate }}</span>
                 </div>
             </div>
 
             <!-- Bio Card -->
             <div v-if="character.bio" class="info-card">
                 <h3 class="card-title">Bio / Description</h3>
-                <p class="bio-text">{{ character.bio }}</p>
+                <p id="character-bio" class="bio-text">{{ character.bio }}</p>
             </div>
 
             <!-- Expressions Card -->
             <div class="info-card">
                 <h3 class="card-title">Expressions ({{ character.expressions?.length || 0 }})</h3>
                 <div v-if="character.expressions && character.expressions.length > 0" class="expressions-grid">
-                    <div v-for="exp in character.expressions" :key="exp.name" class="expression-item">
+                    <div v-for="(exp, expIndex) in character.expressions" :id="`expression-item-${expIndex}`"
+                        :key="exp.name" class="expression-item">
                         <div class="expression-icon">😀</div>
                         <div class="expression-info">
-                            <span class="expression-name">{{ exp.name }}</span>
-                            <span v-if="exp.outfit" class="expression-outfit">{{ exp.outfit }}</span>
+                            <span :id="`expression-name-${expIndex}`" class="expression-name">{{ exp.name }}</span>
+                            <span v-if="exp.outfit" :id="`expression-outfit-${expIndex}`" class="expression-outfit">{{
+                                exp.outfit }}</span>
                         </div>
                     </div>
                 </div>
-                <p v-else class="empty-message">No expressions added yet.</p>
+                <p v-else id="no-expressions-message" class="empty-message">No expressions added yet.</p>
             </div>
 
             <!-- Outfits Card -->
             <div class="info-card">
                 <h3 class="card-title">Outfits ({{ character.outfits?.length || 0 }})</h3>
                 <div v-if="character.outfits && character.outfits.length > 0" class="outfits-list">
-                    <div v-for="outfit in character.outfits" :key="outfit.name" class="outfit-item">
+                    <div v-for="(outfit, outfitIndex) in character.outfits" :id="`outfit-item-${outfitIndex}`"
+                        :key="outfit.name" class="outfit-item">
                         <span class="outfit-icon">👕</span>
-                        <span class="outfit-name">{{ outfit.name }}</span>
+                        <span :id="`outfit-name-${outfitIndex}`" class="outfit-name">{{ outfit.name }}</span>
                     </div>
                 </div>
-                <p v-else class="empty-message">No outfits added yet.</p>
+                <p v-else id="no-outfits-message" class="empty-message">No outfits added yet.</p>
             </div>
 
             <!-- Voice Lines Card -->
             <div v-if="character.voice_lines && character.voice_lines.length > 0" class="info-card">
                 <h3 class="card-title">Voice Lines ({{ character.voice_lines.length }})</h3>
                 <div class="voice-lines">
-                    <div v-for="voice in character.voice_lines" :key="voice.line_name" class="voice-item">
-                        <span class="voice-name">{{ voice.line_name }}</span>
-                        <span class="voice-path">{{ voice.audio_path }}</span>
+                    <div v-for="(voice, voiceIndex) in character.voice_lines" :id="`voice-item-${voiceIndex}`"
+                        :key="voice.line_name" class="voice-item">
+                        <span :id="`voice-name-${voiceIndex}`" class="voice-name">{{ voice.line_name }}</span>
+                        <span :id="`voice-path-${voiceIndex}`" class="voice-path">{{ voice.audio_path }}</span>
                     </div>
                 </div>
             </div>
@@ -102,10 +110,12 @@
                 <h3 class="card-title">Ren'Py Export</h3>
                 <p class="export-description">Export this character to Ren'Py format.</p>
                 <div class="export-actions">
-                    <button class="btn-secondary" @click="showExportPreview">
+                    <button id="btn-preview-export" class="btn-secondary" @click="showExportPreview"
+                        aria-label="Preview Ren'Py export code">
                         Preview Code
                     </button>
-                    <button class="btn-primary" @click="exportCharacter">
+                    <button id="btn-export-character" class="btn-primary" @click="exportCharacter"
+                        aria-label="Export character to .rpy file">
                         Export to .rpy
                     </button>
                 </div>
@@ -114,17 +124,22 @@
 
         <!-- Export Modal -->
         <div v-if="showExportModal" class="modal-overlay" @click.self="closeExportModal">
-            <div class="modal">
+            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
                 <div class="modal-header">
-                    <h3>Ren'Py Export Preview</h3>
-                    <button class="modal-close" @click="closeExportModal">✕</button>
+                    <h3 id="modal-title">Ren'Py Export Preview</h3>
+                    <button id="btn-close-modal" class="modal-close" @click="closeExportModal" aria-label="Close modal">
+                        ✕
+                    </button>
                 </div>
                 <div class="modal-content">
-                    <pre class="export-code">{{ exportCode }}</pre>
+                    <pre id="export-code-preview" class="export-code">{{ exportCode }}</pre>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn-secondary" @click="closeExportModal">Close</button>
-                    <button class="btn-primary" @click="copyToClipboard">
+                    <button id="btn-modal-close" class="btn-secondary" @click="closeExportModal">
+                        Close
+                    </button>
+                    <button id="btn-copy-to-clipboard" class="btn-primary" @click="copyToClipboard"
+                        aria-label="Copy export code to clipboard">
                         Copy to Clipboard
                     </button>
                 </div>
@@ -134,20 +149,55 @@
 
     <!-- Loading State -->
     <div v-else class="loading">
-        <div class="spinner"></div>
-        <p>Loading character...</p>
+        <div class="spinner" role="status" aria-label="Loading"></div>
+        <p id="loading-message">Loading character...</p>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { dummyCharacters, type Character } from '@/utils/dummyData';
+import { dummyCharacters } from '@/utils/dummyData';
+
+interface Expression {
+    name: string;
+    image_path: string;
+    outfit: string;
+    isDefault?: boolean;
+}
+
+interface Outfit {
+    name: string;
+    default_image?: string;
+}
+
+interface VoiceLine {
+    line_name: string;
+    audio_path: string;
+}
+
+interface Character {
+    id: string;
+    project_id?: string;
+    name: string;
+    nickname?: string;
+    color: string;
+    age?: number | null;
+    birthDate?: string;
+    bio?: string;
+    expressions?: Expression[];
+    outfits?: Outfit[];
+    voice_lines?: VoiceLine[];
+    created_at: string;
+    updated_at: string;
+    tags?: string[];
+    main_plot?: string;
+}
 
 const route = useRoute();
 const router = useRouter();
 
-// Find character by route param — replace with API call later
+// Find character by route param
 const character = computed<Character | null>(() =>
     dummyCharacters.find(c => c.id === route.params.id) ?? null
 );
@@ -162,13 +212,12 @@ const goBack = () => {
 const showExportPreview = () => {
     if (!character.value) return;
     const c = character.value;
-    const varName = c.name.toLowerCase();
+    const varName = c.name.toLowerCase().replace(/\s+/g, '_');
     const expressions = (c.expressions ?? [])
-        .map(e => `image ${varName} ${e.name} = "${e.image_path}"`)
+        .map(e => `image ${varName} ${e.name.toLowerCase().replace(/\s+/g, '_')} = "${e.image_path}"`)
         .join('\n');
 
-    exportCode.value =
-        `# Ren'Py Character Definition
+    exportCode.value = `# Ren'Py Character Definition
 define ${varName} = Character(
     "${c.name}",
     color="${c.color}",
@@ -177,12 +226,12 @@ define ${varName} = Character(
 )
 
 # Expressions
-${expressions || `# No expressions defined yet`}
+${expressions || '# No expressions defined yet'}
 
 # Usage in script
 label start:
-    ${varName} "Hello, I'm ${c.name}!"
-`;
+    ${varName} "Hello, I'm ${c.name}!"`;
+
     showExportModal.value = true;
 };
 
@@ -196,6 +245,7 @@ const copyToClipboard = async () => {
         alert('Code copied to clipboard!');
     } catch (err) {
         console.error('Failed to copy:', err);
+        alert('Failed to copy to clipboard. Please try again.');
     }
 };
 
@@ -207,6 +257,7 @@ const exportCharacter = () => {
 </script>
 
 <style scoped>
+/* Your existing styles remain exactly the same */
 .character-detail-view {
     max-width: 1200px;
     margin: 0 auto;
