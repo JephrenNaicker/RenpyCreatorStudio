@@ -1,63 +1,66 @@
 <template>
-    <header class="app-header">
-        <div class="header-content">
+    <header class="app-header" id="app-header">
+        <div class="header-content" id="header-content">
             <!-- Logo/Brand -->
-            <div class="brand">
-                <router-link to="/" class="logo-link">
-                    <span class="logo-icon">🎮</span>
-                    <span class="logo-text">Ren'Py Creator</span>
+            <div class="brand" id="brand">
+                <router-link to="/" class="logo-link" id="logo-link">
+                    <span class="logo-icon" id="logo-icon">🎮</span>
+                    <span class="logo-text" id="logo-text">Ren'Py Creator</span>
                 </router-link>
             </div>
 
             <!-- Navigation -->
-            <nav class="nav-menu">
-                <router-link to="/" class="nav-item">
-                    <span class="nav-icon">🏠</span>
-                    <span class="nav-text">Home</span>
+            <nav class="nav-menu" id="nav-menu">
+                <router-link to="/" class="nav-item" id="nav-home">
+                    <span class="nav-icon" id="nav-home-icon">🏠</span>
+                    <span class="nav-text" id="nav-home-text">Home</span>
                 </router-link>
 
-                <router-link to="/projects" class="nav-item">
-                    <span class="nav-icon">📁</span>
-                    <span class="nav-text">Projects</span>
+                <router-link to="/projects" class="nav-item" id="nav-projects">
+                    <span class="nav-icon" id="nav-projects-icon">📁</span>
+                    <span class="nav-text" id="nav-projects-text">Projects</span>
                 </router-link>
 
                 <!-- Characters Dropdown -->
-                <div class="dropdown" :class="{ open: isCharactersOpen }">
-                    <button class="dropdown-toggle nav-item" @click="toggleCharacters">
-                        <span class="nav-icon">👤</span>
-                        <span class="nav-text">Characters</span>
-                        <span class="dropdown-arrow">{{ isCharactersOpen ? '▲' : '▼' }}</span>
+                <div class="dropdown" :class="{ open: isCharactersOpen }" id="characters-dropdown">
+                    <button class="dropdown-toggle nav-item" @click="toggleCharacters" id="characters-dropdown-toggle">
+                        <span class="nav-icon" id="characters-icon">👤</span>
+                        <span class="nav-text" id="characters-text">Characters</span>
+                        <span class="dropdown-arrow" id="dropdown-arrow">{{ isCharactersOpen ? '▲' : '▼' }}</span>
                     </button>
 
-                    <div v-if="isCharactersOpen" class="dropdown-menu">
-                        <router-link to="/characters" class="dropdown-item" @click="closeDropdown">
-                            <span class="dropdown-icon">📋</span>
+                    <div v-if="isCharactersOpen" class="dropdown-menu" id="characters-dropdown-menu">
+                        <router-link to="/characters" class="dropdown-item" @click="closeDropdown"
+                            id="dropdown-view-all">
+                            <span class="dropdown-icon" id="view-all-icon">📋</span>
                             View All Characters
                         </router-link>
-                        <router-link to="/characters/new" class="dropdown-item" @click="closeDropdown">
-                            <span class="dropdown-icon">➕</span>
+                        <router-link to="/characters/new" class="dropdown-item" @click="closeDropdown"
+                            id="dropdown-create-new">
+                            <span class="dropdown-icon" id="create-new-icon">➕</span>
                             Create New Character
                         </router-link>
-                        <div class="dropdown-divider"></div>
-                        <router-link to="/characters/recent" class="dropdown-item" @click="closeDropdown">
-                            <span class="dropdown-icon">🕒</span>
+                        <div class="dropdown-divider" id="dropdown-divider"></div>
+                        <router-link to="/characters/recent" class="dropdown-item" @click="closeDropdown"
+                            id="dropdown-recent">
+                            <span class="dropdown-icon" id="recent-icon">🕒</span>
                             Recently Edited
                         </router-link>
                     </div>
                 </div>
 
-                <router-link to="/export" class="nav-item">
-                    <span class="nav-icon">📤</span>
-                    <span class="nav-text">Export</span>
+                <router-link to="/export" class="nav-item" id="nav-export">
+                    <span class="nav-icon" id="nav-export-icon">📤</span>
+                    <span class="nav-text" id="nav-export-text">Export</span>
                 </router-link>
             </nav>
 
             <!-- User/Actions -->
-            <div class="header-actions">
-                <button class="icon-button" title="Settings">
+            <div class="header-actions" id="header-actions">
+                <button class="icon-button" title="Settings" id="settings-btn">
                     ⚙️
                 </button>
-                <button class="icon-button" title="Help">
+                <button class="icon-button" title="Help" id="help-btn">
                     ❓
                 </button>
             </div>
