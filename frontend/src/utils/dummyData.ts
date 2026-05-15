@@ -1,50 +1,4 @@
-export interface Character {
-    id: string;
-    name: string;
-    nickname?: string;
-    color: string;
-    age?: number;
-    birth_date?: string;
-    bio?: string;
-    voice_lines?: Array<{ line_name: string; audio_path: string }>;
-    outfits?: Array<{ name: string; default_image: string }>;
-    expressions?: Array<{ name: string; image_path: string; outfit: string }>;
-    created_at: string;
-    updated_at: string;
-}
-
-export interface Project {
-    id: string;
-    name: string;
-    main_plot: string;
-    main_character_id?: string;
-    tags: string[];
-    created_at: string;
-    updated_at: string;
-}
-
-export interface DialogueLine {
-    id: string;
-    character?: {
-        id: string;
-        name: string;
-        color: string;
-    };
-    text: string;
-    expression?: string;
-    order: number;
-}
-
-export interface Scene {
-    id: string;
-    name: string;
-    project_id: string;
-    character_ids: string[];  // characters assigned to this scene (many-to-many)
-    notes?: string;           // optional scene notes
-    dialogue_lines: DialogueLine[];
-    created_at: string;
-    updated_at: string;
-}
+import { type Character, type Project, type Scene, type DialogueLine } from '@/types';
 
 // Define the data arrays
 const initialCharacters: Character[] = [
@@ -267,3 +221,4 @@ export const dummyCharacters: Character[] = initialCharacters;
 export const dummyProjects: Project[] = initialProjects;
 export const dummyScenes: Scene[] = initialScenes;
 export const dummyDialogueLines: DialogueLine[] = initialDialogueLines;
+export type { Character, Project, Scene, DialogueLine };
