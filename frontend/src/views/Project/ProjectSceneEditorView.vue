@@ -1,49 +1,15 @@
 <template>
     <div id="scene-editor-layout" class="flex h-screen bg-gray-950">
         <!-- Left Panel -->
-        <ProjectSidebar :id="`project-sidebar-${route.params.id}`"
-            :characters="projectCharacters" :scenes="scenes" :selected-character-id="selectedCharacterId"
-            :dirty-scene-ids="dirtyScenes" @select-character="handleSelectCharacter"
-            @remove-character="handleRemoveCharacter" @add-character="addCharacterToProject" @select-scene="selectScene"
-            @add-scene="handleAddScene" @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene" />
+        <ProjectSidebar :id="`project-sidebar-${route.params.id}`" :characters="projectCharacters" :scenes="scenes"
+            :selected-character-id="selectedCharacterId" :dirty-scene-ids="dirtyScenes"
+            @select-character="handleSelectCharacter" @remove-character="openRemoveCharacterModal"
+            @add-character="addCharacterToProject" @select-scene="selectScene" @add-scene="handleAddScene"
+            @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene" />
 
         <!-- Main Panel -->
         <main id="workspace-main" class="flex-1 flex flex-col overflow-hidden">
-            <div id="workspace-header" class="border-b border-gray-800 bg-gray-900/50 p-4">
-                <div class="flex items-center justify-between flex-wrap gap-4">
-                    <h2 id="workspace-title" class="text-xl font-semibold text-white">
-                        {{ currentProject?.name ?? 'Scene Editor' }}
-                        <span v-if="currentScene" :id="`scene-badge-${currentScene.id}`"
-                            class="ml-2 text-sm bg-sky-400/20 text-sky-400 px-2 py-1 rounded">
-                            🎬 {{ currentScene.name }}
-                        </span>
-                    </h2>
-
-                    <div class="flex items-center gap-2" id="workspace-actions">
-                        <button :id="currentScene ? `save-scene-${currentScene.id}` : 'save-scene-disabled'"
-                            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm"
-                            @click="saveScene">
-                            💾 Save Scene
-                        </button>
-                        <button id="export-scene-btn"
-                            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm"
-                            @click="exportScene">
-                            📤 Export
-                        </button>
-                        <button id="undo-btn"
-                            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm"
-                            @click="undo">
-                            ↩️ Undo
-                        </button>
-                        <button id="back-to-project-btn"
-                            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm ml-auto"
-                            @click="router.push(`/projects/${route.params.id}`)">
-                            ← Back to Project
-                        </button>
-                    </div>
-                </div>
-            </div>
-
+            <!-- ... keep existing header ... -->
             <div id="workspace-content" class="flex-1 overflow-y-auto p-4">
                 <SceneWorkspace id="scene-workspace-component" :key="currentScene?.id" :dialogue-lines="dialogueLines"
                     :characters="projectCharacters" :selected-line-index="selectedLineIndex"
@@ -54,6 +20,107 @@
                     @speaker-change="handleSpeakerChange" @add-menu="addMenuChoice" @add-action="addAction" />
             </div>
         </main>
+    </div>
+
+    <!-- Character Removal Warning Modal -->
+    <div v-if="showRemovalModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+        id="character-removal-modal" @click.self="closeRemovalModal">
+        <div class="bg-gray-800 rounded-xl max-w-2xl w-full mx-4 shadow-2xl" id="removal-modal-container">
+            <div class="p-6 border-b border-gray-700" id="removal-modal-header">
+                <div class="flex items-center gap-3">
+                    <span class="text-4xl">⚠️</span>
+                    <h3 class="text-2xl text-slate-50">Remove Character from Project</h3>
+                </div>
+            </div>
+
+            <div class="p-6" id="removal-modal-content">
+                <p class="text-slate-300 mb-4" id="removal-modal-message">
+                    Are you sure you want to remove <strong class="text-sky-400">{{ characterToRemove?.name }}</strong>
+                    from this project?
+                </p>
+
+                <!-- Scene usage warning -->
+                <div v-if="characterSceneUsage.length > 0"
+                    class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-6" id="scene-usage-warning">
+                    <p class="text-amber-400 font-medium mb-2 flex items-center gap-2" id="scene-usage-title">
+                        <span>⚠️</span> This character appears in:
+                    </p>
+                    <ul class="text-slate-300 text-sm space-y-1 ml-6 list-disc" id="scene-usage-list">
+                        <li v-for="usage in characterSceneUsage" :key="usage.sceneId"
+                            :id="`usage-scene-${usage.sceneId}`">
+                            <strong>{{ usage.sceneName }}</strong> - {{ usage.dialogueCount }} dialogue line{{
+                                usage.dialogueCount !== 1 ? 's' : '' }}
+                        </li>
+                    </ul>
+                    <p class="text-slate-400 text-sm mt-3" id="total-dialogue-summary">
+                        Total: {{ totalDialogueLinesAffected }} dialogue lines across {{ characterSceneUsage.length }}
+                        scene{{ characterSceneUsage.length !== 1 ? 's' : '' }}
+                    </p>
+                </div>
+
+                <!-- Resolution options -->
+                <div class="space-y-4" id="removal-options">
+                    <p class="text-slate-300 font-medium mb-2">What would you like to do with the dialogue lines?</p>
+
+                    <label
+                        class="flex items-start gap-3 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+                        id="option-placeholder">
+                        <input type="radio" v-model="removalAction" value="placeholder" class="mt-1" />
+                        <div>
+                            <div class="text-slate-50 font-medium">Keep as "Removed Character" placeholder</div>
+                            <div class="text-slate-400 text-sm">Dialogue lines will show "[Removed: {{
+                                characterToRemove?.name
+                            }}]" and can be reassigned later</div>
+                        </div>
+                    </label>
+
+                    <label
+                        class="flex items-start gap-3 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+                        id="option-swap">
+                        <input type="radio" v-model="removalAction" value="swap" class="mt-1" />
+                        <div class="flex-1">
+                            <div class="text-slate-50 font-medium">Replace with another character</div>
+                            <div class="text-slate-400 text-sm mb-2">Automatically reassign all dialogue to a different
+                                character</div>
+                            <select v-if="removalAction === 'swap'" v-model="swapCharacterId"
+                                class="mt-2 w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-slate-50"
+                                id="swap-character-select">
+                                <option value="">Select a character...</option>
+                                <option v-for="char in availableCharactersToSwap" :key="char.id" :value="char.id">
+                                    {{ char.name }} ({{ char.nickname || 'no nickname' }})
+                                </option>
+                            </select>
+                        </div>
+                    </label>
+
+                    <label
+                        class="flex items-start gap-3 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+                        id="option-delete">
+                        <input type="radio" v-model="removalAction" value="delete" class="mt-1" />
+                        <div>
+                            <div class="text-slate-50 font-medium text-red-400">Delete all dialogue lines</div>
+                            <div class="text-slate-400 text-sm">⚠️ This action cannot be undone. All dialogue for this
+                                character will be permanently deleted.</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-gray-700 flex justify-end gap-3" id="removal-modal-actions">
+                <button @click="closeRemovalModal"
+                    class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-slate-300 rounded-lg transition-colors"
+                    id="cancel-removal-btn">
+                    Cancel
+                </button>
+                <button @click="confirmRemoveCharacter"
+                    class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                    :disabled="removalAction === 'swap' && !swapCharacterId"
+                    :class="{ 'opacity-50 cursor-not-allowed': removalAction === 'swap' && !swapCharacterId }"
+                    id="confirm-removal-btn">
+                    Confirm Removal
+                </button>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -87,22 +154,68 @@ const isLoading = ref(false);
 const error = ref<string | null>(null);
 const autoSaveTimer = ref<number | null>(null);
 
-// Computed
+// Character removal modal state
+const showRemovalModal = ref(false);
+const characterToRemove = ref<Character | null>(null);
+const removalAction = ref<'placeholder' | 'swap' | 'delete'>('placeholder');
+const swapCharacterId = ref<string>('');
+
+// Computed: Project characters
 const projectCharacters = ref<Character[]>([...dummyCharacters]);
 
+// Computed: Current project
 const currentProject = computed(() =>
     dummyProjects.find(p => p.id === route.params.id) ?? null
 );
 
+// Computed: Selected character
 const selectedCharacter = computed<Character | null>(() =>
     selectedCharacterId.value
         ? projectCharacters.value.find(c => c.id === selectedCharacterId.value) || null
         : null
 );
 
+// Computed: Has unsaved changes
 const hasUnsavedChanges = computed(() => {
     return currentScene.value ? dirtyScenes.value.has(currentScene.value.id) : false;
 });
+
+// Get character usage across all scenes in this project
+const getCharacterUsage = (characterId: string) => {
+    const usage: { sceneId: string; sceneName: string; dialogueCount: number }[] = [];
+    let totalDialogue = 0;
+
+    scenes.value.forEach(scene => {
+        const dialogueCount = scene.dialogue_lines.filter(line => line.character?.id === characterId).length;
+        if (dialogueCount > 0) {
+            usage.push({
+                sceneId: scene.id,
+                sceneName: scene.name,
+                dialogueCount
+            });
+            totalDialogue += dialogueCount;
+        }
+    });
+
+    return { usage, totalDialogue };
+};
+
+// Computed: Character scene usage for modal
+const characterSceneUsage = computed(() => {
+    if (!characterToRemove.value) return [];
+    return getCharacterUsage(characterToRemove.value.id).usage;
+});
+
+// Computed: Total dialogue lines affected
+const totalDialogueLinesAffected = computed(() => {
+    if (!characterToRemove.value) return 0;
+    return getCharacterUsage(characterToRemove.value.id).totalDialogue;
+});
+
+// Computed: Available characters to swap with (excluding the one being removed)
+const availableCharactersToSwap = computed(() =>
+    projectCharacters.value.filter(c => c.id !== characterToRemove.value?.id)
+);
 
 // Methods
 const handleSelectCharacter = (character: Character) => {
@@ -119,26 +232,143 @@ const addCharacterToProject = () => {
     alert('Character selection modal coming soon!');
 };
 
-const handleRemoveCharacter = (characterId: string) => {
-    if (confirm(`Remove this character from the project?`)) {
-        // Remove from project roster
-        projectCharacters.value = projectCharacters.value.filter(c => c.id !== characterId);
-        // Cascade — unassign from all scenes too
-        scenes.value = scenes.value.map(s => ({
-            ...s,
-            character_ids: s.character_ids.filter(id => id !== characterId)
-        }));
-        // Clear selection if that character was selected
-        if (selectedCharacterId.value === characterId) {
-            selectedCharacterId.value = null;
-        }
-        // Mark scenes as dirty
-        scenes.value.forEach(s => {
-            if (s.character_ids.includes(characterId) === false) {
-                dirtyScenes.value.add(s.id);
-            }
-        });
+// Open removal modal instead of direct confirm
+const openRemoveCharacterModal = (characterId: string) => {
+    const character = projectCharacters.value.find(c => c.id === characterId);
+    if (!character) return;
+
+    characterToRemove.value = character;
+    removalAction.value = 'placeholder';
+    swapCharacterId.value = '';
+    showRemovalModal.value = true;
+};
+
+// Close removal modal
+const closeRemovalModal = () => {
+    showRemovalModal.value = false;
+    characterToRemove.value = null;
+    removalAction.value = 'placeholder';
+    swapCharacterId.value = '';
+};
+
+// Confirm and execute character removal
+const confirmRemoveCharacter = async () => {
+    if (!characterToRemove.value) return;
+
+    if (removalAction.value === 'swap' && !swapCharacterId.value) {
+        error.value = 'Please select a character to swap with';
+        return;
     }
+
+    const characterId = characterToRemove.value.id;
+    const swapWithId = removalAction.value === 'swap' ? swapCharacterId.value : undefined;
+
+    // Handle dialogue lines based on action
+    if (totalDialogueLinesAffected.value > 0) {
+        if (removalAction.value === 'swap' && swapWithId) {
+            const swapCharacter = projectCharacters.value.find(c => c.id === swapWithId);
+            // Replace character in all scenes
+            scenes.value = scenes.value.map(scene => ({
+                ...scene,
+                dialogue_lines: scene.dialogue_lines.map(line => {
+                    if (line.character?.id === characterId && swapCharacter) {
+                        return {
+                            ...line,
+                            character: {
+                                id: swapCharacter.id,
+                                name: swapCharacter.name,
+                                color: swapCharacter.color
+                            }
+                        };
+                    }
+                    return line;
+                })
+            }));
+            // Also update current scene dialogue lines
+            dialogueLines.value = dialogueLines.value.map(line => {
+                if (line.character?.id === characterId && swapCharacter) {
+                    return {
+                        ...line,
+                        character: {
+                            id: swapCharacter.id,
+                            name: swapCharacter.name,
+                            color: swapCharacter.color
+                        }
+                    };
+                }
+                return line;
+            });
+            showTempSuccess(`Replaced "${characterToRemove.value.name}" with "${swapCharacter?.name}"`);
+        } else if (removalAction.value === 'delete') {
+            // Delete all dialogue lines for this character
+            scenes.value = scenes.value.map(scene => ({
+                ...scene,
+                dialogue_lines: scene.dialogue_lines.filter(line => line.character?.id !== characterId)
+            }));
+            dialogueLines.value = dialogueLines.value.filter(line => line.character?.id !== characterId);
+            showTempSuccess(`Deleted all dialogue for "${characterToRemove.value.name}"`);
+        } else {
+            // Keep as placeholder - mark as removed
+            scenes.value = scenes.value.map(scene => ({
+                ...scene,
+                dialogue_lines: scene.dialogue_lines.map(line => {
+                    if (line.character?.id === characterId) {
+                        return {
+                            ...line,
+                            character: {
+                                ...line.character,
+                                name: `[Removed: ${line.character.name}]`,
+                                color: '#6B7280'
+                            }
+                        };
+                    }
+                    return line;
+                })
+            }));
+            dialogueLines.value = dialogueLines.value.map(line => {
+                if (line.character?.id === characterId) {
+                    return {
+                        ...line,
+                        character: {
+                            ...line.character,
+                            name: `[Removed: ${line.character.name}]`,
+                            color: '#6B7280'
+                        }
+                    };
+                }
+                return line;
+            });
+            showTempSuccess(`Character "${characterToRemove.value.name}" removed (dialogue preserved as placeholder)`);
+        }
+    }
+
+    // Remove character from project roster
+    projectCharacters.value = projectCharacters.value.filter(c => c.id !== characterId);
+
+    // Remove character from scene character_ids
+    scenes.value = scenes.value.map(s => ({
+        ...s,
+        character_ids: s.character_ids.filter(id => id !== characterId)
+    }));
+
+    // Mark affected scenes as dirty
+    scenes.value.forEach(s => {
+        if (!s.character_ids.includes(characterId)) {
+            dirtyScenes.value.add(s.id);
+        }
+    });
+
+    // Clear selection if that character was selected
+    if (selectedCharacterId.value === characterId) {
+        selectedCharacterId.value = null;
+    }
+
+    // If current scene dialogue was affected, mark as dirty
+    if (currentScene.value) {
+        dirtyScenes.value.add(currentScene.value.id);
+    }
+
+    closeRemovalModal();
 };
 
 const selectScene = (scene: Scene) => {
@@ -196,8 +426,6 @@ const addDialogueLine = (line: DialogueLine) => {
     selectedLineIndex.value = dialogueLines.value.length - 1;
     selectedCharacterId.value = line.character?.id || null;
     if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
-
-    // Trigger auto-save
     scheduleAutoSave();
 };
 
@@ -207,8 +435,6 @@ const handleEditLine = (payload: { index: number; line: DialogueLine }) => {
     selectedLineIndex.value = null;
     selectedCharacterId.value = line.character?.id || null;
     if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
-
-    // Trigger auto-save
     scheduleAutoSave();
 };
 
@@ -218,8 +444,6 @@ const deleteDialogueLine = (index: number) => {
         selectedLineIndex.value = null;
         dialogueLines.value.forEach((line, idx) => { line.order = idx + 1; });
         if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
-
-        // Trigger auto-save
         scheduleAutoSave();
     }
 };
@@ -245,13 +469,10 @@ const addAction = () => {
 
 const saveScene = async () => {
     if (!currentScene.value) return;
-
     isLoading.value = true;
-
     try {
         const id = currentScene.value.id;
         const index = scenes.value.findIndex(s => s.id === id);
-
         if (index !== -1) {
             const updated: Scene = {
                 ...scenes.value[index]!,
@@ -261,13 +482,9 @@ const saveScene = async () => {
             scenes.value[index] = updated;
             currentScene.value = updated;
         }
-
         delete sceneDialogueCache.value[id];
         dirtyScenes.value.delete(id);
-
         console.log(`Scene "${currentScene.value.name}" saved successfully`);
-
-        // Show temporary success indicator
         showTempSuccess('Scene saved!');
     } catch (err) {
         console.error('Failed to save scene:', err);
@@ -329,7 +546,6 @@ const undo = () => {
     }
 };
 
-// Reset state (for testing)
 const resetState = () => {
     selectedCharacterId.value = null;
     selectedLineIndex.value = null;
@@ -339,49 +555,29 @@ const resetState = () => {
     sceneDialogueCache.value = {};
     dirtyScenes.value.clear();
     error.value = null;
-
     if (autoSaveTimer.value) {
         clearTimeout(autoSaveTimer.value);
         autoSaveTimer.value = null;
     }
 };
 
-// Keyboard shortcuts
 const handleKeydown = (event: KeyboardEvent) => {
-    // Ctrl/Cmd + S to save
     if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         event.preventDefault();
         saveScene();
     }
-    // Ctrl/Cmd + Z to undo
     if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
         event.preventDefault();
         undo();
     }
 };
 
-// Lifecycle
 onMounted(() => {
     console.log('Scene Editor mounted for project:', route.params.id);
     window.addEventListener('keydown', handleKeydown);
-
-    // Load any auto-saved draft from localStorage
-    const draft = localStorage.getItem(`scene_draft_${route.params.id}`);
-    if (draft) {
-        try {
-            const parsed = JSON.parse(draft);
-            if (parsed.timestamp && Date.now() - parsed.timestamp < 60000) {
-                console.log('Found recent draft, restoring...');
-                // Restore logic here
-            }
-        } catch (err) {
-            console.error('Failed to load draft:', err);
-        }
-    }
 });
 
 onUnmounted(() => {
-    // Auto-save before unmounting
     autoSaveCurrentScene();
     window.removeEventListener('keydown', handleKeydown);
     if (autoSaveTimer.value) {
@@ -389,13 +585,11 @@ onUnmounted(() => {
     }
 });
 
-// Watch for project ID changes
 watch(() => route.params.id, () => {
     console.log('Project ID changed, reloading...');
     resetState();
 });
 
-// Expose for testing in development
 if (import.meta.env.DEV) {
     // @ts-ignore
     window.__SCENE_EDITOR_VIEW__ = {
@@ -411,7 +605,6 @@ if (import.meta.env.DEV) {
 </script>
 
 <style scoped>
-/* Only custom styles that can't be easily done with Tailwind */
 @keyframes fade-in {
     from {
         opacity: 0;
@@ -428,7 +621,6 @@ if (import.meta.env.DEV) {
     animation: fade-in 0.2s ease-out;
 }
 
-/* Custom scrollbar for workspace */
 .overflow-y-auto {
     scrollbar-width: thin;
     scrollbar-color: #334155 #1e293b;

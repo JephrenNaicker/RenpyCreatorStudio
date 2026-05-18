@@ -1,59 +1,70 @@
 <!-- frontend/src/components/character/CharacterPickerDropdown.vue -->
 <template>
-    <div class="character-picker-dropdown" ref="dropdownContainer">
+    <div class="character-picker-dropdown" ref="dropdownContainer" id="character-picker-dropdown">
         <!-- Trigger Button -->
-        <button class="trigger-btn" :class="{ active: isOpen }" @click="toggleDropdown" :title="buttonLabel">
+        <button class="trigger-btn" :class="{ active: isOpen }" @click="toggleDropdown" :title="buttonLabel"
+            :id="`character-picker-trigger-${buttonLabel.replace(/\s/g, '-').toLowerCase()}`">
             <slot name="trigger">
-                <span class="trigger-icon">+</span>
-                <span v-if="showLabel" class="trigger-label">{{ buttonLabel }}</span>
+                <span class="trigger-icon" id="trigger-icon">+</span>
+                <span v-if="showLabel" class="trigger-label" id="trigger-label">{{ buttonLabel }}</span>
             </slot>
         </button>
 
         <!-- Dropdown Content -->
         <Transition name="dropdown">
-            <div v-if="isOpen" class="dropdown-content" ref="dropdownContent">
+            <div v-if="isOpen" class="dropdown-content" ref="dropdownContent" id="dropdown-content">
                 <!-- Search Input -->
-                <div class="search-section">
+                <div class="search-section" id="search-section">
                     <input ref="searchInput" v-model="searchQuery" type="text" class="search-input"
-                        placeholder="Search or create character..." @keyup.enter="handleCreateNew" />
+                        placeholder="Search or create character..." @keyup.enter="handleCreateNew"
+                        id="character-search-input" />
                 </div>
 
                 <!-- Character List -->
-                <div class="character-list-section">
-                    <div class="list-header">
-                        <span class="list-title">Existing Characters</span>
-                        <span class="list-count">{{ filteredCharacters.length }}</span>
+                <div class="character-list-section" id="character-list-section">
+                    <div class="list-header" id="list-header">
+                        <span class="list-title" id="list-title">Existing Characters</span>
+                        <span class="list-count" id="list-count">{{ filteredCharacters.length }}</span>
                     </div>
 
-                    <div v-if="filteredCharacters.length > 0" class="character-list">
-                        <div v-for="char in filteredCharacters" :key="char.id" class="character-item"
-                            :class="{ selected: isCharacterSelected(char.id) }" @click="selectCharacter(char)">
-                            <div class="character-color" :style="{ backgroundColor: char.color }"></div>
-                            <div class="character-info">
-                                <div class="character-name">{{ char.name }}</div>
-                                <div v-if="char.nickname" class="character-nick">"{{ char.nickname }}"</div>
+                    <div v-if="filteredCharacters.length > 0" class="character-list" id="character-list">
+                        <div v-for="(char, index) in filteredCharacters" :key="char.id" class="character-item"
+                            :class="{ selected: isCharacterSelected(char.id) }" @click="selectCharacter(char)"
+                            :id="`character-item-${char.id}`" :data-character-id="char.id"
+                            :data-character-name="char.name" :data-selected="isCharacterSelected(char.id)"
+                            :data-index="index">
+                            <div class="character-color" :style="{ backgroundColor: char.color }"
+                                :id="`character-color-${char.id}`"></div>
+                            <div class="character-info" id="character-info">
+                                <div class="character-name" :id="`character-name-${char.id}`">{{ char.name }}
+                                </div>
+                                <div v-if="char.nickname" class="character-nick" :id="`character-nick-${char.id}`">
+                                    "{{ char.nickname }}"
+                                </div>
                             </div>
-                            <div class="character-stats">
-                                <span class="stat-badge">😀 {{ char.expressions?.length || 0 }}</span>
-                                <span class="stat-badge">👕 {{ char.outfits?.length || 0 }}</span>
+                            <div class="character-stats" :id="`character-stats-${char.id}`">
+                                <span class="stat-badge" :id="`character-expressions-${char.id}`">😀 {{
+                                    char.expressions?.length || 0 }}</span>
+                                <span class="stat-badge" :id="`character-outfits-${char.id}`">👕 {{
+                                    char.outfits?.length || 0 }}</span>
                             </div>
-                            <div v-if="isCharacterSelected(char.id)" class="check-icon">✓</div>
+                            <div v-if="isCharacterSelected(char.id)" class="check-icon" id="check-icon">✓</div>
                         </div>
                     </div>
 
-                    <div v-else class="empty-state">
-                        <span class="empty-icon">🔍</span>
-                        <p>No characters found matching "{{ searchQuery }}"</p>
+                    <div v-else class="empty-state" id="empty-state">
+                        <span class="empty-icon" id="empty-icon">🔍</span>
+                        <p id="empty-message">No characters found matching "{{ searchQuery }}"</p>
                     </div>
                 </div>
 
                 <!-- Quick Create Character Section -->
-                <div class="create-section">
-                    <div class="divider"></div>
-                    <button class="create-btn" @click="handleCreateNew">
-                        <span class="create-icon">✨</span>
-                        <span class="create-text">
-                            Quick Create "{{ searchQuery || 'Untitled' }}"
+                <div class="create-section" id="create-section">
+                    <div class="divider" id="divider"></div>
+                    <button class="create-btn" @click="handleCreateNew" id="quick-create-btn">
+                        <span class="create-icon" id="create-icon">✨</span>
+                        <span class="create-text" id="create-text">
+                            Quick Create "{{ searchQuery || 'Character' }}"
                         </span>
                     </button>
                 </div>
@@ -61,42 +72,45 @@
         </Transition>
 
         <!-- Quick Create Modal -->
-        <div v-if="showCreateModal" class="modal-overlay" @click.self="closeCreateModal">
-            <div class="create-modal">
-                <h3 class="modal-title">Quick Create Character</h3>
+        <div v-if="showCreateModal" class="modal-overlay" @click.self="closeCreateModal" id="create-modal-overlay">
+            <div class="create-modal" id="create-modal">
+                <h3 class="modal-title" id="modal-title">Quick Create Character</h3>
 
-                <div class="form-group">
-                    <label class="form-label">Character Name *</label>
+                <div class="form-group" id="form-group-name">
+                    <label class="form-label" id="name-label">Character Name *</label>
                     <input v-model="newCharacter.name" type="text" class="form-input" placeholder="e.g., John Smith"
-                        @keyup.enter="confirmCreateCharacter" />
+                        @keyup.enter="confirmCreateCharacter" id="character-name-input" />
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Nickname (Optional)</label>
+                <div class="form-group" id="form-group-nickname">
+                    <label class="form-label" id="nickname-label">Nickname (Optional)</label>
                     <input v-model="newCharacter.nickname" type="text" class="form-input"
-                        placeholder="e.g., The Detective" />
+                        placeholder="e.g., The Detective" id="character-nickname-input" />
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Color</label>
-                    <div class="color-selector">
-                        <div v-for="color in presetColors" :key="color" class="color-option"
+                <div class="form-group" id="form-group-color">
+                    <label class="form-label" id="color-label">Color</label>
+                    <div class="color-selector" id="color-selector">
+                        <div v-for="(color, index) in presetColors" :key="color" class="color-option"
                             :style="{ backgroundColor: color }" :class="{ active: newCharacter.color === color }"
-                            @click="newCharacter.color = color"></div>
+                            @click="newCharacter.color = color" :id="`color-option-${index}`" :data-color-value="color">
+                        </div>
                     </div>
                 </div>
 
-                <div class="modal-actions">
-                    <div class="modal-actions-left">
-                        <button class="btn-advanced" @click="goToAdvancedCreator">
-                            <span class="advanced-icon">⚙️</span>
+                <div class="modal-actions" id="modal-actions">
+                    <div class="modal-actions-left" id="modal-actions-left">
+                        <button class="btn-advanced" @click="goToAdvancedCreator" id="advanced-creator-btn">
+                            <span class="advanced-icon" id="advanced-icon">⚙️</span>
                             Advanced Creation
                         </button>
                     </div>
-                    <div class="modal-actions-right">
-                        <button class="btn-secondary" @click="closeCreateModal">Cancel</button>
+                    <div class="modal-actions-right" id="modal-actions-right">
+                        <button class="btn-secondary" @click="closeCreateModal" id="cancel-create-btn">
+                            Cancel
+                        </button>
                         <button class="btn-primary" @click="confirmCreateCharacter"
-                            :disabled="!newCharacter.name.trim()">
+                            :disabled="!newCharacter.name.trim()" id="confirm-create-btn">
                             Quick Create
                         </button>
                     </div>
@@ -107,17 +121,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import type { Character } from '@/utils/dummyData';
+import type { Character } from '@/types';
 
+// Props interface
 interface Props {
     characters?: Character[];
     selectedCharacterIds?: string[];
     buttonLabel?: string;
     showLabel?: boolean;
     multiSelect?: boolean;
-    projectId?: string; // Optional project ID to pass to character creator
+    projectId?: string;
+    maxSelections?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -127,24 +143,27 @@ const props = withDefaults(defineProps<Props>(), {
     showLabel: true,
     multiSelect: false,
     projectId: undefined,
+    maxSelections: undefined,
 });
 
+// Emits
 const emit = defineEmits<{
     (e: 'select', character: Character): void;
-    (e: 'create', character: Omit<Character, 'id'>): void;
+    (e: 'create', character: Omit<Character, 'id' | 'created_at' | 'updated_at'>): void;
     (e: 'update:selectedIds', ids: string[]): void;
+    (e: 'remove', characterId: string): void;
 }>();
 
 const router = useRouter();
 
-// Refs for click outside detection
+// DOM refs
 const dropdownContainer = ref<HTMLElement | null>(null);
 const dropdownContent = ref<HTMLElement | null>(null);
+const searchInput = ref<HTMLInputElement | null>(null);
 
 // Dropdown state
 const isOpen = ref(false);
 const searchQuery = ref('');
-const searchInput = ref<HTMLInputElement | null>(null);
 
 // Create character modal
 const showCreateModal = ref(false);
@@ -153,8 +172,9 @@ const newCharacter = ref({
     nickname: '',
     color: '#38bdf8',
     bio: '',
-    expressions: [],
-    outfits: []
+    voice_lines: [],
+    outfits: [],
+    expressions: []
 });
 
 // Preset colors for quick selection
@@ -169,60 +189,75 @@ const presetColors = [
     '#2dd4bf', // teal
 ];
 
-// Filtered characters based on search
+// Computed: Filtered characters based on search
 const filteredCharacters = computed(() => {
     if (!searchQuery.value.trim()) return props.characters;
 
     const query = searchQuery.value.toLowerCase();
     return props.characters.filter(char =>
         char.name.toLowerCase().includes(query) ||
-        char.nickname?.toLowerCase().includes(query)
+        (char.nickname && char.nickname.toLowerCase().includes(query))
     );
 });
 
-// Check if character is selected
-const isCharacterSelected = (charId: string) => {
+// Computed: Check if max selections reached
+const isMaxSelectionsReached = computed(() => {
+    if (!props.multiSelect || props.maxSelections === undefined) return false;
+    return props.selectedCharacterIds.length >= props.maxSelections;
+});
+
+// Methods
+const isCharacterSelected = (charId: string): boolean => {
     return props.selectedCharacterIds?.includes(charId) ?? false;
 };
 
-// Handle click outside
-const handleClickOutside = (event: MouseEvent) => {
-    if (isOpen.value && dropdownContainer.value && !dropdownContainer.value.contains(event.target as Node)) {
-        closeDropdown();
+const toggleDropdown = async (): Promise<void> => {
+    if (isMaxSelectionsReached.value && !isOpen.value) {
+        // Don't open if max selections reached
+        return;
     }
-};
 
-// Toggle dropdown
-const toggleDropdown = () => {
     isOpen.value = !isOpen.value;
     if (isOpen.value) {
-        nextTick(() => {
-            searchInput.value?.focus();
-        });
+        await nextTick();
+        searchInput.value?.focus();
     }
 };
 
-// Close dropdown
-const closeDropdown = () => {
+const closeDropdown = (): void => {
     isOpen.value = false;
     searchQuery.value = '';
 };
 
-// Select character
-const selectCharacter = (character: Character) => {
+const selectCharacter = (character: Character): void => {
     if (props.multiSelect) {
-        const newIds = isCharacterSelected(character.id)
-            ? props.selectedCharacterIds.filter(id => id !== character.id)
-            : [...props.selectedCharacterIds, character.id];
-        emit('update:selectedIds', newIds);
+        // Multi-select mode
+        const isSelected = isCharacterSelected(character.id);
+
+        if (isSelected) {
+            // Remove character
+            const newIds = props.selectedCharacterIds.filter(id => id !== character.id);
+            emit('update:selectedIds', newIds);
+            emit('remove', character.id);
+        } else {
+            // Add character - check max limit
+            if (props.maxSelections && props.selectedCharacterIds.length >= props.maxSelections) {
+                // Show warning or just don't add
+                console.warn(`Maximum ${props.maxSelections} selections allowed`);
+                return;
+            }
+            const newIds = [...props.selectedCharacterIds, character.id];
+            emit('update:selectedIds', newIds);
+            emit('select', character);
+        }
     } else {
+        // Single-select mode
         emit('select', character);
         closeDropdown();
     }
 };
 
-// Handle create new
-const handleCreateNew = () => {
+const handleCreateNew = (): void => {
     if (searchQuery.value.trim()) {
         newCharacter.value.name = searchQuery.value;
     }
@@ -230,55 +265,79 @@ const handleCreateNew = () => {
     closeDropdown();
 };
 
-// Go to advanced character creator
-const goToAdvancedCreator = () => {
+const goToAdvancedCreator = (): void => {
     closeCreateModal();
     // Navigate to character creator, optionally with pre-filled name and project context
-    const route = props.projectId
-        ? `/characters/new?name=${encodeURIComponent(newCharacter.value.name || '')}&projectId=${props.projectId}`
-        : `/characters/new?name=${encodeURIComponent(newCharacter.value.name || '')}`;
+    const params = new URLSearchParams();
+    if (newCharacter.value.name) params.append('name', newCharacter.value.name);
+    if (props.projectId) params.append('projectId', props.projectId);
+
+    const route = `/characters/new${params.toString() ? `?${params.toString()}` : ''}`;
     router.push(route);
 };
 
-// Confirm create character
-const confirmCreateCharacter = async () => {
+const confirmCreateCharacter = async (): Promise<void> => {
     if (!newCharacter.value.name.trim()) return;
 
-    const characterData: Omit<Character, 'id'> = {
+    const characterData: Omit<Character, 'id' | 'created_at' | 'updated_at'> = {
         name: newCharacter.value.name.trim(),
         nickname: newCharacter.value.nickname || undefined,
         color: newCharacter.value.color,
-        bio: newCharacter.value.bio,
-        expressions: [],
+        bio: newCharacter.value.bio || '',
+        voice_lines: [],
         outfits: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        expressions: []
     };
 
     emit('create', characterData);
     closeCreateModal();
+
+    // Reset search query to show the new character
+    searchQuery.value = '';
 };
 
-// Close create modal
-const closeCreateModal = () => {
+const closeCreateModal = (): void => {
     showCreateModal.value = false;
     newCharacter.value = {
         name: '',
         nickname: '',
         color: '#38bdf8',
         bio: '',
-        expressions: [],
-        outfits: []
+        voice_lines: [],
+        outfits: [],
+        expressions: []
     };
 };
 
-// Lifecycle hooks for click outside
+// Handle click outside
+const handleClickOutside = (event: MouseEvent): void => {
+    if (isOpen.value && dropdownContainer.value && !dropdownContainer.value.contains(event.target as Node)) {
+        closeDropdown();
+    }
+};
+
+// Watch for selectedCharacterIds changes to close dropdown if needed
+watch(() => props.selectedCharacterIds, () => {
+    if (!props.multiSelect && props.selectedCharacterIds.length > 0) {
+        closeDropdown();
+    }
+});
+
+// Lifecycle
 onMounted(() => {
     document.addEventListener('click', handleClickOutside);
 });
 
 onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside);
+});
+
+// Expose methods for testing
+defineExpose({
+    openDropdown: () => { isOpen.value = true; },
+    closeDropdown,
+    isOpen,
+    selectedIds: props.selectedCharacterIds
 });
 </script>
 
@@ -318,6 +377,10 @@ onUnmounted(() => {
     font-size: 1.1rem;
 }
 
+.trigger-label {
+    font-weight: 500;
+}
+
 /* Dropdown animation */
 .dropdown-enter-active,
 .dropdown-leave-active {
@@ -334,7 +397,7 @@ onUnmounted(() => {
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    width: 360px;
+    width: 380px;
     background: #1e293b;
     border: 1px solid #334155;
     border-radius: 12px;
@@ -680,5 +743,24 @@ onUnmounted(() => {
 .btn-primary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Scrollbar styling */
+.character-list-section::-webkit-scrollbar {
+    width: 6px;
+}
+
+.character-list-section::-webkit-scrollbar-track {
+    background: #0f172a;
+    border-radius: 3px;
+}
+
+.character-list-section::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+}
+
+.character-list-section::-webkit-scrollbar-thumb:hover {
+    background: #475569;
 }
 </style>
