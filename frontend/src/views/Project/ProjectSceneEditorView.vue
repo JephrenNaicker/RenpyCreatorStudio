@@ -9,7 +9,41 @@
 
         <!-- Main Panel -->
         <main id="workspace-main" class="flex-1 flex flex-col overflow-hidden">
-            <!-- ... keep existing header ... -->
+            <div id="workspace-header" class="border-b border-gray-800 bg-gray-900/50 p-4">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <h2 id="workspace-title" class="text-xl font-semibold text-white">
+                        {{ currentProject?.name ?? 'Scene Editor' }}
+                        <span v-if="currentScene" :id="`scene-badge-${currentScene.id}`"
+                            class="ml-2 text-sm bg-sky-400/20 text-sky-400 px-2 py-1 rounded">
+                            🎬 {{ currentScene.name }}
+                        </span>
+                    </h2>
+
+                    <div class="flex items-center gap-2" id="workspace-actions">
+                        <button :id="currentScene ? `save-scene-${currentScene.id}` : 'save-scene-disabled'"
+                            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm"
+                            @click="saveScene">
+                            💾 Save Scene
+                        </button>
+                        <button id="export-scene-btn"
+                            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm"
+                            @click="exportScene">
+                            📤 Export
+                        </button>
+                        <button id="undo-btn"
+                            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm"
+                            @click="undo">
+                            ↩️ Undo
+                        </button>
+                        <button id="back-to-project-btn"
+                            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm ml-auto"
+                            @click="router.push(`/projects/${route.params.id}`)">
+                            ← Back to Project
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div id="workspace-content" class="flex-1 overflow-y-auto p-4">
                 <SceneWorkspace id="scene-workspace-component" :key="currentScene?.id" :dialogue-lines="dialogueLines"
                     :characters="projectCharacters" :selected-line-index="selectedLineIndex"
