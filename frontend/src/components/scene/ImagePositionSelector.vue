@@ -1,93 +1,118 @@
 <!-- frontend/src/components/scene/ImagePositionSelector.vue -->
 <template>
-    <div class="image-position-selector" :id="`position-selector-${componentId}`">
-        <!-- Quick position buttons -->
-        <div class="position-buttons" :id="`position-buttons-${componentId}`">
-            <button @click="setPosition('left')" :class="{ active: currentPosition === 'left' }" title="Left aligned"
-                :id="`btn-left-${componentId}`" class="position-btn">
+    <div class="pos-selector" :id="`position-selector-${componentId}`">
+
+        <!-- Character headshot strip -->
+        <div class="avatar-strip" :id="`avatar-strip-${componentId}`">
+            <div class="avatar" :style="{ background: avatarBg, borderColor: avatarBorder }"
+                :id="`avatar-${componentId}`">
+                {{ avatarInitial }}
+            </div>
+            <div class="avatar-info">
+                <span class="avatar-name">{{ props.characterName || 'Character' }}</span>
+                <span class="avatar-sub">Set stage position</span>
+            </div>
+            <!-- Mini stage indicator -->
+            <div class="mini-stage" :id="`mini-stage-${componentId}`">
+                <div class="mini-track">
+                    <div class="mini-zone"><span>L</span></div>
+                    <div class="mini-zone"><span>C</span></div>
+                    <div class="mini-zone"><span>R</span></div>
+                </div>
+                <div class="mini-marker" :style="miniMarkerStyle" :id="`mini-marker-${componentId}`">
+                    {{ miniMarkerIcon }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Position buttons -->
+        <div class="pos-row" :id="`pos-row-${componentId}`">
+            <button class="pos-btn" :class="{ active: currentPosition === 'left' }" @click="setPosition('left')"
+                title="Left aligned" :id="`btn-left-${componentId}`">
                 ◀ Left
             </button>
-            <button @click="setPosition('center')" :class="{ active: currentPosition === 'center' }"
-                title="Center aligned" :id="`btn-center-${componentId}`" class="position-btn">
+            <button class="pos-btn" :class="{ active: currentPosition === 'center' }" @click="setPosition('center')"
+                title="Center aligned" :id="`btn-center-${componentId}`">
                 ◆ Center
             </button>
-            <button @click="setPosition('right')" :class="{ active: currentPosition === 'right' }" title="Right aligned"
-                :id="`btn-right-${componentId}`" class="position-btn">
+            <button class="pos-btn" :class="{ active: currentPosition === 'right' }" @click="setPosition('right')"
+                title="Right aligned" :id="`btn-right-${componentId}`">
                 Right ▶
             </button>
-            <button @click="toggleAdvanced" :class="{ active: showAdvanced }" title="Advanced options"
-                :id="`btn-advanced-${componentId}`" class="position-btn advanced-btn">
+            <button class="pos-btn adv-btn" :class="{ active: showAdvanced }" @click="toggleAdvanced"
+                title="Transform options" :id="`btn-advanced-${componentId}`">
                 ⚙️
             </button>
         </div>
 
-        <!-- Advanced options panel -->
-        <div v-if="showAdvanced" class="advanced-panel" :id="`advanced-panel-${componentId}`">
-            <!-- Flip checkbox (horizontal) -->
-            <label class="flex items-center gap-2 cursor-pointer" :id="`flip-x-label-${componentId}`">
-                <input type="checkbox" v-model="localTransform.flip_x" @change="updateTransform"
-                    :id="`flip-x-${componentId}`" />
-                <span>↔️ Flip Horizontal</span>
-            </label>
+        <!-- Flip chips — always visible -->
+        <div class="flip-row" :id="`flip-row-${componentId}`">
+            <button class="flip-chip" :class="{ active: localTransform.flip_x }" @click="toggleFlip('x')"
+                :id="`chip-flipx-${componentId}`">
+                <span class="chip-icon">↔️</span> Flip H
+            </button>
+            <button class="flip-chip" :class="{ active: localTransform.flip_y }" @click="toggleFlip('y')"
+                :id="`chip-flipy-${componentId}`">
+                <span class="chip-icon">↕️</span> Flip V
+            </button>
+        </div>
 
-            <!-- Flip checkbox (vertical) - for later -->
-            <label class="flex items-center gap-2 cursor-pointer mt-2" :id="`flip-y-label-${componentId}`">
-                <input type="checkbox" v-model="localTransform.flip_y" @change="updateTransform"
-                    :id="`flip-y-${componentId}`" />
-                <span>↕️ Flip Vertical</span>
-            </label>
-
-            <!-- Zoom slider -->
-            <div class="slider-group mt-3" :id="`zoom-group-${componentId}`">
-                <label class="text-sm text-slate-300">Zoom: {{ localTransform.zoom || 1.0 }}x</label>
+        <!-- Advanced panel -->
+        <div v-if="showAdvanced" class="adv-panel" :id="`adv-panel-${componentId}`">
+            <!-- Zoom -->
+            <div class="slider-group" :id="`zoom-group-${componentId}`">
+                <div class="slider-header">
+                    <label :for="`zoom-slider-${componentId}`">Zoom</label>
+                    <span class="slider-val">{{ (localTransform.zoom || 1).toFixed(1) }}×</span>
+                </div>
                 <input type="range" v-model.number="localTransform.zoom" min="0.5" max="2.0" step="0.05"
-                    @input="updateTransform" :id="`zoom-slider-${componentId}`" class="w-full" />
+                    @input="updateTransform" :id="`zoom-slider-${componentId}`" />
             </div>
 
-            <!-- Alpha/Opacity slider -->
-            <div class="slider-group mt-3" :id="`alpha-group-${componentId}`">
-                <label class="text-sm text-slate-300">Opacity: {{ Math.round((localTransform.alpha || 1) * 100)
-                }}%</label>
+            <!-- Opacity -->
+            <div class="slider-group" :id="`alpha-group-${componentId}`">
+                <div class="slider-header">
+                    <label :for="`alpha-slider-${componentId}`">Opacity</label>
+                    <span class="slider-val">{{ Math.round((localTransform.alpha || 1) * 100) }}%</span>
+                </div>
                 <input type="range" v-model.number="localTransform.alpha" min="0" max="1" step="0.01"
-                    @input="updateTransform" :id="`alpha-slider-${componentId}`" class="w-full" />
+                    @input="updateTransform" :id="`alpha-slider-${componentId}`" />
             </div>
 
-            <!-- Custom position (only shown when custom is selected) -->
-            <div v-if="currentPosition === 'custom'" class="custom-position mt-3"
-                :id="`custom-position-${componentId}`">
-                <div class="slider-group">
-                    <label class="text-sm text-slate-300">X Position: {{ (localCustomX || 0.5).toFixed(2) }}</label>
-                    <input type="range" v-model.number="localCustomX" min="0" max="1" step="0.01"
-                        @input="updateCustomPosition" :id="`custom-x-${componentId}`" class="w-full" />
+            <!-- Custom XY (only for custom position) -->
+            <div v-if="currentPosition === 'custom'" class="slider-group" :id="`custom-position-${componentId}`">
+                <div class="slider-header">
+                    <label :for="`custom-x-${componentId}`">X Position</label>
+                    <span class="slider-val">{{ (localCustomX || 0.5).toFixed(2) }}</span>
                 </div>
-                <div class="slider-group mt-2">
-                    <label class="text-sm text-slate-300">Y Position: {{ (localCustomY || 0.5).toFixed(2) }}</label>
-                    <input type="range" v-model.number="localCustomY" min="0" max="1" step="0.01"
-                        @input="updateCustomPosition" :id="`custom-y-${componentId}`" class="w-full" />
+                <input type="range" v-model.number="localCustomX" min="0" max="1" step="0.01"
+                    @input="updateCustomPosition" :id="`custom-x-${componentId}`" />
+                <div class="slider-header" style="margin-top:8px">
+                    <label :for="`custom-y-${componentId}`">Y Position</label>
+                    <span class="slider-val">{{ (localCustomY || 0.5).toFixed(2) }}</span>
                 </div>
-            </div>
-
-            <!-- Preview area -->
-            <div class="preview-area mt-4 pt-3 border-t border-gray-700" :id="`preview-${componentId}`">
-                <div class="text-sm text-slate-400 mb-2">Preview:</div>
-                <div class="preview-box" :style="previewStyle" :id="`preview-box-${componentId}`">
-                    <span class="text-xs">{{ previewCharacterName || 'Character' }}</span>
-                </div>
+                <input type="range" v-model.number="localCustomY" min="0" max="1" step="0.01"
+                    @input="updateCustomPosition" :id="`custom-y-${componentId}`" />
             </div>
         </div>
 
-        <!-- Current position badge -->
-        <div v-if="currentPosition && !showAdvanced" class="current-badge mt-2" :id="`badge-${componentId}`">
-            <span class="text-xs text-slate-400">Position: </span>
-            <span class="text-xs text-sky-400">{{ getPositionLabel() }}</span>
+        <!-- Status strip -->
+        <div class="status-strip" :id="`status-strip-${componentId}`">
+            <div class="s-dot" :style="{ background: props.characterColor || '#38bdf8' }"></div>
+            <p class="s-text">
+                Position: <span>{{ positionLabel }}</span>
+                <template v-if="transformSummary"> · {{ transformSummary }}</template>
+                <template v-else> — no transforms</template>
+            </p>
         </div>
+
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 
-// Types
+// ── Types ──────────────────────────────────────────────────────────────────
 export interface TransformConfig {
     zoom?: number;
     rotate?: number;
@@ -103,7 +128,7 @@ export interface ImagePosition {
     transform?: TransformConfig;
 }
 
-// Props
+// ── Props ──────────────────────────────────────────────────────────────────
 interface Props {
     modelValue?: ImagePosition;
     characterName?: string;
@@ -118,13 +143,13 @@ const props = withDefaults(defineProps<Props>(), {
     componentId: () => `pos_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
 });
 
-// Emits
+// ── Emits ──────────────────────────────────────────────────────────────────
 const emit = defineEmits<{
     (e: 'update:modelValue', value: ImagePosition | undefined): void;
     (e: 'change', value: ImagePosition | undefined): void;
 }>();
 
-// Local state
+// ── Local state ────────────────────────────────────────────────────────────
 const showAdvanced = ref(false);
 const currentPosition = ref<'left' | 'center' | 'right' | 'custom'>('center');
 const localCustomX = ref<number>(0.5);
@@ -136,56 +161,55 @@ const localTransform = ref<TransformConfig>({
     alpha: 1.0
 });
 
-// Computed: Preview character name (truncated)
-const previewCharacterName = computed(() => {
-    if (!props.characterName) return 'Character';
-    return props.characterName.length > 10
-        ? props.characterName.substring(0, 8) + '...'
-        : props.characterName;
+// ── Avatar computed ────────────────────────────────────────────────────────
+const avatarInitial = computed(() => {
+    const name = props.characterName || 'C';
+    return name.substring(0, 2).toUpperCase();
 });
 
-// Computed: Preview style for the position visualization
-const previewStyle = computed(() => {
-    const style: Record<string, string> = {
-        backgroundColor: props.characterColor + '33', // Add transparency
-        borderColor: props.characterColor,
-        transition: 'all 0.2s ease'
-    };
+const avatarBg = computed(() => (props.characterColor || '#38bdf8') + '1a');
+const avatarBorder = computed(() => (props.characterColor || '#38bdf8') + '55');
 
-    // Apply position
-    if (currentPosition.value === 'left') {
-        style.marginRight = 'auto';
-        style.marginLeft = '0';
-    } else if (currentPosition.value === 'center') {
-        style.marginLeft = 'auto';
-        style.marginRight = 'auto';
-    } else if (currentPosition.value === 'right') {
-        style.marginLeft = 'auto';
-        style.marginRight = '0';
-    } else if (currentPosition.value === 'custom') {
-        style.marginLeft = `${(localCustomX.value * 100)}%`;
-        style.transform = `translateX(-${(localCustomX.value * 100)}%)`;
-        style.marginTop = `${(localCustomY.value * 100)}%`;
-    }
+// ── Mini stage marker ──────────────────────────────────────────────────────
+const MINI_POS: Record<string, { left: string; icon: string }> = {
+    left: { left: 'calc(17% - 10px)', icon: '◀' },
+    center: { left: 'calc(50% - 10px)', icon: '◆' },
+    right: { left: 'calc(83% - 10px)', icon: '▶' },
+    custom: { left: 'calc(50% - 10px)', icon: '⚙' },
+};
 
-    // Apply transforms
-    if (localTransform.value.flip_x) {
-        style.transform = (style.transform || '') + ' scaleX(-1)';
-    }
-    if (localTransform.value.flip_y) {
-        style.transform = (style.transform || '') + ' scaleY(-1)';
-    }
-    if (localTransform.value.zoom && localTransform.value.zoom !== 1) {
-        style.transform = (style.transform || '') + ` scale(${localTransform.value.zoom})`;
-    }
-    if (localTransform.value.alpha !== undefined && localTransform.value.alpha !== 1) {
-        style.opacity = String(localTransform.value.alpha);
-    }
+const miniMarkerStyle = computed(() => ({
+    left: MINI_POS[currentPosition.value]?.left ?? 'calc(50% - 10px)',
+    borderColor: props.characterColor || '#38bdf8',
+    color: props.characterColor || '#38bdf8',
+    background: (props.characterColor || '#38bdf8') + '1a',
+}));
 
-    return style;
+const miniMarkerIcon = computed(() => MINI_POS[currentPosition.value]?.icon ?? '◆');
+
+// ── Status strip computed ──────────────────────────────────────────────────
+const positionLabel = computed(() => {
+    switch (currentPosition.value) {
+        case 'left': return 'Left';
+        case 'center': return 'Center';
+        case 'right': return 'Right';
+        case 'custom': return `Custom (${localCustomX.value.toFixed(2)}, ${localCustomY.value.toFixed(2)})`;
+        default: return 'None';
+    }
 });
 
-// Methods
+const transformSummary = computed(() => {
+    const parts: string[] = [];
+    if (localTransform.value.flip_x) parts.push('H-flip');
+    if (localTransform.value.flip_y) parts.push('V-flip');
+    if (localTransform.value.zoom && localTransform.value.zoom !== 1)
+        parts.push(`Zoom ${localTransform.value.zoom.toFixed(1)}×`);
+    if (localTransform.value.alpha !== undefined && localTransform.value.alpha !== 1)
+        parts.push(`Opacity ${Math.round(localTransform.value.alpha * 100)}%`);
+    return parts.join(' · ');
+});
+
+// ── Methods ────────────────────────────────────────────────────────────────
 const setPosition = (position: 'left' | 'center' | 'right' | 'custom') => {
     currentPosition.value = position;
     emitUpdate();
@@ -193,6 +217,15 @@ const setPosition = (position: 'left' | 'center' | 'right' | 'custom') => {
 
 const toggleAdvanced = () => {
     showAdvanced.value = !showAdvanced.value;
+};
+
+const toggleFlip = (axis: 'x' | 'y') => {
+    if (axis === 'x') {
+        localTransform.value.flip_x = !localTransform.value.flip_x;
+    } else {
+        localTransform.value.flip_y = !localTransform.value.flip_y;
+    }
+    emitUpdate();
 };
 
 const updateTransform = () => {
@@ -205,49 +238,34 @@ const updateCustomPosition = () => {
     }
 };
 
-const getPositionLabel = (): string => {
-    switch (currentPosition.value) {
-        case 'left': return 'Left Aligned';
-        case 'center': return 'Centered';
-        case 'right': return 'Right Aligned';
-        case 'custom': return `Custom (X:${localCustomX.value.toFixed(2)}, Y:${localCustomY.value.toFixed(2)})`;
-        default: return 'Not set';
-    }
-};
+// Kept for backward-compat (parent may call via getPositionLabel)
+const getPositionLabel = (): string => positionLabel.value;
 
-const getPositionIcon = (): string => {
-    switch (currentPosition.value) {
-        case 'left': return '◀';
-        case 'center': return '◆';
-        case 'right': return '▶';
-        case 'custom': return '⚙️';
-        default: return '📍';
-    }
-};
+const getPositionIcon = (): string => miniMarkerIcon.value;
 
 const emitUpdate = () => {
-    // Don't emit if position is center with no customizations
-    if (currentPosition.value === 'center' &&
+    // Center with all defaults = no position set
+    if (
+        currentPosition.value === 'center' &&
         localTransform.value.zoom === 1 &&
         !localTransform.value.flip_x &&
         !localTransform.value.flip_y &&
-        localTransform.value.alpha === 1) {
+        localTransform.value.alpha === 1
+    ) {
         emit('update:modelValue', undefined);
         emit('change', undefined);
         return;
     }
 
-    const value: ImagePosition = {
-        position: currentPosition.value
-    };
+    const value: ImagePosition = { position: currentPosition.value };
 
     if (currentPosition.value === 'custom') {
         value.custom_x = localCustomX.value;
         value.custom_y = localCustomY.value;
     }
 
-    // Only include transform if it has non-default values
-    const hasTransform = localTransform.value.zoom !== 1 ||
+    const hasTransform =
+        localTransform.value.zoom !== 1 ||
         localTransform.value.flip_x ||
         localTransform.value.flip_y ||
         (localTransform.value.alpha !== undefined && localTransform.value.alpha !== 1);
@@ -263,31 +281,21 @@ const emitUpdate = () => {
 const loadFromProps = () => {
     if (props.modelValue) {
         currentPosition.value = props.modelValue.position;
-        if (props.modelValue.custom_x !== undefined) {
-            localCustomX.value = props.modelValue.custom_x;
-        }
-        if (props.modelValue.custom_y !== undefined) {
-            localCustomY.value = props.modelValue.custom_y;
-        }
+        if (props.modelValue.custom_x !== undefined) localCustomX.value = props.modelValue.custom_x;
+        if (props.modelValue.custom_y !== undefined) localCustomY.value = props.modelValue.custom_y;
         if (props.modelValue.transform) {
             localTransform.value = {
-                zoom: props.modelValue.transform.zoom || 1,
-                flip_x: props.modelValue.transform.flip_x || false,
-                flip_y: props.modelValue.transform.flip_y || false,
-                alpha: props.modelValue.transform.alpha !== undefined ? props.modelValue.transform.alpha : 1
+                zoom: props.modelValue.transform.zoom ?? 1,
+                flip_x: props.modelValue.transform.flip_x ?? false,
+                flip_y: props.modelValue.transform.flip_y ?? false,
+                alpha: props.modelValue.transform.alpha ?? 1,
             };
         }
     } else {
-        // Reset to defaults when no model value
         currentPosition.value = 'center';
         localCustomX.value = 0.5;
         localCustomY.value = 0.5;
-        localTransform.value = {
-            zoom: 1,
-            flip_x: false,
-            flip_y: false,
-            alpha: 1
-        };
+        localTransform.value = { zoom: 1, flip_x: false, flip_y: false, alpha: 1 };
     }
 };
 
@@ -295,123 +303,338 @@ const resetToDefault = () => {
     currentPosition.value = 'center';
     localCustomX.value = 0.5;
     localCustomY.value = 0.5;
-    localTransform.value = {
-        zoom: 1,
-        flip_x: false,
-        flip_y: false,
-        alpha: 1
-    };
+    localTransform.value = { zoom: 1, flip_x: false, flip_y: false, alpha: 1 };
     showAdvanced.value = false;
     emitUpdate();
 };
 
-// Watch for external changes
-watch(() => props.modelValue, () => {
-    loadFromProps();
-}, { deep: true });
+// ── Watchers & lifecycle ───────────────────────────────────────────────────
+watch(() => props.modelValue, () => { loadFromProps(); }, { deep: true });
+onMounted(() => { loadFromProps(); });
 
-// Lifecycle
-onMounted(() => {
-    loadFromProps();
-});
-
-// Expose methods for parent components
+// ── Expose ─────────────────────────────────────────────────────────────────
 defineExpose({
     resetToDefault,
-    getCurrentPosition: () => ({
-        position: currentPosition.value,
-        transform: localTransform.value
-    }),
-    hasCustomPosition: () => {
-        return currentPosition.value !== 'center' ||
-            localTransform.value.zoom !== 1 ||
-            localTransform.value.flip_x ||
-            localTransform.value.flip_y ||
-            localTransform.value.alpha !== 1;
-    }
+    getCurrentPosition: () => ({ position: currentPosition.value, transform: localTransform.value }),
+    hasCustomPosition: () =>
+        currentPosition.value !== 'center' ||
+        localTransform.value.zoom !== 1 ||
+        localTransform.value.flip_x ||
+        localTransform.value.flip_y ||
+        localTransform.value.alpha !== 1,
 });
 </script>
 
 <style scoped>
-.image-position-selector {
-    @apply p-3 bg-gray-800/50 rounded-lg border border-gray-700;
+/* ── Root ─────────────────────────────────────────────────────────────── */
+.pos-selector {
+    background: #020617;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-.position-buttons {
-    @apply flex gap-2 flex-wrap;
+/* ── Avatar strip ─────────────────────────────────────────────────────── */
+.avatar-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
 }
 
-.position-btn {
-    @apply px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-slate-300 rounded-lg transition-all text-sm font-medium;
+.avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1.5px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #e2e8f0;
 }
 
-.position-btn.active {
-    @apply bg-sky-500/20 text-sky-400 border border-sky-500/50;
+.avatar-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
 }
 
-.advanced-btn {
-    @apply ml-auto;
+.avatar-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.advanced-panel {
-    @apply mt-3 p-3 bg-gray-900/50 rounded-lg border border-gray-700;
+.avatar-sub {
+    font-size: 11px;
+    color: #475569;
+}
+
+/* ── Mini stage ───────────────────────────────────────────────────────── */
+.mini-stage {
+    position: relative;
+    width: 88px;
+    height: 26px;
+    background: #060c17;
+    border: 1px solid #1e293b;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.mini-track {
+    position: absolute;
+    inset: 0;
+    display: flex;
+}
+
+.mini-zone {
+    flex: 1;
+    border-right: 1px dashed rgba(148, 163, 184, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mini-zone:last-child {
+    border-right: none;
+}
+
+.mini-zone span {
+    font-size: 8px;
+    color: rgba(148, 163, 184, 0.2);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.mini-marker {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1.5px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 700;
+    transition: left 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+}
+
+/* ── Position buttons ─────────────────────────────────────────────────── */
+.pos-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 6px;
+}
+
+.pos-btn {
+    height: 34px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    font-family: inherit;
+    outline: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.pos-btn:hover {
+    background: #1e293b;
+    border-color: #475569;
+    color: #cbd5e1;
+}
+
+.pos-btn.active {
+    background: rgba(56, 189, 248, 0.1);
+    border-color: #38bdf8;
+    color: #38bdf8;
+}
+
+.pos-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 15%;
+    right: 15%;
+    height: 2px;
+    background: #38bdf8;
+    border-radius: 2px 2px 0 0;
+}
+
+.adv-btn {
+    width: 34px;
+    flex-shrink: 0;
+}
+
+/* ── Flip chips ───────────────────────────────────────────────────────── */
+.flip-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.flip-chip {
+    height: 32px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    font-family: inherit;
+    outline: none;
+    user-select: none;
+}
+
+.flip-chip:hover {
+    background: #1e293b;
+    border-color: #475569;
+    color: #94a3b8;
+}
+
+.flip-chip.active {
+    background: rgba(56, 189, 248, 0.08);
+    border-color: rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+}
+
+.chip-icon {
+    font-size: 13px;
+    line-height: 1;
+}
+
+/* ── Advanced panel ───────────────────────────────────────────────────── */
+.adv-panel {
+    border-top: 1px solid #1e293b;
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .slider-group {
-    @apply flex flex-col gap-1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
 }
 
-.slider-group label {
-    @apply text-xs text-slate-400;
+.slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.slider-group input[type="range"] {
-    @apply bg-gray-700 rounded-lg appearance-none cursor-pointer h-1;
+.slider-header label {
+    font-size: 11px;
+    color: #475569;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
 }
 
-.slider-group input[type="range"]::-webkit-slider-thumb {
-    @apply w-3 h-3 bg-sky-400 rounded-full appearance-none cursor-pointer;
+.slider-val {
+    font-size: 12px;
+    font-weight: 600;
+    color: #38bdf8;
+    font-variant-numeric: tabular-nums;
 }
 
-.preview-area {
-    @apply relative;
-}
-
-.preview-box {
-    @apply w-24 h-16 rounded-lg border-2 flex items-center justify-center text-center p-2;
-    background-color: rgba(56, 189, 248, 0.1);
-    transition: all 0.2s ease;
-}
-
-.current-badge {
-    @apply text-center;
-}
-
-/* Checkbox styling */
-input[type="checkbox"] {
-    @apply w-4 h-4 rounded border-gray-600 bg-gray-700 text-sky-500 focus:ring-sky-500 focus:ring-offset-0;
-}
-
-/* Custom range styling */
 input[type="range"] {
-    height: 4px;
     -webkit-appearance: none;
-}
-
-input[type="range"]:focus {
+    appearance: none;
+    width: 100%;
+    height: 3px;
+    background: #1e293b;
+    border-radius: 2px;
     outline: none;
+    cursor: pointer;
 }
 
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 12px;
-    height: 12px;
+    width: 13px;
+    height: 13px;
     border-radius: 50%;
     background: #38bdf8;
+    border: 2px solid #020617;
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
     cursor: pointer;
+    transition: transform 0.12s;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
+    transform: scale(1.25);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #38bdf8;
+    border: 2px solid #020617;
+    cursor: pointer;
+}
+
+/* ── Status strip ─────────────────────────────────────────────────────── */
+.status-strip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 10px;
+    background: rgba(56, 189, 248, 0.04);
+    border: 1px solid rgba(56, 189, 248, 0.12);
+    border-radius: 7px;
+}
+
+.s-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.s-text {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.s-text span {
+    color: #38bdf8;
+    font-weight: 500;
 }
 </style>
