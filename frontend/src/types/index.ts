@@ -58,8 +58,8 @@ export interface DialogueLine {
     } | null;  // Allow null for narrator/action lines
     text: string;
     expression?: string;
+    outfit?: string;
     order: number;
-    // NEW: Image positioning for this specific line
     image_position?: ImagePosition;
 }
 

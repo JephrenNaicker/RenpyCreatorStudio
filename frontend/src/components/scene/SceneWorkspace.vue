@@ -68,7 +68,7 @@
                         <CastSelector v-model="currentSpeaker" :characters="characters"
                             :scene-character-ids="sceneCharacterIds" label="Select Speaker"
                             @update:modelValue="handleSpeakerChange" @expression-change="handleExpressionChange"
-                            id="cast-selector" />
+                            @outfit-change="handleOutfitChange" id="cast-selector" />
                     </div>
                 </div>
 
@@ -115,7 +115,7 @@
 import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue';
 import CastSelector from '@/components/scene/CastSelector.vue';
 import ImagePositionSelector from '@/components/scene/ImagePositionSelector.vue';
-import type { DialogueLine, Character } from '@/utils/dummyData';
+import type { DialogueLine, Character } from '@/types';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
 interface Props {
@@ -140,7 +140,7 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
     selectedLineIndex: null,
     selectedSpeakerId: null,
-    sceneCharacterIds: () => []
+    sceneCharacterIds: undefined
 });
 
 const emit = defineEmits<Emits>();
@@ -149,6 +149,7 @@ const emit = defineEmits<Emits>();
 const currentSpeaker = ref('');
 const currentExpression = ref('');
 const currentText = ref('');
+const currentOutfit = ref('');  // Add outfit state
 const textAreaRef = ref<HTMLTextAreaElement>();
 const isEditing = ref(false);
 const editingIndex = ref<number | null>(null);
@@ -156,32 +157,23 @@ const editingIndex = ref<number | null>(null);
 // Position selector state
 const activePositionLineIndex = ref<number | null>(null);
 
-// Watch for speaker changes from parent
-watch(() => props.selectedSpeakerId, (newSpeakerId) => {
-    currentSpeaker.value = newSpeakerId || '';
-}, { immediate: true });
+// --- DEFINE ALL FUNCTIONS FIRST ---
 
-// Close position selector when clicking outside
-const handleClickOutside = (event: MouseEvent) => {
-    if (activePositionLineIndex.value !== null) {
-        const target = event.target as HTMLElement;
-        const popup = document.getElementById(`position-popup-${activePositionLineIndex.value}`);
-        const btn = document.getElementById(`position-btn-${activePositionLineIndex.value}`);
-
-        if (popup && !popup.contains(target) && btn && !btn.contains(target)) {
-            activePositionLineIndex.value = null;
-        }
-    }
+const resetForm = () => {
+    currentText.value = '';
+    currentExpression.value = '';
+    currentOutfit.value = '';
+    nextTick(() => {
+        textAreaRef.value?.focus();
+    });
 };
 
-// Lifecycle for click outside detection
-onMounted(() => {
-    document.addEventListener('click', handleClickOutside);
-});
-
-onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside);
-});
+const cancelEdit = () => {
+    isEditing.value = false;
+    editingIndex.value = null;
+    resetForm();
+    emit('select-line', null);
+};
 
 const handleSpeakerChange = (characterId: string) => {
     currentSpeaker.value = characterId;
@@ -190,6 +182,11 @@ const handleSpeakerChange = (characterId: string) => {
 
 const handleExpressionChange = (expression: string) => {
     currentExpression.value = expression;
+};
+
+const handleOutfitChange = (outfit: string) => {
+    currentOutfit.value = outfit;
+    console.log('Outfit changed:', outfit);
 };
 
 const addLine = () => {
@@ -206,6 +203,7 @@ const addLine = () => {
         } : null,
         text: currentText.value,
         expression: currentExpression.value || undefined,
+        outfit: currentOutfit.value || undefined,
         order: props.dialogueLines.length + 1
     };
 
@@ -230,8 +228,8 @@ const updateLine = () => {
         } : null,
         text: currentText.value,
         expression: currentExpression.value || undefined,
+        outfit: currentOutfit.value || undefined,
         order: existingLine.order,
-        // Preserve existing image position if not changed
         image_position: existingLine.image_position
     };
 
@@ -242,21 +240,6 @@ const updateLine = () => {
 
 const startEdit = (index: number) => {
     emit('select-line', index);
-};
-
-const cancelEdit = () => {
-    isEditing.value = false;
-    editingIndex.value = null;
-    resetForm();
-    emit('select-line', null);
-};
-
-const resetForm = () => {
-    currentText.value = '';
-    currentExpression.value = '';
-    nextTick(() => {
-        textAreaRef.value?.focus();
-    });
 };
 
 // Position selector methods
@@ -278,14 +261,11 @@ const updateLinePosition = (index: number, position: ImagePosition | undefined) 
     };
 
     emit('edit-line', { index, line: updatedLine });
-
-    // Keep popup open after update
     activePositionLineIndex.value = index;
 };
 
 const getPositionIcon = (position: ImagePosition | undefined): string => {
     if (!position) return '📍';
-
     switch (position.position) {
         case 'left': return '◀📍';
         case 'center': return '◆📍';
@@ -297,29 +277,11 @@ const getPositionIcon = (position: ImagePosition | undefined): string => {
 
 const getPositionTooltip = (position: ImagePosition | undefined): string => {
     if (!position) return 'No position set - Click to add position';
-
     let label = `Position: ${position.position}`;
     if (position.transform?.flip_x) label += ' (Flipped)';
     if (position.transform?.zoom && position.transform.zoom !== 1) label += ` (Zoom: ${position.transform.zoom}x)`;
     return label;
 };
-
-// Watch for line selection
-watch(() => props.selectedLineIndex, (index) => {
-    if (index !== null && index !== undefined && index >= 0 && index < props.dialogueLines.length) {
-        const line = props.dialogueLines[index];
-        if (line) {
-            currentSpeaker.value = line.character?.id || '';
-            currentText.value = line.text;
-            currentExpression.value = line.expression || '';
-            isEditing.value = true;
-            editingIndex.value = index;
-        }
-    } else {
-        cancelEdit();
-        currentSpeaker.value = props.selectedSpeakerId || '';
-    }
-}, { immediate: true });
 
 const getExpressionEmoji = (expression: string) => {
     const emojiMap: Record<string, string> = {
@@ -340,6 +302,54 @@ const getExpressionEmoji = (expression: string) => {
     };
     return emojiMap[expression] || '😀';
 };
+
+// Close position selector when clicking outside
+const handleClickOutside = (event: MouseEvent) => {
+    if (activePositionLineIndex.value !== null) {
+        const target = event.target as HTMLElement;
+        const popup = document.getElementById(`position-popup-${activePositionLineIndex.value}`);
+        const btn = document.getElementById(`position-btn-${activePositionLineIndex.value}`);
+
+        if (popup && !popup.contains(target) && btn && !btn.contains(target)) {
+            activePositionLineIndex.value = null;
+        }
+    }
+};
+
+// --- NOW SET UP WATCHES (after functions are defined) ---
+
+// Watch for speaker changes from parent
+watch(() => props.selectedSpeakerId, (newSpeakerId) => {
+    currentSpeaker.value = newSpeakerId || '';
+}, { immediate: true });
+
+// Watch for line selection
+watch(() => props.selectedLineIndex, (index) => {
+    if (index !== null && index !== undefined && index >= 0 && index < props.dialogueLines.length) {
+        const line = props.dialogueLines[index];
+        if (line) {
+            currentSpeaker.value = line.character?.id || '';
+            currentText.value = line.text;
+            currentExpression.value = line.expression || '';
+            currentOutfit.value = (line as any).outfit || '';
+            isEditing.value = true;
+            editingIndex.value = index;
+        }
+    } else {
+        cancelEdit();
+        currentSpeaker.value = props.selectedSpeakerId || '';
+        currentOutfit.value = '';
+    }
+}, { immediate: true });
+
+// --- LIFECYCLE HOOKS ---
+onMounted(() => {
+    document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <style scoped>

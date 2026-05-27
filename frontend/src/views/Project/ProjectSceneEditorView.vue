@@ -49,7 +49,7 @@
                     :characters="projectCharacters" :selected-line-index="selectedLineIndex"
                     :selected-speaker-id="selectedCharacterId"
                     :is-dirty="currentScene ? dirtyScenes.has(currentScene.id) : false"
-                    :scene-character-ids="currentScene?.character_ids" @add-line="addDialogueLine"
+                    :scene-character-ids="currentScene?.character_ids || undefined" @add-line="addDialogueLine"
                     @edit-line="handleEditLine" @delete-line="deleteDialogueLine" @select-line="selectLine"
                     @speaker-change="handleSpeakerChange" @add-menu="addMenuChoice" @add-action="addAction" />
             </div>
