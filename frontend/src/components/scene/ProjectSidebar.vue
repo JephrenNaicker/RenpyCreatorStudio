@@ -173,6 +173,7 @@ interface Props {
     selectedSceneId?: string | null;
     dirtySceneIds?: Set<string>;
     allCharacters?: Character[];
+    projectId?: string;
 }
 
 interface Emits {
@@ -184,7 +185,7 @@ interface Emits {
     (e: 'delete-scene', sceneId: string): void;
     (e: 'update-scene', scene: Scene): void;
     (e: 'add-characters', characterIds: string[]): void;
-    (e: 'create-character', character: Omit<Character, 'id'>): void;
+    (e: 'create-character', character: Omit<Character, 'id' | 'created_at' | 'updated_at'>): void;
 }
 
 const props = defineProps<Props>();
@@ -201,7 +202,7 @@ const handleAddCharactersToProject = (characterIds: string[]) => {
     emit('add-characters', characterIds);
 };
 
-const handleCreateCharacter = (characterData: Omit<Character, 'id'>) => {
+const handleCreateCharacter = (characterData: Omit<Character, 'id' | 'created_at' | 'updated_at'>) => {
     emit('create-character', characterData);
 };
 
@@ -300,7 +301,7 @@ const addNewScene = () => {
     const newScene: Scene = {
         id: Date.now().toString(),
         name: 'New Scene',
-        project_id: props.scenes?.[0]?.project_id || 'default-project',
+        project_id: props.projectId || props.scenes?.[0]?.project_id || 'default-project',
         character_ids: [],
         dialogue_lines: [],
         created_at: now,

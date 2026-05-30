@@ -2,10 +2,12 @@
     <div id="scene-editor-layout" class="flex h-screen bg-gray-950">
         <!-- Left Panel -->
         <ProjectSidebar :id="`project-sidebar-${route.params.id}`" :characters="projectCharacters" :scenes="scenes"
-            :selected-character-id="selectedCharacterId" :dirty-scene-ids="dirtyScenes"
+            :selected-scene-id="currentScene?.id ?? null" :all-characters="projectCharacters"
+            :project-id="String(route.params.id)" :dirty-scene-ids="dirtyScenes"
             @select-character="handleSelectCharacter" @remove-character="openRemoveCharacterModal"
             @add-character="addCharacterToProject" @select-scene="selectScene" @add-scene="handleAddScene"
-            @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene" />
+            @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene"
+            @create-character="handleCreateCharacter" />
 
         <!-- Main Panel -->
         <main id="workspace-main" class="flex-1 flex flex-col overflow-hidden">
@@ -180,8 +182,10 @@ const router = useRouter();
 const selectedCharacterId = ref<string | null>(null);
 const selectedLineIndex = ref<number | null>(null);
 const currentScene = ref<Scene | null>(null);
-const dialogueLines = ref<DialogueLine[]>([...dummyDialogueLines]);
-const scenes = ref<Scene[]>([...dummyScenes]);
+const dialogueLines = ref<DialogueLine[]>([]);
+const scenes = ref<Scene[]>(
+    dummyScenes.filter(s => s.project_id === route.params.id)
+);
 const sceneDialogueCache = ref<Record<string, DialogueLine[]>>({});
 const dirtyScenes = ref<Set<string>>(new Set());
 const isLoading = ref(false);
@@ -255,6 +259,17 @@ const availableCharactersToSwap = computed(() =>
 const handleSelectCharacter = (character: Character) => {
     selectedCharacterId.value = character.id;
     selectedLineIndex.value = null;
+};
+
+const handleCreateCharacter = (characterData: Omit<Character, 'id' | 'created_at' | 'updated_at'>) => {
+    const now = new Date().toISOString();
+    const newCharacter: Character = {
+        ...characterData,
+        id: `char_${Date.now()}`,
+        created_at: now,
+        updated_at: now,
+    };
+    projectCharacters.value.push(newCharacter);
 };
 
 const handleSpeakerChange = (characterId: string | null) => {
@@ -584,8 +599,8 @@ const resetState = () => {
     selectedCharacterId.value = null;
     selectedLineIndex.value = null;
     currentScene.value = null;
-    dialogueLines.value = [...dummyDialogueLines];
-    scenes.value = [...dummyScenes];
+    dialogueLines.value = [];                                          // start empty
+    scenes.value = dummyScenes.filter(s => s.project_id === route.params.id); // filter here too
     sceneDialogueCache.value = {};
     dirtyScenes.value.clear();
     error.value = null;

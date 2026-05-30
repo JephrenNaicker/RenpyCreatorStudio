@@ -1,4 +1,4 @@
-// src/types/index.ts
+// src/types/models.ts
 
 export interface VoiceLine {
     line_name: string;
