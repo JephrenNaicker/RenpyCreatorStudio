@@ -24,7 +24,7 @@
                             <div v-if="line.expression" class="expression" :id="`expression-${index}`">
                                 {{ getExpressionEmoji(line.expression) }}
                                 <span class="expression-name" :id="`expression-name-${index}`">{{ line.expression
-                                    }}</span>
+                                }}</span>
                             </div>
                             <!-- Position indicator button -->
                             <button class="position-indicator" @click.stop="togglePositionSelector(index)"
@@ -115,7 +115,7 @@
 import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue';
 import CastSelector from '@/components/scene/CastSelector.vue';
 import ImagePositionSelector from '@/components/scene/ImagePositionSelector.vue';
-import type { DialogueLine, Character } from '@/types';
+import type { DialogueLine, Character } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
 interface Props {

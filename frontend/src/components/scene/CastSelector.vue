@@ -72,7 +72,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import type { Character, Expression } from '@/types';
+import type { Character, Expression } from '@/types/models';
 
 interface Props {
     modelValue: string;

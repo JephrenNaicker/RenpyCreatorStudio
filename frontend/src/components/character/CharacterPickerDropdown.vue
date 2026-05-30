@@ -123,7 +123,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import type { Character } from '@/types';
+import type { Character } from '@/types/models';
 
 // Props interface
 interface Props {

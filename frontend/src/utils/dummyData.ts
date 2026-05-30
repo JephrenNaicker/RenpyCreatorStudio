@@ -1,4 +1,4 @@
-import { type Character, type Project, type Scene, type DialogueLine } from '@/types';
+import { type Character, type Project, type Scene, type DialogueLine } from '@/types/models';
 
 // Define the data arrays
 const initialCharacters: Character[] = [
@@ -220,5 +220,5 @@ const initialScenes: Scene[] = [
 export const dummyCharacters: Character[] = initialCharacters;
 export const dummyProjects: Project[] = initialProjects;
 export const dummyScenes: Scene[] = initialScenes;
-export const dummyDialogueLines: DialogueLine[] = initialDialogueLines;
+export const dummyDialogueLines: DialogueLine[] = [];
 export type { Character, Project, Scene, DialogueLine };
