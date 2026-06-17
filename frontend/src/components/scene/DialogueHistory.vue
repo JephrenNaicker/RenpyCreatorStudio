@@ -6,26 +6,51 @@
         </div>
         <div class="dialogue-history">
             <div v-for="(line, index) in dialogueLines" :key="line.id || index" class="dialogue-line" :class="{
-                narrator: !line.character,
+                narrator: line.type !== 'menu' && !(line as DialogueLine).character,
                 selected: selectedLineIndex === index,
-                'has-position': line.image_position
+                'has-position': line.type !== 'menu' && !!(line as DialogueLine).image_position,
+                'is-menu': line.type === 'menu'
             }" @click="handleSelectLine(index)">
-                <div class="line-header">
-                    <div class="speaker" :style="{ color: line.character?.color || '#94a3b8' }">
-                        {{ line.character?.name || 'Narrator' }}
+
+                <!-- ── Menu node row ─────────────────────────────────── -->
+                <template v-if="line.type === 'menu'">
+                    <div class="line-header">
+                        <span class="menu-badge">🔀 Menu</span>
+                        <span v-if="(line as MenuNode).prompt" class="menu-prompt">
+                            "{{ (line as MenuNode).prompt }}"
+                        </span>
+                        <span class="menu-count">{{ (line as MenuNode).choices.length }} choices</span>
                     </div>
-                    <div v-if="line.expression" class="expression">
-                        {{ getExpressionEmoji(line.expression) }}
-                        <span class="expression-name">{{ line.expression }}</span>
+                    <div class="menu-choices-preview">
+                        <span v-for="(choice, ci) in (line as MenuNode).choices" :key="choice.id" class="choice-chip">
+                            {{ ci + 1 }}. {{ choice.text }}
+                            <span v-if="choice.effects && choice.effects.length" class="effect-dot"
+                                :title="`${choice.effects.length} effect(s)`">●</span>
+                        </span>
                     </div>
-                    <!-- Position indicator button -->
-                    <button class="position-indicator" @click.stop="togglePositionSelector(index)"
-                        :class="{ active: activePositionLineIndex === index }"
-                        :title="getPositionTooltip(line.image_position)">
-                        {{ getPositionIcon(line.image_position) }}
-                    </button>
-                </div>
-                <div class="text">{{ line.text }}</div>
+                </template>
+
+                <!-- ── Dialogue line row (unchanged) ─────────────────── -->
+                <template v-else>
+                    <div class="line-header">
+                        <div class="speaker" :style="{ color: (line as DialogueLine).character?.color || '#94a3b8' }">
+                            {{ (line as DialogueLine).character?.name || 'Narrator' }}
+                        </div>
+                        <div v-if="(line as DialogueLine).expression" class="expression">
+                            {{ getExpressionEmoji((line as DialogueLine).expression!) }}
+                            <span class="expression-name">{{ (line as DialogueLine).expression }}</span>
+                        </div>
+                        <!-- Position indicator button -->
+                        <button class="position-indicator" @click.stop="togglePositionSelector(index)"
+                            :class="{ active: activePositionLineIndex === index }"
+                            :title="getPositionTooltip((line as DialogueLine).image_position)">
+                            {{ getPositionIcon((line as DialogueLine).image_position) }}
+                        </button>
+                    </div>
+                    <div class="text">{{ (line as DialogueLine).text }}</div>
+                </template>
+
+                <!-- ── Shared actions (edit/delete work for both types) ── -->
                 <div class="line-actions">
                     <button class="icon-btn" @click.stop="handleEditLine(index)" title="Edit">
                         ✏️
@@ -35,10 +60,12 @@
                     </button>
                 </div>
 
-                <!-- Position Selector Popup -->
-                <div v-if="activePositionLineIndex === index" class="position-selector-popup" @click.stop>
-                    <ImagePositionSelector :model-value="line.image_position" :character-name="line.character?.name"
-                        :character-color="line.character?.color"
+                <!-- Position Selector Popup (dialogue lines only) -->
+                <div v-if="activePositionLineIndex === index && line.type !== 'menu'" class="position-selector-popup"
+                    @click.stop>
+                    <ImagePositionSelector :model-value="(line as DialogueLine).image_position"
+                        :character-name="(line as DialogueLine).character?.name"
+                        :character-color="(line as DialogueLine).character?.color"
                         @update:model-value="(pos) => updateLinePosition(index, pos)"
                         @change="(pos) => updateLinePosition(index, pos)" />
                 </div>
@@ -50,11 +77,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import ImagePositionSelector from '@/components/scene/ImagePositionSelector.vue';
-import type { DialogueLine } from '@/types/models';
+import type { DialogueLine, MenuNode, SceneLine } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
 interface Props {
-    dialogueLines: DialogueLine[];
+    dialogueLines: SceneLine[];
     selectedLineIndex?: number | null;
     isDirty?: boolean;
 }
@@ -244,6 +271,68 @@ onUnmounted(() => {
 
 .dialogue-line.narrator {
     border-left-color: #475569;
+}
+
+/* Menu node gets a distinct amber accent so it's visually obvious in the list */
+.dialogue-line.is-menu {
+    border-left: 3px solid #f59e0b;
+    background: rgba(245, 158, 11, 0.03);
+}
+
+.dialogue-line.is-menu:hover {
+    border-color: rgba(245, 158, 11, 0.5);
+}
+
+.dialogue-line.is-menu.selected {
+    background: rgba(245, 158, 11, 0.08);
+    border-color: #f59e0b;
+}
+
+.menu-badge {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #f59e0b;
+    letter-spacing: 0.03em;
+}
+
+.menu-prompt {
+    flex: 1;
+    font-size: 0.82rem;
+    color: #94a3b8;
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.menu-count {
+    font-size: 0.72rem;
+    color: #64748b;
+    background: rgba(245, 158, 11, 0.1);
+    padding: 0.1rem 0.45rem;
+    border-radius: 10px;
+}
+
+.menu-choices-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding-left: 0.25rem;
+}
+
+.choice-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: #cbd5e1;
+    padding: 0.2rem 0;
+}
+
+.effect-dot {
+    color: #38bdf8;
+    font-size: 0.6rem;
+    opacity: 0.7;
 }
 
 .line-header {

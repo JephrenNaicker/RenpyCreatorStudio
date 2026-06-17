@@ -168,25 +168,29 @@ import SceneWorkspace from '@/components/scene/SceneWorkspace.vue';
 import {
     dummyCharacters,
     dummyScenes,
-    dummyDialogueLines,
     dummyProjects,
     type Character,
     type DialogueLine,
+    type MenuNode,
+    type SceneLine,
     type Scene,
 } from '@/utils/dummyData';
 
 const route = useRoute();
 const router = useRouter();
 
+// Type guard — narrows a SceneLine to DialogueLine (excludes menu/action nodes)
+const isDialogueLine = (line: SceneLine): line is DialogueLine => line.type !== 'menu';
+
 // State
 const selectedCharacterId = ref<string | null>(null);
 const selectedLineIndex = ref<number | null>(null);
 const currentScene = ref<Scene | null>(null);
-const dialogueLines = ref<DialogueLine[]>([]);
+const dialogueLines = ref<SceneLine[]>([]);
 const scenes = ref<Scene[]>(
     dummyScenes.filter(s => s.project_id === route.params.id)
 );
-const sceneDialogueCache = ref<Record<string, DialogueLine[]>>({});
+const sceneDialogueCache = ref<Record<string, SceneLine[]>>({});
 const dirtyScenes = ref<Set<string>>(new Set());
 const isLoading = ref(false);
 const error = ref<string | null>(null);
@@ -224,7 +228,9 @@ const getCharacterUsage = (characterId: string) => {
     let totalDialogue = 0;
 
     scenes.value.forEach(scene => {
-        const dialogueCount = scene.dialogue_lines.filter(line => line.character?.id === characterId).length;
+        const dialogueCount = scene.dialogue_lines.filter(
+            line => isDialogueLine(line) && line.character?.id === characterId
+        ).length;
         if (dialogueCount > 0) {
             usage.push({
                 sceneId: scene.id,
@@ -316,11 +322,11 @@ const confirmRemoveCharacter = async () => {
     if (totalDialogueLinesAffected.value > 0) {
         if (removalAction.value === 'swap' && swapWithId) {
             const swapCharacter = projectCharacters.value.find(c => c.id === swapWithId);
-            // Replace character in all scenes
+            // Replace character in all scenes (menu nodes pass through untouched)
             scenes.value = scenes.value.map(scene => ({
                 ...scene,
-                dialogue_lines: scene.dialogue_lines.map(line => {
-                    if (line.character?.id === characterId && swapCharacter) {
+                dialogue_lines: scene.dialogue_lines.map((line): SceneLine => {
+                    if (isDialogueLine(line) && line.character?.id === characterId && swapCharacter) {
                         return {
                             ...line,
                             character: {
@@ -334,8 +340,8 @@ const confirmRemoveCharacter = async () => {
                 })
             }));
             // Also update current scene dialogue lines
-            dialogueLines.value = dialogueLines.value.map(line => {
-                if (line.character?.id === characterId && swapCharacter) {
+            dialogueLines.value = dialogueLines.value.map((line): SceneLine => {
+                if (isDialogueLine(line) && line.character?.id === characterId && swapCharacter) {
                     return {
                         ...line,
                         character: {
@@ -349,19 +355,23 @@ const confirmRemoveCharacter = async () => {
             });
             showTempSuccess(`Replaced "${characterToRemove.value.name}" with "${swapCharacter?.name}"`);
         } else if (removalAction.value === 'delete') {
-            // Delete all dialogue lines for this character
+            // Delete all dialogue lines for this character (menu nodes are kept — they have no speaker)
             scenes.value = scenes.value.map(scene => ({
                 ...scene,
-                dialogue_lines: scene.dialogue_lines.filter(line => line.character?.id !== characterId)
+                dialogue_lines: scene.dialogue_lines.filter(
+                    line => !isDialogueLine(line) || line.character?.id !== characterId
+                )
             }));
-            dialogueLines.value = dialogueLines.value.filter(line => line.character?.id !== characterId);
+            dialogueLines.value = dialogueLines.value.filter(
+                line => !isDialogueLine(line) || line.character?.id !== characterId
+            );
             showTempSuccess(`Deleted all dialogue for "${characterToRemove.value.name}"`);
         } else {
-            // Keep as placeholder - mark as removed
+            // Keep as placeholder - mark as removed (menu nodes pass through untouched)
             scenes.value = scenes.value.map(scene => ({
                 ...scene,
-                dialogue_lines: scene.dialogue_lines.map(line => {
-                    if (line.character?.id === characterId) {
+                dialogue_lines: scene.dialogue_lines.map((line): SceneLine => {
+                    if (isDialogueLine(line) && line.character?.id === characterId) {
                         return {
                             ...line,
                             character: {
@@ -374,8 +384,8 @@ const confirmRemoveCharacter = async () => {
                     return line;
                 })
             }));
-            dialogueLines.value = dialogueLines.value.map(line => {
-                if (line.character?.id === characterId) {
+            dialogueLines.value = dialogueLines.value.map((line): SceneLine => {
+                if (isDialogueLine(line) && line.character?.id === characterId) {
                     return {
                         ...line,
                         character: {
@@ -478,17 +488,31 @@ const addDialogueLine = (line: DialogueLine) => {
     scheduleAutoSave();
 };
 
-const handleEditLine = (payload: { index: number; line: DialogueLine }) => {
+// New menu nodes come from SceneWorkspace's "add-menu" event, already fully formed
+const addMenuChoice = (node: MenuNode) => {
+    const newNode: MenuNode = {
+        ...node,
+        id: node.id || `menu_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        order: dialogueLines.value.length + 1,
+    };
+    dialogueLines.value.push(newNode);
+    selectedLineIndex.value = dialogueLines.value.length - 1;
+    selectedCharacterId.value = null; // menu nodes have no speaker
+    if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
+    scheduleAutoSave();
+};
+
+const handleEditLine = (payload: { index: number; line: SceneLine }) => {
     const { index, line } = payload;
     dialogueLines.value[index] = line;
     selectedLineIndex.value = null;
-    selectedCharacterId.value = line.character?.id || null;
+    selectedCharacterId.value = line.type === 'menu' ? null : (line as DialogueLine).character?.id || null;
     if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
     scheduleAutoSave();
 };
 
 const deleteDialogueLine = (index: number) => {
-    if (confirm('Delete this dialogue line?')) {
+    if (confirm('Delete this line?')) {
         dialogueLines.value.splice(index, 1);
         selectedLineIndex.value = null;
         dialogueLines.value.forEach((line, idx) => { line.order = idx + 1; });
@@ -500,15 +524,13 @@ const deleteDialogueLine = (index: number) => {
 const selectLine = (index: number | null) => {
     selectedLineIndex.value = index;
     if (index !== null && index >= 0 && index < dialogueLines.value.length) {
-        selectedCharacterId.value = dialogueLines.value[index]?.character?.id ?? null;
+        const line = dialogueLines.value[index];
+        selectedCharacterId.value = (line && line.type !== 'menu')
+            ? (line as DialogueLine).character?.id ?? null
+            : null;
     } else {
         selectedCharacterId.value = null;
     }
-};
-
-const addMenuChoice = () => {
-    console.log('Adding menu choice');
-    alert('Menu choice feature coming soon!');
 };
 
 const addAction = () => {

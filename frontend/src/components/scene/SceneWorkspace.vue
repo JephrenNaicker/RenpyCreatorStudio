@@ -2,7 +2,7 @@
     <div class="dialogue-editor" id="dialogue-editor">
         <!-- Main container for side-by-side layout -->
         <div class="editor-layout" id="editor-layout">
-            <!-- Left panel: Dialogue History Component -->
+            <!-- Left panel: Dialogue History Component (dialogue lines + menu nodes) -->
             <DialogueHistory :dialogue-lines="dialogueLines" :selected-line-index="selectedLineIndex"
                 :is-dirty="isDirty" @select-line="handleSelectLine" @edit-line="startEdit"
                 @delete-line="handleDeleteLine" @update-line-position="handleUpdateLinePosition" />
@@ -23,7 +23,7 @@
                 </div>
 
                 <!-- Dialogue Input Section -->
-                <div class="dialogue-input-section" id="dialogue-input-section">
+                <div v-if="mode === 'dialogue'" class="dialogue-input-section" id="dialogue-input-section">
                     <div class="section-header" id="dialogue-input-header">
                         <h4 id="dialogue-input-title">Dialogue Text</h4>
                     </div>
@@ -48,7 +48,7 @@
                         <button v-if="isEditing" class="btn secondary" @click="cancelEdit" id="cancel-edit-btn">
                             Cancel
                         </button>
-                        <button class="btn secondary" @click="$emit('add-menu')" id="add-menu-btn">
+                        <button class="btn secondary" @click="openMenuEditor" id="add-menu-btn">
                             Add Menu Choice
                         </button>
                         <button class="btn secondary" @click="$emit('add-action')" id="add-action-btn">
@@ -56,20 +56,33 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Menu Choice Editor — swaps into the same slot -->
+                <div v-else class="menu-input-section" id="menu-input-section">
+                    <div class="section-header" id="menu-input-header">
+                        <h4 id="menu-input-title">
+                            {{ editingMenuNode ? 'Edit Menu Choice' : 'New Menu Choice' }}
+                        </h4>
+                    </div>
+                    <MenuChoiceEditor :editing-node="editingMenuNode" :line-count="dialogueLines.length"
+                        @add-menu="handleAddMenuNode" @update-menu="handleUpdateMenuNode" @cancel="closeMenuEditor"
+                        id="menu-choice-editor" />
+                </div>
             </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue';
+import { ref, nextTick, watch } from 'vue';
 import CastSelector from '@/components/scene/CastSelector.vue';
 import DialogueHistory from '@/components/scene/DialogueHistory.vue';
-import type { DialogueLine, Character } from '@/types/models';
+import MenuChoiceEditor from '@/components/scene/MenuChoiceEditor.vue';
+import type { DialogueLine, MenuNode, Character, SceneLine } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
 interface Props {
-    dialogueLines: DialogueLine[];
+    dialogueLines: SceneLine[];
     characters: Character[];
     selectedLineIndex?: number | null;
     selectedSpeakerId?: string | null;
@@ -79,11 +92,11 @@ interface Props {
 
 interface Emits {
     (e: 'add-line', line: DialogueLine): void;
-    (e: 'edit-line', payload: { index: number; line: DialogueLine }): void;
+    (e: 'add-menu', node: MenuNode): void;
+    (e: 'edit-line', payload: { index: number; line: SceneLine }): void;
     (e: 'delete-line', index: number): void;
     (e: 'select-line', index: number | null): void;
     (e: 'speaker-change', characterId: string | null): void;
-    (e: 'add-menu'): void;
     (e: 'add-action'): void;
     (e: 'update-line-position', payload: { index: number; position: ImagePosition | undefined }): void;
 }
@@ -104,6 +117,10 @@ const currentOutfit = ref('');
 const textAreaRef = ref<HTMLTextAreaElement>();
 const isEditing = ref(false);
 const editingIndex = ref<number | null>(null);
+
+// Panel mode — 'dialogue' (default) or 'menu'. Swaps the right-hand input panel in place.
+const mode = ref<'dialogue' | 'menu'>('dialogue');
+const editingMenuNode = ref<MenuNode | null>(null);
 
 // --- Event Handlers ---
 
@@ -156,6 +173,7 @@ const addLine = () => {
 
     const newLine: DialogueLine = {
         id: Date.now().toString(),
+        type: 'dialogue',
         character: character ? {
             id: character.id,
             name: character.name,
@@ -177,10 +195,15 @@ const updateLine = () => {
     const character = props.characters.find(c => c.id === currentSpeaker.value);
     const existingLine = props.dialogueLines[editingIndex.value];
 
-    if (!existingLine) return;
+    if (!existingLine || existingLine.type === 'menu' || existingLine.type === 'action') {
+        return;
+    }
+
+    const dialogueLine = existingLine as DialogueLine;
 
     const updatedLine: DialogueLine = {
-        id: existingLine.id,
+        id: dialogueLine.id,
+        type: 'dialogue',
         character: character ? {
             id: character.id,
             name: character.name,
@@ -189,8 +212,8 @@ const updateLine = () => {
         text: currentText.value,
         expression: currentExpression.value || undefined,
         outfit: currentOutfit.value || undefined,
-        order: existingLine.order,
-        image_position: existingLine.image_position
+        order: dialogueLine.order,
+        image_position: dialogueLine.image_position
     };
 
     emit('edit-line', { index: editingIndex.value, line: updatedLine });
@@ -202,6 +225,32 @@ const startEdit = (index: number) => {
     emit('select-line', index);
 };
 
+// --- Menu editor handlers ---
+
+const openMenuEditor = () => {
+    mode.value = 'menu';
+    editingMenuNode.value = null;
+    editingIndex.value = null;
+};
+
+const closeMenuEditor = () => {
+    mode.value = 'dialogue';
+    editingMenuNode.value = null;
+    editingIndex.value = null;
+    emit('select-line', null);
+};
+
+const handleAddMenuNode = (node: MenuNode) => {
+    emit('add-menu', node);
+    closeMenuEditor();
+};
+
+const handleUpdateMenuNode = (node: MenuNode) => {
+    if (editingIndex.value === null) return;
+    emit('edit-line', { index: editingIndex.value, line: node });
+    closeMenuEditor();
+};
+
 // --- Watchers ---
 
 // Watch for speaker changes from parent
@@ -209,19 +258,41 @@ watch(() => props.selectedSpeakerId, (newSpeakerId) => {
     currentSpeaker.value = newSpeakerId || '';
 }, { immediate: true });
 
-// Watch for line selection
+// Watch for line selection - FIXED with proper null/undefined checks
 watch(() => props.selectedLineIndex, (index) => {
-    if (index !== null && index !== undefined && index >= 0 && index < props.dialogueLines.length) {
-        const line = props.dialogueLines[index];
-        if (line) {
-            currentSpeaker.value = line.character?.id || '';
-            currentText.value = line.text;
-            currentExpression.value = line.expression || '';
-            currentOutfit.value = (line as any).outfit || '';
-            isEditing.value = true;
-            editingIndex.value = index;
+    // Check if index is valid
+    if (index === null || index === undefined || index < 0 || index >= props.dialogueLines.length) {
+        cancelEdit();
+        if (mode.value === 'menu') {
+            mode.value = 'dialogue';
+            editingMenuNode.value = null;
         }
+        currentSpeaker.value = props.selectedSpeakerId || '';
+        currentOutfit.value = '';
+        return;
+    }
+
+    // Get the line at the index
+    const line = props.dialogueLines[index];
+
+    if (line && line.type === 'menu') {
+        // Switch the input panel into menu-edit mode for this node
+        mode.value = 'menu';
+        editingMenuNode.value = line as MenuNode;
+        isEditing.value = false;
+        editingIndex.value = index;
+    } else if (line && line.type !== 'action') {
+        const dialogueLine = line as DialogueLine;
+        mode.value = 'dialogue';
+        editingMenuNode.value = null;
+        currentSpeaker.value = dialogueLine.character?.id || '';
+        currentText.value = dialogueLine.text;
+        currentExpression.value = dialogueLine.expression || '';
+        currentOutfit.value = (dialogueLine as any).outfit || '';
+        isEditing.value = true;
+        editingIndex.value = index;
     } else {
+        // Action node or undefined — cancel editing
         cancelEdit();
         currentSpeaker.value = props.selectedSpeakerId || '';
         currentOutfit.value = '';
@@ -259,7 +330,8 @@ watch(() => props.selectedLineIndex, (index) => {
 }
 
 .speaker-section,
-.dialogue-input-section {
+.dialogue-input-section,
+.menu-input-section {
     background: #020617;
     border: 1px solid #334155;
     border-radius: 12px;
@@ -272,8 +344,18 @@ watch(() => props.selectedLineIndex, (index) => {
     flex-shrink: 0;
 }
 
-.dialogue-input-section {
+.dialogue-input-section,
+.menu-input-section {
     flex: 1;
+}
+
+/* Amber accent so it's visually obvious you're in menu-building mode */
+.menu-input-section {
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+#menu-input-title {
+    color: #f59e0b;
 }
 
 .section-header {
@@ -387,7 +469,8 @@ watch(() => props.selectedLineIndex, (index) => {
         flex: 1;
     }
 
-    .dialogue-input-section {
+    .dialogue-input-section,
+    .menu-input-section {
         flex: 2;
     }
 }
