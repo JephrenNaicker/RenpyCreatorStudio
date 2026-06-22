@@ -55,12 +55,25 @@ export interface DialogueLineCharacter {
 // 'dialogue' = normal spoken line (existing behaviour)
 // 'menu'     = branching choice node
 // 'action'   = future: scene action / stage direction
+//     transition?: 'instant' | 'fade' | 'dissolve';
 export type SceneLineType = 'dialogue' | 'menu' | 'action';
+
+
+export interface CharacterState {
+    character_id: string;
+    action: 'show' | 'hide';
+    position?: 'left' | 'center' | 'right' | 'custom';
+    custom_x?: number;
+    custom_y?: number;
+    transform?: TransformConfig;
+    expression?: string;
+    outfit?: string;
+}
 
 // ─── Dialogue line (unchanged shape, type field added) ────────────────────────
 export interface DialogueLine {
     id: string;
-    type?: SceneLineType;           // defaults to 'dialogue' when absent — keeps dummy data valid
+    type?: SceneLineType;
     character: {
         id: string;
         name: string;
@@ -68,10 +81,12 @@ export interface DialogueLine {
         is_removed?: boolean;
     } | null;
     text: string;
-    expression?: string;
-    outfit?: string;
     order: number;
     image_position?: ImagePosition;
+    expression?: string;  // Convenience for the speaking character
+    outfit?: string;      // Convenience for the speaking character
+    speaker_visible?: boolean;  // false = character is hidden when this line plays (default: true)
+    character_states?: CharacterState[];  // Additional character changes
 }
 
 // ─── Menu / Choice node ───────────────────────────────────────────────────────

@@ -9,7 +9,8 @@
                 narrator: line.type !== 'menu' && !(line as DialogueLine).character,
                 selected: selectedLineIndex === index,
                 'has-position': line.type !== 'menu' && !!(line as DialogueLine).image_position,
-                'is-menu': line.type === 'menu'
+                'is-menu': line.type === 'menu',
+                'is-hidden': line.type !== 'menu' && (line as DialogueLine).speaker_visible === false
             }" @click="handleSelectLine(index)">
 
                 <!-- ── Menu node row ─────────────────────────────────── -->
@@ -30,12 +31,18 @@
                     </div>
                 </template>
 
-                <!-- ── Dialogue line row (unchanged) ─────────────────── -->
+                <!-- ── Dialogue line row ─────────────────────────────── -->
                 <template v-else>
                     <div class="line-header">
                         <div class="speaker" :style="{ color: (line as DialogueLine).character?.color || '#94a3b8' }">
                             {{ (line as DialogueLine).character?.name || 'Narrator' }}
                         </div>
+
+                        <!-- Visibility toggle — only for named characters, not Narrator -->
+                        <VisibilityToggle v-if="(line as DialogueLine).character"
+                            :model-value="(line as DialogueLine).speaker_visible === false"
+                            @change="(hidden) => updateVisibility(index, hidden)" @click.stop />
+
                         <div v-if="(line as DialogueLine).expression" class="expression">
                             {{ getExpressionEmoji((line as DialogueLine).expression!) }}
                             <span class="expression-name">{{ (line as DialogueLine).expression }}</span>
@@ -77,6 +84,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import ImagePositionSelector from '@/components/scene/ImagePositionSelector.vue';
+import VisibilityToggle from '@/components/scene/VisibilityToggle.vue';
 import type { DialogueLine, MenuNode, SceneLine } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
@@ -91,6 +99,7 @@ interface Emits {
     (e: 'edit-line', index: number): void;
     (e: 'delete-line', index: number): void;
     (e: 'update-line-position', payload: { index: number; position: ImagePosition | undefined }): void;
+    (e: 'update-line-visibility', payload: { index: number; visible: boolean }): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -156,6 +165,10 @@ const handleDeleteLine = (index: number) => {
     emit('delete-line', index);
 };
 
+const updateVisibility = (index: number, hidden: boolean) => {
+    emit('update-line-visibility', { index, visible: !hidden });
+};
+
 const togglePositionSelector = (index: number) => {
     if (activePositionLineIndex.value === index) {
         activePositionLineIndex.value = null;
@@ -166,20 +179,22 @@ const togglePositionSelector = (index: number) => {
 
 const updateLinePosition = (index: number, position: ImagePosition | undefined) => {
     emit('update-line-position', { index, position });
-    activePositionLineIndex.value = index;
+    // keep popup open so user can continue adjusting — closes on outside click
 };
 
-// Close position selector when clicking outside
+// Close position selector when clicking outside.
+// The popup and position button both use @click.stop, so any click that
+// reaches the document came from outside those elements.
+// We ignore clicks on the dialogue-line card itself so line selection
+// doesn't close the popup unexpectedly.
 const handleClickOutside = (event: MouseEvent) => {
-    if (activePositionLineIndex.value !== null) {
-        const target = event.target as HTMLElement;
-        const popup = document.getElementById(`position-popup-${activePositionLineIndex.value}`);
-        const btn = document.getElementById(`position-btn-${activePositionLineIndex.value}`);
-
-        if (popup && !popup.contains(target) && btn && !btn.contains(target)) {
-            activePositionLineIndex.value = null;
-        }
-    }
+    if (activePositionLineIndex.value === null) return;
+    const target = event.target as HTMLElement;
+    // If click is inside any position-selector-popup, do nothing (handled by @click.stop)
+    if (target.closest('.position-selector-popup')) return;
+    // If click is on the position indicator button, do nothing (toggle handles it)
+    if (target.closest('.position-indicator')) return;
+    activePositionLineIndex.value = null;
 };
 
 // Lifecycle hooks
@@ -337,15 +352,15 @@ onUnmounted(() => {
 
 .line-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
     gap: 0.5rem;
+    min-width: 0;
 }
 
 .speaker {
     font-weight: bold;
     font-size: 1rem;
+    flex-shrink: 0;
 }
 
 .expression {
@@ -354,6 +369,8 @@ onUnmounted(() => {
     gap: 0.5rem;
     font-size: 0.85rem;
     color: #94a3b8;
+    margin-left: auto;
+    flex-shrink: 0;
 }
 
 .expression-name {
@@ -444,7 +461,17 @@ onUnmounted(() => {
     background: rgba(248, 113, 113, 0.1);
 }
 
-/* Scrollbar styling */
+/* Hidden character — dims the card, red left border */
+.dialogue-line.is-hidden {
+    opacity: 0.55;
+    border-left: 3px solid #f87171 !important;
+}
+
+.dialogue-line.is-hidden:hover {
+    opacity: 0.85;
+}
+
+/* Scrollbar */
 .dialogue-history::-webkit-scrollbar {
     width: 6px;
 }

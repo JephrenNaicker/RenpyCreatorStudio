@@ -53,7 +53,9 @@
                     :is-dirty="currentScene ? dirtyScenes.has(currentScene.id) : false"
                     :scene-character-ids="currentScene?.character_ids || undefined" @add-line="addDialogueLine"
                     @edit-line="handleEditLine" @delete-line="deleteDialogueLine" @select-line="selectLine"
-                    @speaker-change="handleSpeakerChange" @add-menu="addMenuChoice" @add-action="addAction" />
+                    @speaker-change="handleSpeakerChange" @add-menu="addMenuChoice"
+                    @update-line-position="handleUpdateLinePosition"
+                    @update-line-visibility="handleUpdateLineVisibility" />
             </div>
         </main>
     </div>
@@ -175,6 +177,7 @@ import {
     type SceneLine,
     type Scene,
 } from '@/utils/dummyData';
+import type { ImagePosition } from '@/types/models';
 
 const route = useRoute();
 const router = useRouter();
@@ -533,9 +536,18 @@ const selectLine = (index: number | null) => {
     }
 };
 
-const addAction = () => {
-    console.log('Adding action');
-    alert('Action feature coming soon!');
+const handleUpdateLinePosition = ({ index, position }: { index: number; position: ImagePosition | undefined }) => {
+    const line = dialogueLines.value[index];
+    if (!line || line.type === 'menu') return;
+    (line as DialogueLine).image_position = position;
+    if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
+};
+
+const handleUpdateLineVisibility = ({ index, visible }: { index: number; visible: boolean }) => {
+    const line = dialogueLines.value[index];
+    if (!line || line.type === 'menu') return;
+    (line as DialogueLine).speaker_visible = visible;
+    if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
 };
 
 const saveScene = async () => {

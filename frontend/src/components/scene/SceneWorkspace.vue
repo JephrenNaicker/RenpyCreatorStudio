@@ -5,7 +5,8 @@
             <!-- Left panel: Dialogue History Component (dialogue lines + menu nodes) -->
             <DialogueHistory :dialogue-lines="dialogueLines" :selected-line-index="selectedLineIndex"
                 :is-dirty="isDirty" @select-line="handleSelectLine" @edit-line="startEdit"
-                @delete-line="handleDeleteLine" @update-line-position="handleUpdateLinePosition" />
+                @delete-line="handleDeleteLine" @update-line-position="handleUpdateLinePosition"
+                @update-line-visibility="handleUpdateLineVisibility" />
 
             <!-- Right panel: Speaker Selection and Input -->
             <div class="input-panel" id="input-panel">
@@ -50,9 +51,6 @@
                         </button>
                         <button class="btn secondary" @click="openMenuEditor" id="add-menu-btn">
                             Add Menu Choice
-                        </button>
-                        <button class="btn secondary" @click="$emit('add-action')" id="add-action-btn">
-                            Add Action
                         </button>
                     </div>
                 </div>
@@ -99,6 +97,7 @@ interface Emits {
     (e: 'speaker-change', characterId: string | null): void;
     (e: 'add-action'): void;
     (e: 'update-line-position', payload: { index: number; position: ImagePosition | undefined }): void;
+    (e: 'update-line-visibility', payload: { index: number; visible: boolean }): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -160,6 +159,10 @@ const handleSelectLine = (index: number | null) => {
 
 const handleDeleteLine = (index: number) => {
     emit('delete-line', index);
+};
+
+const handleUpdateLineVisibility = (payload: { index: number; visible: boolean }) => {
+    emit('update-line-visibility', payload);
 };
 
 const handleUpdateLinePosition = (payload: { index: number; position: ImagePosition | undefined }) => {
