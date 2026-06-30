@@ -153,6 +153,7 @@ interface CharacterData {
 // Validation state
 const validationErrors = ref<Record<string, string>>({});
 const isValid = computed(() => Object.keys(validationErrors.value).length === 0);
+const discardingChanges = ref(false);
 
 // Character metadata
 const characterMetadata = ref<{ createdAt?: string; updatedAt?: string }>({});
@@ -464,6 +465,7 @@ const saveAndLeave = async () => {
 const discardAndLeave = () => {
     showUnsavedModal.value = false;
     if (pendingNavigation.value) {
+        discardingChanges.value = true;
         router.push(pendingNavigation.value);
         pendingNavigation.value = null;
     }
@@ -474,7 +476,7 @@ const closeUnsavedModal = () => {
 };
 
 onBeforeRouteLeave((to, from, next) => {
-    if (hasUnsavedChanges.value) {
+    if (hasUnsavedChanges.value && !discardingChanges.value) {
         showUnsavedModal.value = true;
         pendingNavigation.value = to.fullPath;
         next(false);
