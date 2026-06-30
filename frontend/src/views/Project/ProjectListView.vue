@@ -91,24 +91,29 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { dummyProjects, dummyCharacters, type Project } from '@/utils/dummyData';
+import type { Project, Character } from '@/utils/dummyData';
+import { getAllProjects, deleteProject as deleteProjectService } from '@/services/projectService';
+import { getCharacters } from '@/services/characterService';
 
 const router = useRouter();
 const projects = ref<Project[]>([]);
+const characters = ref<Character[]>([]); // loaded once, used for synchronous lookups in the template
 const activeMenu = ref<string | null>(null);
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 
-// Load projects from API
+// Load projects + characters via their services
 const loadProjects = async () => {
     isLoading.value = true;
     error.value = null;
 
     try {
-        // TODO: Replace with API call
-        // const response = await api.getProjects();
-        await new Promise(resolve => setTimeout(resolve, 100)); // Simulate network
-        projects.value = [...dummyProjects];
+        const [loadedProjects, loadedCharacters] = await Promise.all([
+            getAllProjects(),
+            getCharacters(),
+        ]);
+        projects.value = loadedProjects;
+        characters.value = loadedCharacters;
     } catch (err) {
         console.error('Failed to load projects:', err);
         error.value = 'Failed to load projects';
@@ -142,9 +147,7 @@ const confirmDelete = async (project: Project) => {
         isLoading.value = true;
 
         try {
-            // TODO: API call to delete project
-            // await api.deleteProject(project.id);
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await deleteProjectService(project.id);
 
             projects.value = projects.value.filter(p => p.id !== project.id);
             console.log(`Project "${project.name}" deleted`);
@@ -164,7 +167,7 @@ const toggleMenu = (projectId: string) => {
 
 // Helper functions
 const getMainCharacterName = (characterId: string): string => {
-    const character = dummyCharacters.find(c => c.id === characterId);
+    const character = characters.value.find(c => c.id === characterId);
     return character ? character.name : 'Unknown';
 };
 

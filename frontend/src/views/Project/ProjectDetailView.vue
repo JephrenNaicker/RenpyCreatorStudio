@@ -349,12 +349,14 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import CharacterPickerDropdown from '@/components/character/CharacterPickerDropdown.vue';
-import {
-    dummyProjects,
-    dummyCharacters,
-    dummyScenes,
-    type Character,
-} from '@/utils/dummyData';
+import type { Character, Project, Scene, DialogueLine, SceneLine } from '@/utils/dummyData';
+import { getProject, deleteProject as deleteProjectService } from '@/services/projectService';
+import { getCharacters, createCharacter as createCharacterService } from '@/services/characterService';
+import { getScenesByProject, saveScene as saveSceneService } from '@/services/sceneService';
+
+// Type guard — narrows a SceneLine to DialogueLine (excludes menu/action nodes),
+// same pattern used in ProjectSceneEditorView.vue
+const isDialogueLine = (line: SceneLine): line is DialogueLine => line.type !== 'menu';
 
 const route = useRoute();
 const router = useRouter();
@@ -375,27 +377,23 @@ const selectedSwapCharacterId = ref<string>('');
 const projectCharacters = ref<Character[]>([]);
 const projectCharacterIds = ref<string[]>([]);
 
-// Find project by route param
-const project = computed(() => {
-    const found = dummyProjects.find(p => p.id === route.params.id);
-    return found || null;
-});
+// All characters available in the system (not filtered by project) — loaded once via the service
+const allAvailableCharacters = ref<Character[]>([]);
 
-// Derive main character from project
+// Scenes belonging to this project — loaded via the service
+const projectScenes = ref<Scene[]>([]);
+
+// Project itself — loaded async via the service (was a sync computed against dummyProjects)
+const project = ref<Project | null>(null);
+
+// Derive main character from project — kept as a computed since it only depends on
+// already-loaded refs (project + allAvailableCharacters), no extra fetch needed
 const mainCharacter = computed(() => {
     const mainCharacterId = project.value?.main_character_id;
     return mainCharacterId
-        ? dummyCharacters.find(c => c.id === mainCharacterId) ?? null
+        ? allAvailableCharacters.value.find(c => c.id === mainCharacterId) ?? null
         : null;
 });
-
-// All characters available in the system (not filtered by project)
-const allAvailableCharacters = computed(() => dummyCharacters);
-
-// Scenes belonging to this project
-const projectScenes = computed(() =>
-    dummyScenes.filter(s => s.project_id === project.value?.id)
-);
 
 // Total dialogue lines
 const totalDialogueLines = computed(() =>
@@ -408,7 +406,9 @@ const getCharacterUsageInfo = (characterId: string) => {
     let totalDialogue = 0;
 
     projectScenes.value.forEach(scene => {
-        const dialogueLinesForChar = scene.dialogue_lines.filter(line => line.character?.id === characterId);
+        const dialogueLinesForChar = scene.dialogue_lines.filter(
+            (line): line is DialogueLine => isDialogueLine(line) && line.character?.id === characterId
+        );
         if (dialogueLinesForChar.length > 0) {
             scenesWithCharacter.push({
                 id: scene.id,
@@ -439,7 +439,7 @@ const characterUsageInfo = ref<{
 
 // Available characters for swapping (all characters except the one being removed)
 const availableSwapCharacters = computed(() =>
-    dummyCharacters.filter(c => c.id !== characterToRemove.value?.id)
+    allAvailableCharacters.value.filter(c => c.id !== characterToRemove.value?.id)
 );
 
 // Recent activity
@@ -450,13 +450,37 @@ const recentActivity = ref([
     { id: 4, icon: '📝', text: 'Edited main plot description', time: '3 days ago' }
 ]);
 
-// Load project data (for now, just use all characters)
-// TODO: Replace with API call to get project-specific characters
-const loadProjectData = () => {
-    // For demo purposes, we'll use all characters
-    // In a real app, you'd filter by project.character_ids
-    projectCharacters.value = [...dummyCharacters];
-    projectCharacterIds.value = dummyCharacters.map(c => c.id);
+// Load project data via the services
+const loadProjectData = async () => {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+        const projectId = route.params.id as string;
+        const [loadedProject, loadedCharacters, loadedScenes] = await Promise.all([
+            getProject(projectId),
+            getCharacters(),
+            getScenesByProject(projectId),
+        ]);
+
+        project.value = loadedProject;
+        allAvailableCharacters.value = loadedCharacters;
+        projectScenes.value = loadedScenes;
+
+        // For demo purposes, we'll use all characters as project characters.
+        // TODO: once Project actually tracks character_ids meaningfully, filter by that instead.
+        projectCharacters.value = [...loadedCharacters];
+        projectCharacterIds.value = loadedCharacters.map(c => c.id);
+
+        if (!loadedProject) {
+            error.value = 'Project not found';
+        }
+    } catch (err) {
+        console.error('Failed to load project:', err);
+        error.value = 'Failed to load project';
+    } finally {
+        isLoading.value = false;
+    }
 };
 
 // Format date helper
@@ -514,10 +538,10 @@ const performCharacterRemoval = async (characterId: string, swapWithId?: string)
         if (characterUsageInfo.value.hasUsage && removalOption.value !== 'keep_as_placeholder') {
             if (removalOption.value === 'swap' && swapWithId) {
                 // Replace character in all dialogue lines
-                const newCharacter = dummyCharacters.find(c => c.id === swapWithId);
+                const newCharacter = allAvailableCharacters.value.find(c => c.id === swapWithId);
                 projectScenes.value.forEach(scene => {
-                    scene.dialogue_lines = scene.dialogue_lines.map(line => {
-                        if (line.character?.id === characterId) {
+                    scene.dialogue_lines = scene.dialogue_lines.map((line): SceneLine => {
+                        if (isDialogueLine(line) && line.character?.id === characterId) {
                             return {
                                 ...line,
                                 character: newCharacter ? {
@@ -530,21 +554,26 @@ const performCharacterRemoval = async (characterId: string, swapWithId?: string)
                         return line;
                     });
                 });
+                // Persist each affected scene explicitly rather than relying on the
+                // service returning live references — keeps this correct even once
+                // a real backend returns fresh copies on every fetch.
+                await Promise.all(projectScenes.value.map(scene => saveSceneService(scene)));
                 showSuccess(`Character "${removedCharacter?.name}" replaced with "${newCharacter?.name}"`);
             } else if (removalOption.value === 'delete') {
                 // Delete all dialogue lines for this character
                 projectScenes.value.forEach(scene => {
                     scene.dialogue_lines = scene.dialogue_lines.filter(
-                        line => line.character?.id !== characterId
+                        line => !isDialogueLine(line) || line.character?.id !== characterId
                     );
                 });
+                await Promise.all(projectScenes.value.map(scene => saveSceneService(scene)));
                 showSuccess(`Character "${removedCharacter?.name}" removed and all dialogue lines deleted`);
             }
         } else if (characterUsageInfo.value.hasUsage && removalOption.value === 'keep_as_placeholder') {
             // Keep as placeholder - mark character as removed in dialogue
             projectScenes.value.forEach(scene => {
-                scene.dialogue_lines = scene.dialogue_lines.map(line => {
-                    if (line.character?.id === characterId) {
+                scene.dialogue_lines = scene.dialogue_lines.map((line): SceneLine => {
+                    if (isDialogueLine(line) && line.character?.id === characterId) {
                         return {
                             ...line,
                             character: {
@@ -557,6 +586,7 @@ const performCharacterRemoval = async (characterId: string, swapWithId?: string)
                     return line;
                 });
             });
+            await Promise.all(projectScenes.value.map(scene => saveSceneService(scene)));
             showSuccess(`Character "${removedCharacter?.name}" removed from project (dialogue preserved as placeholder)`);
         }
 
@@ -627,21 +657,10 @@ const handleAddCharactersToProject = (characterIds: string[]) => {
 const handleCreateCharacter = async (characterData: Omit<Character, 'id' | 'created_at' | 'updated_at'>) => {
     isLoading.value = true;
     try {
-        const newCharacter: Character = {
-            ...characterData,
-            id: `char_${Date.now()}`,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            voice_lines: characterData.voice_lines || [],
-            outfits: characterData.outfits || [],
-            expressions: characterData.expressions || []
-        };
+        const newCharacter = await createCharacterService(characterData);
 
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        // Add to all characters
-        dummyCharacters.push(newCharacter);
+        // Add to all-characters list
+        allAvailableCharacters.value.push(newCharacter);
 
         // Auto-add to project characters
         projectCharacters.value.push(newCharacter);
@@ -658,11 +677,12 @@ const handleCreateCharacter = async (characterData: Omit<Character, 'id' | 'crea
 
 // Delete project
 const deleteProject = async () => {
+    if (!project.value) return;
     if (confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
         isLoading.value = true;
         try {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            console.log('Project deleted:', project.value?.id);
+            await deleteProjectService(project.value.id);
+            console.log('Project deleted:', project.value.id);
             showSuccess('Project deleted successfully');
             router.push('/projects');
         } catch (err) {
@@ -699,21 +719,12 @@ const runExport = () => {
 onMounted(() => {
     console.log('Loading project:', route.params.id);
     loadProjectData();
-
-    if (!project.value) {
-        error.value = 'Project not found';
-    }
 });
 
 // Watch for route changes
 watch(() => route.params.id, () => {
     console.log('Project ID changed:', route.params.id);
     loadProjectData();
-    if (!project.value) {
-        error.value = 'Project not found';
-    } else {
-        error.value = null;
-    }
 });
 </script>
 

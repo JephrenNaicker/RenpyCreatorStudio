@@ -179,8 +179,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { dummyCharacters } from '@/utils/dummyData';
 import type { Character } from '@/utils/dummyData';
+import { getCharacters } from '@/services/characterService';
+import { createProject as createProjectService } from '@/services/projectService';
 
 const router = useRouter();
 
@@ -206,9 +207,7 @@ const characters = ref<Character[]>([]);
 
 const loadCharacters = async () => {
     try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 50));
-        characters.value = [...dummyCharacters];
+        characters.value = await getCharacters();
     } catch (err) {
         console.error('Failed to load characters:', err);
         error.value = 'Failed to load characters';
@@ -317,20 +316,14 @@ const createProject = async () => {
     error.value = null;
 
     try {
-        // Prepare project data
-        const projectData = {
-            ...project.value,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
+        const newProject = await createProjectService({
+            name: project.value.name,
+            main_plot: project.value.main_plot,
+            main_character_id: project.value.main_character_id || undefined,
+            tags: [...project.value.tags]
+        });
 
-        console.log('Creating project:', projectData);
-
-        // TODO: API call to create project
-        // const response = await api.createProject(projectData);
-
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('Created project:', newProject);
 
         // Clear draft on success
         clearDraft();

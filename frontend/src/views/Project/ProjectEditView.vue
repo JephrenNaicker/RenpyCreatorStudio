@@ -169,8 +169,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { dummyProjects, dummyCharacters } from '@/utils/dummyData';
 import type { Character } from '@/utils/dummyData';
+import { getProject, updateProject } from '@/services/projectService';
+import { getCharacters } from '@/services/characterService';
 
 const route = useRoute();
 const router = useRouter();
@@ -205,9 +206,7 @@ const characters = ref<Character[]>([]);
 // Load characters
 const loadCharacters = async () => {
     try {
-        // TODO: Replace with API call
-        // const response = await api.getCharacters();
-        characters.value = [...dummyCharacters];
+        characters.value = await getCharacters();
     } catch (err) {
         console.error('Failed to load characters:', err);
         error.value = 'Failed to load characters';
@@ -220,9 +219,7 @@ const loadProject = async () => {
     error.value = null;
 
     try {
-        // TODO: Replace with API call
-        // const response = await api.getProject(route.params.id);
-        const found = dummyProjects.find(p => p.id === route.params.id);
+        const found = await getProject(route.params.id as string);
 
         if (found) {
             project.value = {
@@ -306,13 +303,20 @@ const saveProject = async () => {
     error.value = null;
 
     try {
-        console.log('Saving project:', route.params.id, project.value);
+        const id = route.params.id as string;
+        const updated = await updateProject(id, {
+            name: project.value.name,
+            main_plot: project.value.main_plot,
+            main_character_id: project.value.main_character_id || undefined,
+            tags: [...project.value.tags]
+        });
 
-        // TODO: API call to update project
-        // await api.updateProject(route.params.id, project.value);
+        if (!updated) {
+            error.value = 'Project not found';
+            return;
+        }
 
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('Saved project:', updated);
 
         // Navigate back to project detail
         router.push(`/projects/${route.params.id}`);
