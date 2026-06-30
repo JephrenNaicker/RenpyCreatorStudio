@@ -105,7 +105,8 @@ import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
 import CharacterInfoPanel from '@/components/character/CharacterInfoPanel.vue';
 import CharacterPreviewPanel from '@/components/character/CharacterPreviewPanel.vue';
 import AssetLibraryPanel from '@/components/character/AssetLibraryPanel.vue';
-import { dummyCharacters, type Character } from '@/utils/dummyData';
+import { type Character } from '@/utils/dummyData';
+import { getCharacter, updateCharacter as updateCharacterService, deleteCharacter as deleteCharacterService } from '@/services/characterService';
 
 const route = useRoute();
 const router = useRouter();
@@ -256,7 +257,7 @@ const convertSnakeToCamel = (char: Character): CharacterData => {
 // Character CRUD operations
 const loadCharacter = async (id: string) => {
     try {
-        const foundCharacter = dummyCharacters.find((c: Character) => c.id === id);
+        const foundCharacter = await getCharacter(id);
 
         if (foundCharacter) {
             // Convert from API snake_case to internal camelCase
@@ -300,29 +301,31 @@ const updateCharacter = async () => {
     }
 
     try {
-        // Prepare data for API (convert camelCase to snake_case)
+        // Prepare data for the service (convert camelCase to snake_case to match Character)
         const charData = {
-            id: character.value.id,
-            project_id: character.value.project_id,
             name: character.value.name,
             nickname: character.value.nickname,
             color: character.value.color,
-            age: character.value.age,
-            birth_date: character.value.birthDate,  // Convert camelCase to snake_case for API
+            age: character.value.age ?? undefined,
+            birth_date: character.value.birthDate,  // Convert camelCase to snake_case
             bio: character.value.bio,
             voice_lines: character.value.voice_lines
                 .filter(v => !v._isDeleted)
                 .map(({ _isNew, _isDeleted, file, ...voice }) => voice),
             outfits: character.value.outfits
                 .filter(o => !o._isDeleted)
-                .map(({ _isNew, _isDeleted, ...outfit }) => outfit),
+                .map(({ _isNew, _isDeleted, ...outfit }) => ({
+                    name: outfit.name,
+                    default_image: outfit.default_image ?? ''
+                })),
             expressions: character.value.expressions
                 .filter(e => !e._isDeleted)
                 .map(({ _isNew, _isDeleted, file, ...exp }) => exp)
         };
 
-        // TODO: Call API to update
-        console.log('Updated character data:', charData);
+        // TODO: file uploads (charData.expressions[].file / voice_lines[].file) are not
+        // sent anywhere yet — out of scope until real backend/file storage exists.
+        await updateCharacterService(character.value.id!, charData);
         alert('Character updated successfully!');
 
         // Update original reference
@@ -339,8 +342,7 @@ const updateCharacter = async () => {
 const deleteCharacter = async () => {
     if (confirm(`Are you sure you want to delete "${character.value.name}"? This action cannot be undone.`)) {
         try {
-            // TODO: Call API to delete
-            console.log('Deleting character:', character.value.id);
+            await deleteCharacterService(character.value.id!);
             alert('Character deleted successfully!');
             router.push('/characters');
         } catch (error) {

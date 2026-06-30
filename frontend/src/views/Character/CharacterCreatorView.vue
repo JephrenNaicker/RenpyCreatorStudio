@@ -60,7 +60,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { characterAPI } from '@/services/api';
+import { createCharacter as createCharacterService } from '@/services/characterService';
 import CharacterInfoPanel from '@/components/character/CharacterInfoPanel.vue';
 import CharacterPreviewPanel from '@/components/character/CharacterPreviewPanel.vue';
 import AssetLibraryPanel from '@/components/character/AssetLibraryPanel.vue';
@@ -259,21 +259,24 @@ const createCharacter = async () => {
     }
 
     try {
-        const formData = new FormData();
-
+        // NOTE: image_path/audio_path are object URLs created for live preview
+        // (see handleImageUpload/handleAudioUpload below). Actual file upload
+        // to a backend is out of scope until real backend work begins.
         const charData = {
-            project_id: character.value.project_id,
             name: character.value.name,
             nickname: character.value.nickname,
             color: character.value.color,
-            age: character.value.age,
-            birth_date: character.value.birthDate, // Convert back for API
+            age: character.value.age ?? undefined,
+            birth_date: character.value.birthDate, // Convert camelCase to snake_case
             bio: character.value.bio,
             voice_lines: character.value.voice_lines.map(voice => ({
                 line_name: voice.line_name,
                 audio_path: voice.audio_path
             })),
-            outfits: character.value.outfits,
+            outfits: character.value.outfits.map(outfit => ({
+                name: outfit.name,
+                default_image: outfit.default_image ?? ''
+            })),
             expressions: character.value.expressions.map(exp => ({
                 name: exp.name,
                 image_path: exp.image_path,
@@ -282,23 +285,7 @@ const createCharacter = async () => {
             }))
         };
 
-        formData.append('character', JSON.stringify(charData));
-
-        // Append expression image files
-        character.value.expressions.forEach((exp, index) => {
-            if (exp.file) {
-                formData.append(`expression_${index}`, exp.file);
-            }
-        });
-
-        // Append voice audio files
-        character.value.voice_lines.forEach((voice, index) => {
-            if (voice.file) {
-                formData.append(`voice_${index}`, voice.file);
-            }
-        });
-
-        const response = await characterAPI.create(formData);
+        await createCharacterService(charData);
 
         // Show success message
         alert('Character created successfully!');

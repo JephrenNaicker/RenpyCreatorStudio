@@ -136,7 +136,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { dummyCharacters } from '@/utils/dummyData';
+import { getCharacters, deleteCharacter as deleteCharacterService } from '@/services/characterService';
 import type { Character } from '@/utils/dummyData';
 
 // Reactive data
@@ -147,20 +147,13 @@ const filterBy = ref('all');
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 
-// Load characters (with loading state for testing)
+// Load characters via the character service
 const loadCharacters = async () => {
     isLoading.value = true;
     error.value = null;
 
     try {
-        // Simulate API call with dummy data
-        // In production, replace with actual API call:
-        // const response = await api.getCharacters();
-        // characters.value = response.data;
-
-        // Using dummy data for now
-        await new Promise(resolve => setTimeout(resolve, 100)); // Simulate network delay
-        characters.value = [...dummyCharacters];
+        characters.value = await getCharacters();
     } catch (err) {
         error.value = 'Failed to load characters';
         console.error('Error loading characters:', err);
@@ -239,7 +232,7 @@ const filteredCharacters = computed(() => {
     return result;
 });
 
-// Delete character with confirmation and API call
+// Delete character with confirmation and service call
 const deleteCharacter = async (id: string) => {
     const confirmMessage = `Are you sure you want to delete this character?`;
     if (confirm(confirmMessage)) {
@@ -247,8 +240,7 @@ const deleteCharacter = async (id: string) => {
             // Find character before deletion for potential logging
             const characterToDelete = characters.value.find(c => c.id === id);
 
-            // TODO: Call API to delete from backend
-            // await api.deleteCharacter(id);
+            await deleteCharacterService(id);
 
             // Update local state
             characters.value = characters.value.filter(char => char.id !== id);

@@ -51,9 +51,9 @@
                     <span class="info-label">Age:</span>
                     <span id="character-age" class="info-value">{{ character.age }}</span>
                 </div>
-                <div v-if="character.birthDate" class="info-item">
+                <div v-if="character.birth_date" class="info-item">
                     <span class="info-label">Birth Date:</span>
-                    <span id="character-birth-date" class="info-value">{{ character.birthDate }}</span>
+                    <span id="character-birth-date" class="info-value">{{ character.birth_date }}</span>
                 </div>
             </div>
 
@@ -155,52 +155,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { dummyCharacters } from '@/utils/dummyData';
-
-interface Expression {
-    name: string;
-    image_path: string;
-    outfit: string;
-    isDefault?: boolean;
-}
-
-interface Outfit {
-    name: string;
-    default_image?: string;
-}
-
-interface VoiceLine {
-    line_name: string;
-    audio_path: string;
-}
-
-interface Character {
-    id: string;
-    project_id?: string;
-    name: string;
-    nickname?: string;
-    color: string;
-    age?: number | null;
-    birthDate?: string;
-    bio?: string;
-    expressions?: Expression[];
-    outfits?: Outfit[];
-    voice_lines?: VoiceLine[];
-    created_at: string;
-    updated_at: string;
-    tags?: string[];
-    main_plot?: string;
-}
+import { getCharacter } from '@/services/characterService';
+import type { Character } from '@/utils/dummyData';
 
 const route = useRoute();
 const router = useRouter();
 
-// Find character by route param
-const character = computed<Character | null>(() =>
-    dummyCharacters.find(c => c.id === route.params.id) ?? null
-);
+// Loaded async via characterService — starts null, populated on mount
+const character = ref<Character | null>(null);
+
+const loadCharacter = async (id: string) => {
+    character.value = await getCharacter(id);
+};
 
 const showExportModal = ref(false);
 const exportCode = ref('');
@@ -254,6 +222,13 @@ const exportCharacter = () => {
     alert('Export feature coming soon!');
     showExportPreview();
 };
+
+onMounted(() => {
+    const id = route.params.id as string;
+    if (id) {
+        loadCharacter(id);
+    }
+});
 </script>
 
 <style scoped>
