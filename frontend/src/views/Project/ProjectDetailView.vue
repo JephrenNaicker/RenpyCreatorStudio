@@ -38,7 +38,7 @@
                     <h3 class="text-xl text-slate-50 mb-5 flex items-center gap-2" id="overview-title">📖
                         Project Overview</h3>
                     <p class="text-slate-300 leading-relaxed mb-6" id="project-main-plot">{{ project.main_plot
-                        }}</p>
+                    }}</p>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4" id="stats-grid">
                         <div class="flex flex-col items-center p-4 bg-white/5 rounded-lg" id="stat-characters">
@@ -48,12 +48,12 @@
                         </div>
                         <div class="flex flex-col items-center p-4 bg-white/5 rounded-lg" id="stat-scenes">
                             <span class="text-3xl font-bold text-sky-400" id="scene-count">{{ projectScenes.length
-                                }}</span>
+                            }}</span>
                             <span class="text-sm text-slate-400 mt-1">Scenes</span>
                         </div>
                         <div class="flex flex-col items-center p-4 bg-white/5 rounded-lg" id="stat-dialogue">
                             <span class="text-3xl font-bold text-sky-400" id="dialogue-count">{{ totalDialogueLines
-                                }}</span>
+                            }}</span>
                             <span class="text-sm text-slate-400 mt-1">Dialogue Lines</span>
                         </div>
                     </div>
@@ -104,7 +104,7 @@
                                 <p class="text-slate-50 text-sm mb-1" :id="`activity-text-${index}`">{{ activity.text }}
                                 </p>
                                 <span class="text-slate-400 text-xs" :id="`activity-time-${index}`">{{ activity.time
-                                    }}</span>
+                                }}</span>
                             </div>
                         </div>
                     </div>
@@ -276,7 +276,7 @@
                             <div class="text-slate-50 font-medium">Keep as "Removed Character" placeholder</div>
                             <div class="text-slate-400 text-sm">Dialogue lines will show "[Removed: {{
                                 characterToRemove?.name
-                                }}]" and can be reassigned later</div>
+                            }}]" and can be reassigned later</div>
                         </div>
                     </label>
 
@@ -304,7 +304,7 @@
                         id="option-delete">
                         <input type="radio" v-model="removalOption" value="delete" class="mt-1" />
                         <div>
-                            <div class="text-slate-50 font-medium text-red-400">Delete all dialogue lines</div>
+                            <div class="text-red-400 font-medium">Delete all dialogue lines</div>
                             <div class="text-slate-400 text-sm">⚠️ This action cannot be undone. All dialogue for this
                                 character will be permanently deleted.</div>
                         </div>

@@ -23,7 +23,6 @@
                         class="text-gray-400 text-sm mb-3 line-clamp-2">
                         {{ truncate(project.main_plot, 100) }}
                     </p>
-
                     <div :id="`project-tags-${project.id}`" class="flex flex-wrap gap-1 mb-3">
                         <span v-for="(tag, tagIndex) in project.tags" :key="tag"
                             :id="`project-tag-${project.id}-${tagIndex}`"
@@ -219,14 +218,6 @@ if (import.meta.env.DEV) {
 
 <!-- Minimal custom CSS - mostly using Tailwind utilities -->
 <style scoped>
-/* Only custom styles that Tailwind can't easily handle */
-.line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
 /* Smooth transitions for card hover */
 #project-grid>div {
     transition: transform 0.2s ease, border-color 0.2s ease;
