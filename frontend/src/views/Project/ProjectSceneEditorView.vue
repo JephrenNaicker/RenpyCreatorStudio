@@ -2,12 +2,12 @@
     <div id="scene-editor-layout" class="flex h-screen bg-gray-950">
         <!-- Left Panel -->
         <ProjectSidebar :id="`project-sidebar-${route.params.id}`" :characters="projectCharacters" :scenes="scenes"
-            :selected-scene-id="currentScene?.id ?? null" :all-characters="projectCharacters"
+            :selected-scene-id="currentScene?.id ?? null" :all-characters="allCharacters"
             :project-id="String(route.params.id)" :dirty-scene-ids="dirtyScenes"
             @select-character="handleSelectCharacter" @remove-character="openRemoveCharacterModal"
-            @add-character="addCharacterToProject" @select-scene="selectScene" @add-scene="handleAddScene"
-            @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene"
-            @create-character="handleCreateCharacter" />
+            @add-character="addCharacterToProject" @add-characters="handleAddCharactersToProject"
+            @select-scene="selectScene" @add-scene="handleAddScene" @delete-scene="handleDeleteScene"
+            @update-scene="handleUpdateScene" @create-character="handleCreateCharacter" />
 
         <!-- Main Panel -->
         <main id="workspace-main" class="flex-1 flex flex-col overflow-hidden">
@@ -205,8 +205,18 @@ const characterToRemove = ref<Character | null>(null);
 const removalAction = ref<'placeholder' | 'swap' | 'delete'>('placeholder');
 const swapCharacterId = ref<string>('');
 
-// Computed: Project characters
-const projectCharacters = ref<Character[]>([...dummyCharacters]);
+// Master roster — every character that has ever been created
+const allCharacters = ref<Character[]>([...dummyCharacters]);
+
+// IDs of characters actually assigned to the current project
+const projectCharacterIds = ref<string[]>(
+    [...(dummyProjects.find(p => p.id === route.params.id)?.character_ids || [])]
+);
+
+// Characters to show in the sidebar roster — filtered by project
+const projectCharacters = computed<Character[]>(() =>
+    allCharacters.value.filter(c => projectCharacterIds.value.includes(c.id))
+);
 
 // Computed: Current project
 const currentProject = computed(() =>
@@ -265,6 +275,14 @@ const availableCharactersToSwap = computed(() =>
 );
 
 // Methods
+const handleAddCharactersToProject = (characterIds: string[]) => {
+    characterIds.forEach(id => {
+        if (!projectCharacterIds.value.includes(id)) {
+            projectCharacterIds.value.push(id);
+        }
+    });
+};
+
 const handleSelectCharacter = (character: Character) => {
     selectedCharacterId.value = character.id;
     selectedLineIndex.value = null;
@@ -278,7 +296,8 @@ const handleCreateCharacter = (characterData: Omit<Character, 'id' | 'created_at
         created_at: now,
         updated_at: now,
     };
-    projectCharacters.value.push(newCharacter);
+    allCharacters.value.push(newCharacter);
+    projectCharacterIds.value.push(newCharacter.id);
 };
 
 const handleSpeakerChange = (characterId: string | null) => {
@@ -405,7 +424,8 @@ const confirmRemoveCharacter = async () => {
     }
 
     // Remove character from project roster
-    projectCharacters.value = projectCharacters.value.filter(c => c.id !== characterId);
+    // NEW
+    projectCharacterIds.value = projectCharacterIds.value.filter(id => id !== characterId);
 
     // Remove character from scene character_ids
     scenes.value = scenes.value.map(s => ({
@@ -635,6 +655,7 @@ const resetState = () => {
     currentScene.value = null;
     dialogueLines.value = [];                                          // start empty
     scenes.value = dummyScenes.filter(s => s.project_id === route.params.id); // filter here too
+    projectCharacterIds.value = [...(dummyProjects.find(p => p.id === route.params.id)?.character_ids || [])];
     sceneDialogueCache.value = {};
     dirtyScenes.value.clear();
     error.value = null;

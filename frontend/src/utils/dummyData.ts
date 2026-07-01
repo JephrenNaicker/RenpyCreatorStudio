@@ -1,3 +1,4 @@
+<!--frontend / src / utils / dummyData.ts-- >
 import {
     type Character,
     type Project,

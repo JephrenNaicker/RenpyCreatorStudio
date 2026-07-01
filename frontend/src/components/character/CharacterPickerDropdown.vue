@@ -10,66 +10,70 @@
             </slot>
         </button>
 
-        <!-- Dropdown Content -->
-        <Transition name="dropdown">
-            <div v-if="isOpen" class="dropdown-content" ref="dropdownContent" id="dropdown-content">
-                <!-- Search Input -->
-                <div class="search-section" id="search-section">
-                    <input ref="searchInput" v-model="searchQuery" type="text" class="search-input"
-                        placeholder="Search or create character..." @keyup.enter="handleCreateNew"
-                        id="character-search-input" />
-                </div>
+        <!-- Dropdown Content (teleported to <body> so it can't be clipped by a scrolling/narrow ancestor) -->
+        <Teleport to="body">
+            <Transition name="dropdown">
+                <div v-if="isOpen" class="dropdown-content" ref="dropdownContent" id="dropdown-content"
+                    :style="dropdownStyle">
 
-                <!-- Character List -->
-                <div class="character-list-section" id="character-list-section">
-                    <div class="list-header" id="list-header">
-                        <span class="list-title" id="list-title">Existing Characters</span>
-                        <span class="list-count" id="list-count">{{ filteredCharacters.length }}</span>
+                    <!-- Search Input -->
+                    <div class="search-section" id="search-section">
+                        <input ref="searchInput" v-model="searchQuery" type="text" class="search-input"
+                            placeholder="Search or create character..." @keyup.enter="handleCreateNew"
+                            id="character-search-input" />
                     </div>
 
-                    <div v-if="filteredCharacters.length > 0" class="character-list" id="character-list">
-                        <div v-for="(char, index) in filteredCharacters" :key="char.id" class="character-item"
-                            :class="{ selected: isCharacterSelected(char.id) }" @click="selectCharacter(char)"
-                            :id="`character-item-${char.id}`" :data-character-id="char.id"
-                            :data-character-name="char.name" :data-selected="isCharacterSelected(char.id)"
-                            :data-index="index">
-                            <div class="character-color" :style="{ backgroundColor: char.color }"
-                                :id="`character-color-${char.id}`"></div>
-                            <div class="character-info" id="character-info">
-                                <div class="character-name" :id="`character-name-${char.id}`">{{ char.name }}
+                    <!-- Character List -->
+                    <div class="character-list-section" id="character-list-section">
+                        <div class="list-header" id="list-header">
+                            <span class="list-title" id="list-title">Existing Characters</span>
+                            <span class="list-count" id="list-count">{{ filteredCharacters.length }}</span>
+                        </div>
+
+                        <div v-if="filteredCharacters.length > 0" class="character-list" id="character-list">
+                            <div v-for="(char, index) in filteredCharacters" :key="char.id" class="character-item"
+                                :class="{ selected: isCharacterSelected(char.id) }" @click="selectCharacter(char)"
+                                :id="`character-item-${char.id}`" :data-character-id="char.id"
+                                :data-character-name="char.name" :data-selected="isCharacterSelected(char.id)"
+                                :data-index="index">
+                                <div class="character-color" :style="{ backgroundColor: char.color }"
+                                    :id="`character-color-${char.id}`"></div>
+                                <div class="character-info" id="character-info">
+                                    <div class="character-name" :id="`character-name-${char.id}`">{{ char.name }}
+                                    </div>
+                                    <div v-if="char.nickname" class="character-nick" :id="`character-nick-${char.id}`">
+                                        "{{ char.nickname }}"
+                                    </div>
                                 </div>
-                                <div v-if="char.nickname" class="character-nick" :id="`character-nick-${char.id}`">
-                                    "{{ char.nickname }}"
+                                <div class="character-stats" :id="`character-stats-${char.id}`">
+                                    <span class="stat-badge" :id="`character-expressions-${char.id}`">😀 {{
+                                        char.expressions?.length || 0 }}</span>
+                                    <span class="stat-badge" :id="`character-outfits-${char.id}`">👕 {{
+                                        char.outfits?.length || 0 }}</span>
                                 </div>
+                                <div v-if="isCharacterSelected(char.id)" class="check-icon" id="check-icon">✓</div>
                             </div>
-                            <div class="character-stats" :id="`character-stats-${char.id}`">
-                                <span class="stat-badge" :id="`character-expressions-${char.id}`">😀 {{
-                                    char.expressions?.length || 0 }}</span>
-                                <span class="stat-badge" :id="`character-outfits-${char.id}`">👕 {{
-                                    char.outfits?.length || 0 }}</span>
-                            </div>
-                            <div v-if="isCharacterSelected(char.id)" class="check-icon" id="check-icon">✓</div>
+                        </div>
+
+                        <div v-else class="empty-state" id="empty-state">
+                            <span class="empty-icon" id="empty-icon">🔍</span>
+                            <p id="empty-message">No characters found matching "{{ searchQuery }}"</p>
                         </div>
                     </div>
 
-                    <div v-else class="empty-state" id="empty-state">
-                        <span class="empty-icon" id="empty-icon">🔍</span>
-                        <p id="empty-message">No characters found matching "{{ searchQuery }}"</p>
+                    <!-- Quick Create Character Section -->
+                    <div class="create-section" id="create-section">
+                        <div class="divider" id="divider"></div>
+                        <button class="create-btn" @click="handleCreateNew" id="quick-create-btn">
+                            <span class="create-icon" id="create-icon">✨</span>
+                            <span class="create-text" id="create-text">
+                                Quick Create "{{ searchQuery || 'Character' }}"
+                            </span>
+                        </button>
                     </div>
                 </div>
-
-                <!-- Quick Create Character Section -->
-                <div class="create-section" id="create-section">
-                    <div class="divider" id="divider"></div>
-                    <button class="create-btn" @click="handleCreateNew" id="quick-create-btn">
-                        <span class="create-icon" id="create-icon">✨</span>
-                        <span class="create-text" id="create-text">
-                            Quick Create "{{ searchQuery || 'Character' }}"
-                        </span>
-                    </button>
-                </div>
-            </div>
-        </Transition>
+            </Transition>
+        </Teleport>
 
         <!-- Quick Create Modal -->
         <div v-if="showCreateModal" class="modal-overlay" @click.self="closeCreateModal" id="create-modal-overlay">
@@ -165,6 +169,12 @@ const searchInput = ref<HTMLInputElement | null>(null);
 const isOpen = ref(false);
 const searchQuery = ref('');
 
+// Teleported dropdown's computed inline position (fixed + viewport-clamped)
+const dropdownStyle = ref<Record<string, string>>({});
+const DROPDOWN_WIDTH = 380;
+const VIEWPORT_MARGIN = 12;
+const ESTIMATED_HEIGHT = 420;
+
 // Create character modal
 const showCreateModal = ref(false);
 const newCharacter = ref({
@@ -211,6 +221,43 @@ const isCharacterSelected = (charId: string): boolean => {
     return props.selectedCharacterIds?.includes(charId) ?? false;
 };
 
+// Compute a fixed, viewport-clamped position for the teleported dropdown,
+// anchored to wherever the trigger button actually is on screen.
+const positionDropdown = (): void => {
+    if (!dropdownContainer.value) return;
+
+    const rect = dropdownContainer.value.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Default: right edge of dropdown aligns with right edge of trigger, opening downward
+    let left = rect.right - DROPDOWN_WIDTH;
+    let top = rect.bottom + 8;
+
+    // Clamp horizontally so it can never run off either edge
+    if (left < VIEWPORT_MARGIN) left = VIEWPORT_MARGIN;
+    if (left + DROPDOWN_WIDTH > vw - VIEWPORT_MARGIN) {
+        left = vw - DROPDOWN_WIDTH - VIEWPORT_MARGIN;
+    }
+
+    // Flip above the trigger if there isn't room below
+    if (top + ESTIMATED_HEIGHT > vh - VIEWPORT_MARGIN && rect.top - ESTIMATED_HEIGHT > VIEWPORT_MARGIN) {
+        top = rect.top - ESTIMATED_HEIGHT - 8;
+    }
+
+    dropdownStyle.value = {
+        position: 'fixed',
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${DROPDOWN_WIDTH}px`,
+        zIndex: '9999'
+    };
+};
+
+const handleReposition = (): void => {
+    if (isOpen.value) positionDropdown();
+};
+
 const toggleDropdown = async (): Promise<void> => {
     if (isMaxSelectionsReached.value && !isOpen.value) {
         // Don't open if max selections reached
@@ -219,6 +266,7 @@ const toggleDropdown = async (): Promise<void> => {
 
     isOpen.value = !isOpen.value;
     if (isOpen.value) {
+        positionDropdown();
         await nextTick();
         searchInput.value?.focus();
     }
@@ -242,7 +290,6 @@ const selectCharacter = (character: Character): void => {
         } else {
             // Add character - check max limit
             if (props.maxSelections && props.selectedCharacterIds.length >= props.maxSelections) {
-                // Show warning or just don't add
                 console.warn(`Maximum ${props.maxSelections} selections allowed`);
                 return;
             }
@@ -267,7 +314,6 @@ const handleCreateNew = (): void => {
 
 const goToAdvancedCreator = (): void => {
     closeCreateModal();
-    // Navigate to character creator, optionally with pre-filled name and project context
     const params = new URLSearchParams();
     if (newCharacter.value.name) params.append('name', newCharacter.value.name);
     if (props.projectId) params.append('projectId', props.projectId);
@@ -291,8 +337,6 @@ const confirmCreateCharacter = async (): Promise<void> => {
 
     emit('create', characterData);
     closeCreateModal();
-
-    // Reset search query to show the new character
     searchQuery.value = '';
 };
 
@@ -309,9 +353,15 @@ const closeCreateModal = (): void => {
     };
 };
 
-// Handle click outside
+// Handle click outside — must check BOTH the trigger container and the
+// teleported dropdown content, since the dropdown now lives in <body>
+// and is no longer a DOM descendant of dropdownContainer.
 const handleClickOutside = (event: MouseEvent): void => {
-    if (isOpen.value && dropdownContainer.value && !dropdownContainer.value.contains(event.target as Node)) {
+    const target = event.target as Node;
+    const insideTrigger = dropdownContainer.value?.contains(target) ?? false;
+    const insideDropdown = dropdownContent.value?.contains(target) ?? false;
+
+    if (isOpen.value && !insideTrigger && !insideDropdown) {
         closeDropdown();
     }
 };
@@ -326,15 +376,19 @@ watch(() => props.selectedCharacterIds, () => {
 // Lifecycle
 onMounted(() => {
     document.addEventListener('click', handleClickOutside);
+    window.addEventListener('resize', handleReposition);
+    window.addEventListener('scroll', handleReposition, true); // capture phase catches sidebar's own scroll
 });
 
 onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside);
+    window.removeEventListener('resize', handleReposition);
+    window.removeEventListener('scroll', handleReposition, true);
 });
 
 // Expose methods for testing
 defineExpose({
-    openDropdown: () => { isOpen.value = true; },
+    openDropdown: () => { isOpen.value = true; positionDropdown(); },
     closeDropdown,
     isOpen,
     selectedIds: props.selectedCharacterIds
@@ -393,16 +447,13 @@ defineExpose({
     transform: translateY(-8px);
 }
 
+/* Position/top/left/width/z-index now come entirely from the :style="dropdownStyle" binding,
+   computed in JS against the trigger's real screen position and clamped to the viewport. */
 .dropdown-content {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    width: 380px;
     background: #1e293b;
     border: 1px solid #334155;
     border-radius: 12px;
     overflow: hidden;
-    z-index: 100;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
 }
 
