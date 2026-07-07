@@ -108,7 +108,7 @@
                             <div class="text-slate-50 font-medium">Keep as "Removed Character" placeholder</div>
                             <div class="text-slate-400 text-sm">Dialogue lines will show "[Removed: {{
                                 characterToRemove?.name
-                            }}]" and can be reassigned later</div>
+                                }}]" and can be reassigned later</div>
                         </div>
                     </label>
 
@@ -178,6 +178,7 @@ import {
     type Scene,
 } from '@/utils/dummyData';
 import type { ImagePosition } from '@/types/models';
+import { createScene } from '@/services/sceneService';
 
 const route = useRoute();
 const router = useRouter();
@@ -468,10 +469,18 @@ const selectScene = (scene: Scene) => {
     selectedCharacterId.value = null;
 };
 
-const handleAddScene = (scene: Scene) => {
-    scenes.value.push(scene);
-    sceneDialogueCache.value[scene.id] = [];
-    selectScene(scene);
+const handleAddScene = async (sceneData: Omit<Scene, 'id' | 'created_at' | 'updated_at' | 'dialogue_lines'>) => {
+    try {
+        // The service creates the full Scene object with IDs and timestamps
+        const newScene = await createScene(sceneData);
+        scenes.value.push(newScene);
+        sceneDialogueCache.value[newScene.id] = [];
+        await selectScene(newScene);
+        showTempSuccess(`Scene "${newScene.name}" created!`);
+    } catch (err) {
+        console.error('Failed to create scene:', err);
+        error.value = 'Failed to create scene';
+    }
 };
 
 const handleDeleteScene = (sceneId: string) => {

@@ -63,7 +63,7 @@ interface Emits {
     (e: 'select-character', character: Character): void;
     (e: 'remove-character', characterId: string): void;
     (e: 'select-scene', scene: Scene): void;
-    (e: 'add-scene', scene: Scene): void;
+    (e: 'add-scene', sceneData: Omit<Scene, 'id' | 'created_at' | 'updated_at' | 'dialogue_lines'>): void;
     (e: 'delete-scene', sceneId: string): void;
     (e: 'update-scene', scene: Scene): void;
     (e: 'add-characters', characterIds: string[]): void;
@@ -84,21 +84,13 @@ const toggleSidebar = () => {
 const showDeleteModal = ref(false);
 const sceneToDelete = ref<Scene | null>(null);
 
-// Handle add scene from SceneManager
+// Handle add scene from SceneManager - emit minimal data, parent/service handles timestamps
 const handleAddScene = () => {
-    const now = new Date().toISOString();
-    const newScene: Scene = {
-        id: Date.now().toString(),
+    emit('add-scene', {
         name: 'New Scene',
         project_id: props.projectId || props.scenes?.[0]?.project_id || 'default-project',
-        character_ids: [],
-        dialogue_lines: [],
-        created_at: now,
-        updated_at: now
-    };
-    emit('add-scene', newScene);
-    // After emitting, we need to select the new scene
-    // This will be handled by the parent
+        character_ids: []
+    });
 };
 
 const confirmDeleteScene = () => {

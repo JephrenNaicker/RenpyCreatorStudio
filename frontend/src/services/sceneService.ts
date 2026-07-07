@@ -43,6 +43,13 @@ export async function saveScene(scene: Scene): Promise<Scene> {
 /**
  * Create a brand new scene for a project.
  */
+/**
+ * Create a brand new scene for a project.
+ * The service handles:
+ * - Generating a unique ID
+ * - Setting created_at and updated_at timestamps
+ * - Initializing dialogue_lines as empty array
+ */
 export async function createScene(
     data: Omit<Scene, 'id' | 'created_at' | 'updated_at' | 'dialogue_lines'>
 ): Promise<Scene> {
