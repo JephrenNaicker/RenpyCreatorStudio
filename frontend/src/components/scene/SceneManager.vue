@@ -1,0 +1,486 @@
+<template>
+    <div class="scene-list-section">
+        <div class="section-header">
+            <h4>Scenes</h4>
+            <button class="icon-button" @click="$emit('add-scene')" title="Add new scene">
+                <span class="text-lg">+</span>
+            </button>
+        </div>
+
+        <div v-if="scenes && scenes.length > 0" class="scene-list">
+            <div v-for="scene in scenes" :key="scene.id" class="scene-item" :class="{
+                active: selectedSceneId === scene.id,
+                editing: editingSceneId === scene.id
+            }">
+                <!-- Editing mode -->
+                <div v-if="editingSceneId === scene.id" class="scene-edit">
+                    <input ref="sceneInput" v-model="editingSceneName" type="text" class="scene-input"
+                        placeholder="Scene name" @keyup.enter="handleEnterKey(scene)" @keyup.escape="cancelEdit"
+                        @blur="handleBlur(scene)" maxlength="50" />
+                </div>
+
+                <!-- Display mode -->
+                <template v-else>
+                    <div class="scene-main">
+                        <div class="scene-top-row">
+                            <div class="scene-content" @click="$emit('select-scene', scene)"
+                                @dblclick.stop="startEditing(scene)">
+                                <span class="scene-icon">🎬</span>
+                                <span class="scene-name">
+                                    {{ scene.name || 'Untitled Scene' }}
+                                    <span v-if="dirtySceneIds?.has(scene.id)" class="dirty-indicator"
+                                        title="Unsaved changes">*</span>
+                                </span>
+                            </div>
+                            <div class="scene-actions">
+                                <button class="rename-scene" @click.stop="startEditing(scene)" title="Rename scene">
+                                    <span>✎</span>
+                                </button>
+                                <button class="delete-scene" @click.stop="$emit('delete-scene', scene.id)"
+                                    title="Delete scene">
+                                    <span>✕</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Cast strip for scene characters -->
+                        <div class="cast-strip">
+                            <div class="cast-dots">
+                                <span v-for="charId in scene.character_ids" :key="charId" class="cast-dot"
+                                    :style="{ background: getCharacterColor(charId) }"
+                                    :title="getCharacterName(charId)" />
+                                <span v-if="scene.character_ids.length === 0" class="cast-empty">
+                                    No cast
+                                </span>
+                            </div>
+
+                            <!-- Add character to scene button -->
+                            <button class="cast-add-btn" @click.stop="togglePicker(scene.id)"
+                                :title="pickerSceneId === scene.id ? 'Close picker' : 'Assign characters to scene'">
+                                <span>{{ pickerSceneId === scene.id ? '−' : '+' }}</span>
+                            </button>
+                        </div>
+
+                        <!-- Character picker popover -->
+                        <div v-if="pickerSceneId === scene.id" class="char-picker" @click.stop>
+                            <input v-model="pickerSearch" class="picker-search" placeholder="Search characters..."
+                                @click.stop />
+                            <div class="picker-list">
+                                <label v-for="char in filteredPickerCharacters" :key="char.id" class="picker-row">
+                                    <input type="checkbox" :checked="scene.character_ids.includes(char.id)"
+                                        @change="$emit('update-scene', { ...scene, character_ids: toggleCharacterInScene(scene, char.id) })"
+                                        class="picker-checkbox" />
+                                    <span class="cast-dot" :style="{ background: char.color }" />
+                                    <span class="picker-name">{{ char.name }}</span>
+                                    <span v-if="char.nickname" class="picker-nick">"{{ char.nickname }}"</span>
+                                </label>
+                                <p v-if="filteredPickerCharacters.length === 0" class="picker-empty">
+                                    No characters found
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div v-else class="empty-scenes">
+            <p class="text-sm text-gray-500 text-center py-4">No scenes yet. Click + to add one.</p>
+        </div>
+    </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, nextTick } from 'vue';
+import type { Character, Scene } from '@/utils/dummyData';
+
+interface Props {
+    scenes: Scene[];
+    characters: Character[];
+    selectedSceneId?: string | null;
+    dirtySceneIds?: Set<string>;
+}
+
+interface Emits {
+    (e: 'select-scene', scene: Scene): void;
+    (e: 'add-scene'): void;
+    (e: 'delete-scene', sceneId: string): void;
+    (e: 'update-scene', scene: Scene): void;
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
+
+// ── Editing state ──
+const editingSceneId = ref<string | null>(null);
+const editingSceneName = ref('');
+const editingSceneOriginalName = ref('');
+const sceneInput = ref<HTMLInputElement | null>(null);
+const didCommit = ref(false);
+
+// ── Character picker popover ──
+const pickerSceneId = ref<string | null>(null);
+const pickerSearch = ref('');
+
+const filteredPickerCharacters = computed(() => {
+    const q = pickerSearch.value.toLowerCase();
+    return q
+        ? props.characters.filter(c => c.name.toLowerCase().includes(q) || c.nickname?.toLowerCase().includes(q))
+        : props.characters;
+});
+
+// ── Helpers ──
+const getCharacterColor = (charId: string) =>
+    props.characters.find(c => c.id === charId)?.color ?? '#475569';
+
+const getCharacterName = (charId: string) =>
+    props.characters.find(c => c.id === charId)?.name ?? 'Unknown';
+
+const toggleCharacterInScene = (scene: Scene, charId: string) => {
+    const already = scene.character_ids.includes(charId);
+    return already
+        ? scene.character_ids.filter(id => id !== charId)
+        : [...scene.character_ids, charId];
+};
+
+const togglePicker = (sceneId: string) => {
+    if (pickerSceneId.value === sceneId) {
+        pickerSceneId.value = null;
+        pickerSearch.value = '';
+    } else {
+        pickerSceneId.value = sceneId;
+        pickerSearch.value = '';
+    }
+};
+
+// ── Scene editing ──
+const startEditing = (scene: Scene) => {
+    pickerSceneId.value = null;
+    didCommit.value = false;
+    editingSceneId.value = scene.id;
+    editingSceneName.value = scene.name || '';
+    editingSceneOriginalName.value = scene.name || '';
+    nextTick(() => {
+        const el = Array.isArray(sceneInput.value) ? sceneInput.value[0] : sceneInput.value;
+        el?.focus();
+        el?.select();
+    });
+};
+
+const commitSave = (scene: Scene) => {
+    const trimmedName = editingSceneName.value.trim();
+    if (!trimmedName) {
+        emit('delete-scene', scene.id);
+    } else if (trimmedName !== scene.name) {
+        emit('update-scene', { ...scene, name: trimmedName });
+    }
+    editingSceneId.value = null;
+    editingSceneName.value = '';
+    editingSceneOriginalName.value = '';
+};
+
+const handleEnterKey = (scene: Scene) => {
+    if (didCommit.value) return;
+    didCommit.value = true;
+    commitSave(scene);
+};
+
+const handleBlur = (scene: Scene) => {
+    if (didCommit.value) return;
+    didCommit.value = true;
+    commitSave(scene);
+};
+
+const cancelEdit = () => {
+    if (didCommit.value) return;
+    didCommit.value = true;
+    const scene = props.scenes?.find(s => s.id === editingSceneId.value);
+    if (scene && editingSceneOriginalName.value === 'New Scene') {
+        emit('delete-scene', scene.id);
+    }
+    editingSceneId.value = null;
+    editingSceneName.value = '';
+    editingSceneOriginalName.value = '';
+};
+</script>
+
+<style scoped>
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.section-header h4 {
+    margin: 0;
+    color: #f8fafc;
+}
+
+.icon-button {
+    background: #1e293b;
+    border: none;
+    color: #e2e8f0;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.icon-button:hover {
+    background: #2d3748;
+    transform: scale(1.05);
+}
+
+.scene-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.scene-item {
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    background: #0f172a;
+    border: 1px solid transparent;
+}
+
+.scene-item:hover {
+    background: #1e293b;
+}
+
+.scene-item.active {
+    background: rgba(56, 189, 248, 0.1);
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+.scene-main {
+    display: flex;
+    flex-direction: column;
+}
+
+.scene-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.5rem 0.25rem;
+}
+
+.scene-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.scene-icon {
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+.scene-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #e2e8f0;
+}
+
+.dirty-indicator {
+    color: #38bdf8;
+    font-weight: bold;
+    margin-left: 2px;
+}
+
+.scene-actions {
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+}
+
+.scene-item:hover .scene-actions {
+    opacity: 1;
+}
+
+.rename-scene,
+.delete-scene {
+    background: transparent;
+    border: none;
+    padding: 0.2rem 0.35rem;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.rename-scene {
+    color: #64748b;
+}
+
+.rename-scene:hover {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.delete-scene {
+    color: #64748b;
+}
+
+.delete-scene:hover {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.cast-strip {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.5rem 0.5rem;
+}
+
+.cast-dots {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex: 1;
+    flex-wrap: wrap;
+}
+
+.cast-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+.cast-empty {
+    font-size: 0.75rem;
+    color: #475569;
+    font-style: italic;
+}
+
+.cast-add-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    line-height: 1;
+}
+
+.cast-add-btn:hover {
+    background: #2d3748;
+    color: #38bdf8;
+    border-color: #38bdf8;
+}
+
+.char-picker {
+    margin: 0 0.5rem 0.5rem;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.picker-search {
+    width: 100%;
+    background: #0f172a;
+    border: none;
+    border-bottom: 1px solid #334155;
+    padding: 0.5rem 0.75rem;
+    color: #f8fafc;
+    font-size: 0.85rem;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.picker-search::placeholder {
+    color: #475569;
+}
+
+.picker-list {
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 0.25rem 0;
+}
+
+.picker-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.picker-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.picker-checkbox {
+    accent-color: #38bdf8;
+    flex-shrink: 0;
+}
+
+.picker-name {
+    color: #e2e8f0;
+    font-size: 0.85rem;
+    flex: 1;
+}
+
+.picker-nick {
+    color: #64748b;
+    font-size: 0.75rem;
+    font-style: italic;
+}
+
+.picker-empty {
+    color: #475569;
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 0.75rem;
+}
+
+.scene-edit {
+    flex: 1;
+    padding: 0.5rem;
+}
+
+.scene-input {
+    width: 100%;
+    background: #0f172a;
+    border: 1px solid #38bdf8;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.scene-input:focus {
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+.empty-scenes {
+    color: #6b7280;
+}
+</style>
