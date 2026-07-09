@@ -108,7 +108,7 @@
                             <div class="text-slate-50 font-medium">Keep as "Removed Character" placeholder</div>
                             <div class="text-slate-400 text-sm">Dialogue lines will show "[Removed: {{
                                 characterToRemove?.name
-                                }}]" and can be reassigned later</div>
+                            }}]" and can be reassigned later</div>
                         </div>
                     </label>
 
@@ -314,13 +314,48 @@ const handleSelectCharacter = (character: Character) => {
 
 const handleCreateCharacter = async (characterData: Omit<Character, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+        // Call the character service to create the character
         const newCharacter = await createCharacterService(characterData);
+
+        // Add to local state
         allCharacters.value.push(newCharacter);
-        projectCharacterIds.value.push(newCharacter.id);
+
+        // Add to project if projectId is provided
+        if (route.params.id) {
+            projectCharacterIds.value.push(newCharacter.id);
+            // TODO: Update project via projectService
+        }
+
+        // Auto-select the new character if needed
+        selectedCharacterId.value = newCharacter.id;
+
+        showTempSuccess(`Character "${newCharacter.name}" created successfully!`);
+
+        // If the character was created in the context of adding to project,
+        // we could also trigger adding them to the current scene
+        if (currentScene.value && !currentScene.value.character_ids.includes(newCharacter.id)) {
+            // Optionally add to current scene
+            currentScene.value.character_ids.push(newCharacter.id);
+            dirtyScenes.value.add(currentScene.value.id);
+        }
+
     } catch (err) {
         console.error('Failed to create character:', err);
         error.value = 'Failed to create character';
+        showTempError('Failed to create character. Please try again.');
     }
+};
+
+// ── Helper for error toast ──
+const showTempError = (message: string) => {
+    const toast = document.createElement('div');
+    toast.id = 'error-toast';
+    toast.className = 'fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
 };
 
 const handleSpeakerChange = (characterId: string | null) => {

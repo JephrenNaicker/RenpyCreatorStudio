@@ -335,7 +335,7 @@ const confirmCreateCharacter = async (): Promise<void> => {
         expressions: []
     };
 
-    emit('create', characterData);
+    emit('create', characterData);  // ✅ Emits the event
     closeCreateModal();
     searchQuery.value = '';
 };
