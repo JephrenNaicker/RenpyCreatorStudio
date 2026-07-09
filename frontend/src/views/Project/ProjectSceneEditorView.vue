@@ -47,7 +47,7 @@
             </div>
 
             <div id="workspace-content" class="flex-1 overflow-y-auto p-4">
-                <SceneWorkspace id="scene-workspace-component" :key="currentScene?.id" :dialogue-lines="dialogueLines"
+                <DialogueEditor id="scene-workspace-component" :key="currentScene?.id" :dialogue-lines="dialogueLines"
                     :characters="projectCharacters" :selected-line-index="selectedLineIndex"
                     :selected-speaker-id="selectedCharacterId"
                     :is-dirty="currentScene ? dirtyScenes.has(currentScene.id) : false"
@@ -166,19 +166,24 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ProjectSidebar from '@/components/scene/ProjectSidebar.vue';
-import SceneWorkspace from '@/components/scene/SceneWorkspace.vue';
-import {
-    dummyCharacters,
-    dummyScenes,
-    dummyProjects,
-    type Character,
-    type DialogueLine,
-    type MenuNode,
-    type SceneLine,
-    type Scene,
-} from '@/utils/dummyData';
+import DialogueEditor from '@/components/scene/DialogueEditor.vue';
+import type { Character, DialogueLine, MenuNode, SceneLine, Scene } from '@/utils/dummyData';
 import type { ImagePosition } from '@/types/models';
-import { createScene } from '@/services/sceneService';
+import { getProject } from '@/services/projectService';
+import { getCharacters, createCharacter as createCharacterService } from '@/services/characterService';
+import {
+    getScenesByProject,
+    createScene,
+    saveScene as saveSceneService,
+    deleteScene as deleteSceneService,
+} from '@/services/sceneService';
+import {
+    createMenuNode,
+    replaceLine,
+    deleteLine,
+    applyLinePosition,
+    applyLineVisibility,
+} from '@/services/dialogueService';
 
 const route = useRoute();
 const router = useRouter();
@@ -191,9 +196,7 @@ const selectedCharacterId = ref<string | null>(null);
 const selectedLineIndex = ref<number | null>(null);
 const currentScene = ref<Scene | null>(null);
 const dialogueLines = ref<SceneLine[]>([]);
-const scenes = ref<Scene[]>(
-    dummyScenes.filter(s => s.project_id === route.params.id)
-);
+const scenes = ref<Scene[]>([]);
 const sceneDialogueCache = ref<Record<string, SceneLine[]>>({});
 const dirtyScenes = ref<Set<string>>(new Set());
 const isLoading = ref(false);
@@ -207,22 +210,18 @@ const removalAction = ref<'placeholder' | 'swap' | 'delete'>('placeholder');
 const swapCharacterId = ref<string>('');
 
 // Master roster — every character that has ever been created
-const allCharacters = ref<Character[]>([...dummyCharacters]);
+const allCharacters = ref<Character[]>([]);
 
 // IDs of characters actually assigned to the current project
-const projectCharacterIds = ref<string[]>(
-    [...(dummyProjects.find(p => p.id === route.params.id)?.character_ids || [])]
-);
+const projectCharacterIds = ref<string[]>([]);
 
 // Characters to show in the sidebar roster — filtered by project
 const projectCharacters = computed<Character[]>(() =>
     allCharacters.value.filter(c => projectCharacterIds.value.includes(c.id))
 );
 
-// Computed: Current project
-const currentProject = computed(() =>
-    dummyProjects.find(p => p.id === route.params.id) ?? null
-);
+// Current project — loaded async via projectService
+const currentProject = ref<Scene | null>(null);
 
 // Computed: Selected character
 const selectedCharacter = computed<Character | null>(() =>
@@ -275,6 +274,30 @@ const availableCharactersToSwap = computed(() =>
     projectCharacters.value.filter(c => c.id !== characterToRemove.value?.id)
 );
 
+// Load all project data via services
+const loadProjectData = async () => {
+    isLoading.value = true;
+    error.value = null;
+    try {
+        const projectId = route.params.id as string;
+        const [project, chars, projectScenes] = await Promise.all([
+            getProject(projectId),
+            getCharacters(),
+            getScenesByProject(projectId),
+        ]);
+        currentProject.value = project as any;
+        allCharacters.value = chars;
+        scenes.value = projectScenes;
+        // Fall back to all character IDs if the project doesn't track them explicitly
+        projectCharacterIds.value = project?.character_ids ?? chars.map(c => c.id);
+    } catch (err) {
+        console.error('Failed to load project data:', err);
+        error.value = 'Failed to load project data';
+    } finally {
+        isLoading.value = false;
+    }
+};
+
 // Methods
 const handleAddCharactersToProject = (characterIds: string[]) => {
     characterIds.forEach(id => {
@@ -289,16 +312,15 @@ const handleSelectCharacter = (character: Character) => {
     selectedLineIndex.value = null;
 };
 
-const handleCreateCharacter = (characterData: Omit<Character, 'id' | 'created_at' | 'updated_at'>) => {
-    const now = new Date().toISOString();
-    const newCharacter: Character = {
-        ...characterData,
-        id: `char_${Date.now()}`,
-        created_at: now,
-        updated_at: now,
-    };
-    allCharacters.value.push(newCharacter);
-    projectCharacterIds.value.push(newCharacter.id);
+const handleCreateCharacter = async (characterData: Omit<Character, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+        const newCharacter = await createCharacterService(characterData);
+        allCharacters.value.push(newCharacter);
+        projectCharacterIds.value.push(newCharacter.id);
+    } catch (err) {
+        console.error('Failed to create character:', err);
+        error.value = 'Failed to create character';
+    }
 };
 
 const handleSpeakerChange = (characterId: string | null) => {
@@ -425,7 +447,6 @@ const confirmRemoveCharacter = async () => {
     }
 
     // Remove character from project roster
-    // NEW
     projectCharacterIds.value = projectCharacterIds.value.filter(id => id !== characterId);
 
     // Remove character from scene character_ids
@@ -483,71 +504,72 @@ const handleAddScene = async (sceneData: Omit<Scene, 'id' | 'created_at' | 'upda
     }
 };
 
-const handleDeleteScene = (sceneId: string) => {
+const handleDeleteScene = async (sceneId: string) => {
     if (confirm('Delete this scene? This cannot be undone.')) {
-        scenes.value = scenes.value.filter(s => s.id !== sceneId);
-        delete sceneDialogueCache.value[sceneId];
-        dirtyScenes.value.delete(sceneId);
-        if (currentScene.value?.id === sceneId) {
-            currentScene.value = null;
-            dialogueLines.value = [];
-            selectedLineIndex.value = null;
-            selectedCharacterId.value = null;
+        try {
+            await deleteSceneService(sceneId);
+            scenes.value = scenes.value.filter(s => s.id !== sceneId);
+            delete sceneDialogueCache.value[sceneId];
+            dirtyScenes.value.delete(sceneId);
+            if (currentScene.value?.id === sceneId) {
+                currentScene.value = null;
+                dialogueLines.value = [];
+                selectedLineIndex.value = null;
+                selectedCharacterId.value = null;
+            }
+        } catch (err) {
+            console.error('Failed to delete scene:', err);
+            error.value = 'Failed to delete scene';
         }
     }
 };
 
-const handleUpdateScene = (scene: Scene) => {
-    const index = scenes.value.findIndex(s => s.id === scene.id);
-    if (index !== -1) {
-        scenes.value[index] = scene;
-    }
-    if (currentScene.value?.id === scene.id) {
-        currentScene.value = scene;
+const handleUpdateScene = async (scene: Scene) => {
+    try {
+        const updated = await saveSceneService(scene);
+        const index = scenes.value.findIndex(s => s.id === updated.id);
+        if (index !== -1) scenes.value[index] = updated;
+        if (currentScene.value?.id === updated.id) currentScene.value = updated;
+    } catch (err) {
+        console.error('Failed to update scene:', err);
+        error.value = 'Failed to update scene';
     }
 };
 
 const addDialogueLine = (line: DialogueLine) => {
-    const newLine: DialogueLine = {
-        ...line,
-        id: `line_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        order: dialogueLines.value.length + 1
-    };
-    dialogueLines.value.push(newLine);
+    dialogueLines.value.push(line);
     selectedLineIndex.value = dialogueLines.value.length - 1;
     selectedCharacterId.value = line.character?.id || null;
     if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
     scheduleAutoSave();
 };
 
-// New menu nodes come from SceneWorkspace's "add-menu" event, already fully formed
 const addMenuChoice = (node: MenuNode) => {
-    const newNode: MenuNode = {
-        ...node,
-        id: node.id || `menu_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        order: dialogueLines.value.length + 1,
-    };
+    const newNode = createMenuNode(
+        { prompt: node.prompt, choices: node.choices },
+        dialogueLines.value.length + 1
+    );
     dialogueLines.value.push(newNode);
     selectedLineIndex.value = dialogueLines.value.length - 1;
-    selectedCharacterId.value = null; // menu nodes have no speaker
+    selectedCharacterId.value = null;
     if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
     scheduleAutoSave();
 };
 
 const handleEditLine = (payload: { index: number; line: SceneLine }) => {
-    const { index, line } = payload;
-    dialogueLines.value[index] = line;
+    dialogueLines.value = replaceLine(dialogueLines.value, payload.index, payload.line);
     selectedLineIndex.value = null;
-    selectedCharacterId.value = line.type === 'menu' ? null : (line as DialogueLine).character?.id || null;
+    selectedCharacterId.value = payload.line.type === 'menu'
+        ? null
+        : (payload.line as DialogueLine).character?.id || null;
     if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
     scheduleAutoSave();
 };
 
 const deleteDialogueLine = (index: number) => {
     if (confirm('Delete this line?')) {
-        dialogueLines.value.splice(index, 1);
+        dialogueLines.value = deleteLine(dialogueLines.value, index);
         selectedLineIndex.value = null;
-        dialogueLines.value.forEach((line, idx) => { line.order = idx + 1; });
         if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
         scheduleAutoSave();
     }
@@ -566,16 +588,12 @@ const selectLine = (index: number | null) => {
 };
 
 const handleUpdateLinePosition = ({ index, position }: { index: number; position: ImagePosition | undefined }) => {
-    const line = dialogueLines.value[index];
-    if (!line || line.type === 'menu') return;
-    (line as DialogueLine).image_position = position;
+    dialogueLines.value = applyLinePosition(dialogueLines.value, index, position);
     if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
 };
 
 const handleUpdateLineVisibility = ({ index, visible }: { index: number; visible: boolean }) => {
-    const line = dialogueLines.value[index];
-    if (!line || line.type === 'menu') return;
-    (line as DialogueLine).speaker_visible = visible;
+    dialogueLines.value = applyLineVisibility(dialogueLines.value, index, visible);
     if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
 };
 
@@ -583,20 +601,15 @@ const saveScene = async () => {
     if (!currentScene.value) return;
     isLoading.value = true;
     try {
-        const id = currentScene.value.id;
-        const index = scenes.value.findIndex(s => s.id === id);
-        if (index !== -1) {
-            const updated: Scene = {
-                ...scenes.value[index]!,
-                dialogue_lines: [...dialogueLines.value],
-                updated_at: new Date().toISOString()
-            };
-            scenes.value[index] = updated;
-            currentScene.value = updated;
-        }
-        delete sceneDialogueCache.value[id];
-        dirtyScenes.value.delete(id);
-        console.log(`Scene "${currentScene.value.name}" saved successfully`);
+        const updated = await saveSceneService({
+            ...currentScene.value,
+            dialogue_lines: [...dialogueLines.value],
+        });
+        const index = scenes.value.findIndex(s => s.id === updated.id);
+        if (index !== -1) scenes.value[index] = updated;
+        currentScene.value = updated;
+        delete sceneDialogueCache.value[updated.id];
+        dirtyScenes.value.delete(updated.id);
         showTempSuccess('Scene saved!');
     } catch (err) {
         console.error('Failed to save scene:', err);
@@ -658,13 +671,11 @@ const undo = () => {
     }
 };
 
-const resetState = () => {
+const resetState = async () => {
     selectedCharacterId.value = null;
     selectedLineIndex.value = null;
     currentScene.value = null;
-    dialogueLines.value = [];                                          // start empty
-    scenes.value = dummyScenes.filter(s => s.project_id === route.params.id); // filter here too
-    projectCharacterIds.value = [...(dummyProjects.find(p => p.id === route.params.id)?.character_ids || [])];
+    dialogueLines.value = [];
     sceneDialogueCache.value = {};
     dirtyScenes.value.clear();
     error.value = null;
@@ -672,6 +683,7 @@ const resetState = () => {
         clearTimeout(autoSaveTimer.value);
         autoSaveTimer.value = null;
     }
+    await loadProjectData();
 };
 
 const handleKeydown = (event: KeyboardEvent) => {
@@ -687,6 +699,7 @@ const handleKeydown = (event: KeyboardEvent) => {
 
 onMounted(() => {
     console.log('Scene Editor mounted for project:', route.params.id);
+    loadProjectData();
     window.addEventListener('keydown', handleKeydown);
 });
 

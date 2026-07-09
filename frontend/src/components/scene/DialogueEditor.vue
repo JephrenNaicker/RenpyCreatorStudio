@@ -76,6 +76,7 @@ import { ref, nextTick, watch } from 'vue';
 import CastSelector from '@/components/scene/CastSelector.vue';
 import DialogueHistory from '@/components/scene/DialogueHistory.vue';
 import MenuChoiceEditor from '@/components/scene/MenuChoiceEditor.vue';
+import { createDialogueLine } from '@/services/dialogueService';
 import type { DialogueLine, MenuNode, Character, SceneLine } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
@@ -174,19 +175,17 @@ const addLine = () => {
 
     const character = props.characters.find(c => c.id === currentSpeaker.value);
 
-    const newLine: DialogueLine = {
-        id: Date.now().toString(),
-        type: 'dialogue',
-        character: character ? {
-            id: character.id,
-            name: character.name,
-            color: character.color
-        } : null,
-        text: currentText.value,
-        expression: currentExpression.value || undefined,
-        outfit: currentOutfit.value || undefined,
-        order: props.dialogueLines.length + 1
-    };
+    const newLine = createDialogueLine(
+        {
+            character: character
+                ? { id: character.id, name: character.name, color: character.color }
+                : null,
+            text: currentText.value,
+            expression: currentExpression.value || undefined,
+            outfit: currentOutfit.value || undefined,
+        },
+        props.dialogueLines.length + 1
+    );
 
     emit('add-line', newLine);
     resetForm();
@@ -291,7 +290,7 @@ watch(() => props.selectedLineIndex, (index) => {
         currentSpeaker.value = dialogueLine.character?.id || '';
         currentText.value = dialogueLine.text;
         currentExpression.value = dialogueLine.expression || '';
-        currentOutfit.value = (dialogueLine as any).outfit || '';
+        currentOutfit.value = dialogueLine.outfit || '';
         isEditing.value = true;
         editingIndex.value = index;
     } else {
