@@ -8,8 +8,6 @@ RenpyCreatorStudio/
 frontend/
 │   ├── src/
 │   ├── assets/
-│   │   ├── base.css
-│   │   ├── main.css            #old css page
 │   │   ├── tailwind.css           # tailwind
 │   ├── components/
 │   │   ├── layout/
@@ -19,24 +17,42 @@ frontend/
 │   │   │   ├── AssetLibraryPanel.vue
 │   │   │   ├── CharacterInfoPanel.vue
 │   │   │   ├── CharacterPreviewPanel.vue
+│   │   │   ├── CharacterPickerDropdown.vue
 │   │   ├── scene/
 │   │   │   ├─ ProjectSidebar.vue
-│   │   │   ├── SceneWorkspace.vue
+│   │   │   ├── ImagePositionSelector.vue
+│   │   │   ├── DialogueEditor.vue
 │   │   │   ├── CastSelector.vue
+│   │   │   ├── SceneManager.vue
+│   │   │   ├── CharacterRoster.vue
+│   │   │   ├── MenuChoiceEditor.vue
+│   │   │   ├── CastSelector.vue
+│   │   │   ├── ProjectSideBar.vue
+│   │   │   ├── DialogueHistory.vue
+│   │   │   ├── VisibilityToggle.vue
 │   ├── views/
 │   ├── character/
 │   │   ├── CharacterCreator.vue     # Create characters
 │   │   ├── CharacterListView.vue    # List all characters
 │   │   ├── CharacterDetailView.vue  # View/Edit character
+│   │   ├── CharacterEditorView.vue  # 
 |   │   projects/
 │   │   ├── ProjectListView.vue
 │   │   ├── ProjectCreateView.vue
 │   │   ├── ProjectDetailView.vue
+│   │   ├── ProjectEditView.vue
 │   │   └── ProjectSceneEditorView.vue
 │   └── HomeView.vue             # Dashboard
 │   ├── router/
 │   │   └── index.ts                 # Vue Router setup
+│   ├── types/
+│   │   └── models.ts               #classes and interfaces
+│   ├── stores/
 │   ├── services/
+│   │   ├── characterService.vue
+│   │   ├── dialogueService.vue
+│   │   ├── projectService.vue
+│   │   ├── sceneService.vue
 │   │   └── api.ts                 # python FASTapi
 │   ├── utils/
 │   │   └── dummyData              # test data

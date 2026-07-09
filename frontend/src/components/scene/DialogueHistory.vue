@@ -11,7 +11,7 @@
                 'has-position': line.type !== 'menu' && !!(line as DialogueLine).image_position,
                 'is-menu': line.type === 'menu',
                 'is-hidden': line.type !== 'menu' && (line as DialogueLine).speaker_visible === false
-            }" @click="handleSelectLine(index)">
+            }" :style="getLineStyle(line)" @click="handleSelectLine(index)">
 
                 <!-- ── Menu node row ─────────────────────────────────── -->
                 <template v-if="line.type === 'menu'">
@@ -152,6 +152,33 @@ const getPositionTooltip = (position: ImagePosition | undefined): string => {
     return label;
 };
 
+// Add this computed style function
+const getLineStyle = (line: SceneLine) => {
+    // Only apply character color border for dialogue lines with a character
+    if (line.type !== 'menu' && (line as DialogueLine).character) {
+        const character = (line as DialogueLine).character;
+        // If it has a position, use the character's color for the border
+        if ((line as DialogueLine).image_position) {
+            return {
+                borderLeftColor: character?.color || '#38bdf8'
+            };
+        }
+    }
+    // For narrator lines without character, keep default or use a neutral color
+    if (line.type !== 'menu' && !(line as DialogueLine).character) {
+        return {
+            borderLeftColor: '#475569' // Same as narrator border
+        };
+    }
+    // For menu nodes, keep amber
+    if (line.type === 'menu') {
+        return {
+            borderLeftColor: '#f59e0b'
+        };
+    }
+    return {};
+};
+
 // Event handlers
 const handleSelectLine = (index: number) => {
     emit('select-line', index);
@@ -271,7 +298,19 @@ onUnmounted(() => {
 }
 
 .dialogue-line.has-position {
-    border-left: 3px solid #38bdf8;
+    /* Remove the hardcoded color, will use inline style */
+    border-left-width: 3px;
+    border-left-style: solid;
+}
+
+/* Keep narrator fallback */
+.dialogue-line.narrator {
+    border-left-color: #475569 !important;
+}
+
+/* Keep menu styling */
+.dialogue-line.is-menu {
+    border-left-color: #f59e0b !important;
 }
 
 .dialogue-line:hover {

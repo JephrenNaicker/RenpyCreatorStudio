@@ -175,15 +175,27 @@ const addLine = () => {
 
     const character = props.characters.find(c => c.id === currentSpeaker.value);
 
+    // Build the line data with default position if character exists
+    const lineData: Omit<DialogueLine, 'id' | 'order' | 'type'> = {
+        character: character
+            ? { id: character.id, name: character.name, color: character.color }
+            : null,
+        text: currentText.value,
+        expression: currentExpression.value || undefined,
+        outfit: currentOutfit.value || undefined,
+        // Add default position for characters so they get the colored border
+        image_position: character ? {
+            position: 'center',
+            transform: {
+                flip_x: false,
+                zoom: 1
+            }
+        } : undefined,
+        speaker_visible: true
+    };
+
     const newLine = createDialogueLine(
-        {
-            character: character
-                ? { id: character.id, name: character.name, color: character.color }
-                : null,
-            text: currentText.value,
-            expression: currentExpression.value || undefined,
-            outfit: currentOutfit.value || undefined,
-        },
+        lineData,
         props.dialogueLines.length + 1
     );
 
@@ -215,7 +227,15 @@ const updateLine = () => {
         expression: currentExpression.value || undefined,
         outfit: currentOutfit.value || undefined,
         order: dialogueLine.order,
-        image_position: dialogueLine.image_position
+        // Preserve the existing image_position when updating
+        image_position: dialogueLine.image_position || (character ? {
+            position: 'center',
+            transform: {
+                flip_x: false,
+                zoom: 1
+            }
+        } : undefined),
+        speaker_visible: dialogueLine.speaker_visible ?? true
     };
 
     emit('edit-line', { index: editingIndex.value, line: updatedLine });
