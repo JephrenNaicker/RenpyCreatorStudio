@@ -37,6 +37,11 @@
                             @click="undo">
                             ↩️ Undo
                         </button>
+                        <button id="manage-variables-btn"
+                            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm"
+                            @click="showVariableManager = true">
+                            🧮 Variables
+                        </button>
                         <button id="back-to-project-btn"
                             class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm ml-auto"
                             @click="router.push(`/projects/${route.params.id}`)">
@@ -48,7 +53,7 @@
 
             <div id="workspace-content" class="flex-1 overflow-y-auto p-4">
                 <DialogueEditor id="scene-workspace-component" :key="currentScene?.id" :dialogue-lines="dialogueLines"
-                    :characters="projectCharacters" :selected-line-index="selectedLineIndex"
+                    :characters="projectCharacters" :variables="variables" :selected-line-index="selectedLineIndex"
                     :selected-speaker-id="selectedCharacterId"
                     :is-dirty="currentScene ? dirtyScenes.has(currentScene.id) : false"
                     :scene-character-ids="currentScene?.character_ids || undefined" @add-line="addDialogueLine"
@@ -59,6 +64,11 @@
             </div>
         </main>
     </div>
+
+    <!-- Story Variables Modal -->
+    <VariableManager :open="showVariableManager" :variables="variables" :scenes="scenes"
+        @update:open="showVariableManager = $event" @update:variables="handleVariablesUpdate"
+        @update:scenes="handleVariableRenameScenes" />
 
     <!-- Character Removal Warning Modal -->
     <div v-if="showRemovalModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
@@ -108,7 +118,7 @@
                             <div class="text-slate-50 font-medium">Keep as "Removed Character" placeholder</div>
                             <div class="text-slate-400 text-sm">Dialogue lines will show "[Removed: {{
                                 characterToRemove?.name
-                            }}]" and can be reassigned later</div>
+                                }}]" and can be reassigned later</div>
                         </div>
                     </label>
 
@@ -167,7 +177,8 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ProjectSidebar from '@/components/scene/ProjectSidebar.vue';
 import DialogueEditor from '@/components/scene/DialogueEditor.vue';
-import type { Character, DialogueLine, MenuNode, SceneLine, Scene } from '@/utils/dummyData';
+import VariableManager from '@/components/scene/VariableManager.vue';
+import type { Character, DialogueLine, MenuNode, SceneLine, Scene, Project, StoryVariable } from '@/utils/dummyData';
 import type { ImagePosition } from '@/types/models';
 import { getProject } from '@/services/projectService';
 import { getCharacters, createCharacter as createCharacterService } from '@/services/characterService';
@@ -221,7 +232,12 @@ const projectCharacters = computed<Character[]>(() =>
 );
 
 // Current project — loaded async via projectService
-const currentProject = ref<Scene | null>(null);
+const currentProject = ref<Project | null>(null);
+
+// Story variable registry for this project — sourced from Project.variables,
+// managed via VariableManager.vue + VariableManagerService.ts
+const variables = ref<StoryVariable[]>([]);
+const showVariableManager = ref(false);
 
 // Computed: Selected character
 const selectedCharacter = computed<Character | null>(() =>
@@ -285,11 +301,12 @@ const loadProjectData = async () => {
             getCharacters(),
             getScenesByProject(projectId),
         ]);
-        currentProject.value = project as any;
+        currentProject.value = project;
         allCharacters.value = chars;
         scenes.value = projectScenes;
         // Fall back to all character IDs if the project doesn't track them explicitly
         projectCharacterIds.value = project?.character_ids ?? chars.map(c => c.id);
+        variables.value = project?.variables ?? [];
     } catch (err) {
         console.error('Failed to load project data:', err);
         error.value = 'Failed to load project data';
@@ -356,6 +373,37 @@ const showTempError = (message: string) => {
     setTimeout(() => {
         toast.remove();
     }, 3000);
+};
+
+// VariableManager emits the full updated registry after create/edit/delete.
+// No backend endpoint for project.variables exists yet — mirrors the same
+// "mutate local state, TODO the persistence call" pattern handleCreateCharacter
+// uses below until projectService exposes one.
+const handleVariablesUpdate = (updated: StoryVariable[]) => {
+    variables.value = updated;
+    // TODO: persist via projectService once an update-project-variables endpoint exists
+};
+
+// Only fires when a variable rename cascaded into scene data (effects/conditions
+// rewritten to the new key). dialogueLines is a decoupled draft of the open
+// scene, so it needs a manual refresh — and any scene whose dialogue_lines
+// actually changed needs to be marked dirty so the rename survives a save.
+const handleVariableRenameScenes = (updatedScenes: Scene[]) => {
+    updatedScenes.forEach(updated => {
+        const previous = scenes.value.find(s => s.id === updated.id);
+        if (previous && JSON.stringify(previous.dialogue_lines) !== JSON.stringify(updated.dialogue_lines)) {
+            dirtyScenes.value.add(updated.id);
+        }
+    });
+
+    scenes.value = updatedScenes;
+
+    if (currentScene.value) {
+        const refreshed = updatedScenes.find(s => s.id === currentScene.value!.id);
+        if (refreshed) {
+            dialogueLines.value = [...refreshed.dialogue_lines];
+        }
+    }
 };
 
 const handleSpeakerChange = (characterId: string | null) => {

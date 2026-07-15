@@ -63,8 +63,8 @@
                         </h4>
                     </div>
                     <MenuChoiceEditor :editing-node="editingMenuNode" :line-count="dialogueLines.length"
-                        @add-menu="handleAddMenuNode" @update-menu="handleUpdateMenuNode" @cancel="closeMenuEditor"
-                        id="menu-choice-editor" />
+                        :variables="props.variables" @add-menu="handleAddMenuNode" @update-menu="handleUpdateMenuNode"
+                        @cancel="closeMenuEditor" id="menu-choice-editor" />
                 </div>
             </div>
         </div>
@@ -77,12 +77,13 @@ import CastSelector from '@/components/scene/CastSelector.vue';
 import DialogueHistory from '@/components/scene/DialogueHistory.vue';
 import MenuChoiceEditor from '@/components/scene/MenuChoiceEditor.vue';
 import { createDialogueLine } from '@/services/dialogueService';
-import type { DialogueLine, MenuNode, Character, SceneLine } from '@/types/models';
+import type { DialogueLine, MenuNode, Character, SceneLine, StoryVariable } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
 interface Props {
     dialogueLines: SceneLine[];
     characters: Character[];
+    variables?: StoryVariable[];
     selectedLineIndex?: number | null;
     selectedSpeakerId?: string | null;
     isDirty?: boolean;
@@ -104,7 +105,8 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
     selectedLineIndex: null,
     selectedSpeakerId: null,
-    sceneCharacterIds: undefined
+    sceneCharacterIds: undefined,
+    variables: () => []
 });
 
 const emit = defineEmits<Emits>();

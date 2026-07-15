@@ -59,8 +59,15 @@
 
                     <div v-for="(effect, eIdx) in expandedChoice.effects" :key="eIdx" class="effect-row"
                         :id="`effect-row-${eIdx}`">
-                        <input v-model="effect.variable" type="text" class="effect-input effect-var"
-                            placeholder="variable_name" :id="`effect-var-${eIdx}`" />
+                        <div class="effect-input-wrapper" :class="{ 'has-error': isVariableInvalid(effect.variable) }">
+                            <input v-model="effect.variable" type="text" class="effect-input effect-var"
+                                placeholder="variable_name" :id="`effect-var-${eIdx}`"
+                                @focus="setActiveVariableInput(eIdx, expandedIdx)" @blur="clearActiveVariableInput"
+                                @input="validateVariable(effect.variable)" list="variable-suggestions" />
+                            <div v-if="isVariableInvalid(effect.variable)" class="variable-error">
+                                ⚠️ Variable not found
+                            </div>
+                        </div>
 
                         <select v-model="effect.operation" class="effect-select" :id="`effect-op-${eIdx}`">
                             <option value="add">+ add</option>
@@ -83,10 +90,16 @@
                     <label class="field-label" id="condition-label">
                         Show Condition <span class="field-optional">(dormant — future gating)</span>
                     </label>
-                    <input :value="expandedChoice.condition"
-                        @input="updateExpandedField('condition', ($event.target as HTMLInputElement).value)" type="text"
-                        class="field-input condition-input" placeholder="e.g. affinity_alice >= 10"
-                        :id="`condition-input-${expandedIdx}`" />
+                    <div class="condition-input-wrapper" :class="{ 'has-error': hasConditionError }">
+                        <input :value="expandedChoice.condition"
+                            @input="updateExpandedField('condition', ($event.target as HTMLInputElement).value)"
+                            @focus="setActiveConditionInput(expandedIdx)" @blur="clearActiveConditionInput" type="text"
+                            class="field-input condition-input" placeholder="e.g. affinity_alice >= 10"
+                            :id="`condition-input-${expandedIdx}`" list="variable-suggestions" />
+                        <div v-if="hasConditionError" class="variable-error">
+                            ⚠️ Unknown variable: {{ unknownConditionVars.join(', ') }}
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Target scene (dormant placeholder, simple text for now) -->
@@ -105,30 +118,45 @@
             + Add Choice
         </button>
 
+        <!-- Validation summary -->
+        <div v-if="validationErrors.length > 0" class="validation-summary">
+            <p class="validation-error-text">⚠️ {{ validationErrors.join('; ') }}</p>
+        </div>
+
         <!-- Actions -->
         <div class="action-row" id="menu-actions">
-            <button class="btn primary" @click="submit" :disabled="!canSubmit" id="submit-menu-btn">
+            <button class="btn primary" @click="submit" :disabled="!canSubmit || hasValidationErrors"
+                id="submit-menu-btn">
                 {{ isEditing ? '✓ Update Menu' : '+ Add Menu Node' }}
             </button>
             <button class="btn secondary" @click="$emit('cancel')" id="cancel-menu-btn">
                 Cancel
             </button>
         </div>
+
+        <!-- Datalist for variable suggestions -->
+        <datalist id="variable-suggestions">
+            <option v-for="v in variables" :key="v.key" :value="v.key">
+                {{ v.label || v.key }}
+            </option>
+        </datalist>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import type { MenuNode, MenuChoice, ChoiceEffect } from '@/types/models';
+import type { MenuNode, MenuChoice, ChoiceEffect, StoryVariable } from '@/types/models';
 
 interface Props {
     editingNode?: MenuNode | null;
     lineCount?: number;
+    variables?: StoryVariable[];
 }
 
 const props = withDefaults(defineProps<Props>(), {
     editingNode: null,
     lineCount: 0,
+    variables: () => []
 });
 
 const emit = defineEmits<{
@@ -137,11 +165,19 @@ const emit = defineEmits<{
     (e: 'cancel'): void;
 }>();
 
+// ─── State ──────────────────────────────────────────────────────────────
+
 const isEditing = computed(() => !!props.editingNode);
 
 const prompt = ref('');
 const choices = ref<MenuChoice[]>(makeDefaultChoices());
 const expandedIdx = ref<number | null>(null);
+
+// Track which input is active for validation
+const activeVariableInput = ref<{ choiceIdx: number; effectIdx: number } | null>(null);
+const activeConditionInput = ref<number | null>(null);
+
+// ─── Helpers ────────────────────────────────────────────────────────────
 
 function makeDefaultChoices(): MenuChoice[] {
     return [
@@ -154,16 +190,114 @@ function uid(): string {
     return `choice_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
 }
 
-const canSubmit = computed(() => choices.value.filter(c => c.text.trim()).length >= 2);
+// ─── Variable Validation ──────────────────────────────────────────────
+
+const variableKeys = computed(() => new Set(props.variables.map(v => v.key)));
+
+const isValidVariable = (key: string): boolean => {
+    if (!key || !key.trim()) return true; // Empty is valid (not yet filled)
+    return variableKeys.value.has(key.trim());
+};
+
+const isVariableInvalid = (key: string): boolean => {
+    if (!key || !key.trim()) return false;
+    return !variableKeys.value.has(key.trim());
+};
+
+// For condition validation — extract all potential variable names
+const extractVariableNames = (condition: string): string[] => {
+    if (!condition) return [];
+    const matches = condition.match(/[a-z][a-z0-9_]*/g) ?? [];
+    return [...new Set(matches)];
+};
+
+const unknownConditionVars = computed(() => {
+    if (expandedIdx.value === null) return [];
+    const choice = choices.value[expandedIdx.value];
+    if (!choice?.condition) return [];
+    const vars = extractVariableNames(choice.condition);
+    return vars.filter(v => !variableKeys.value.has(v));
+});
+
+const hasConditionError = computed(() => unknownConditionVars.value.length > 0);
+
+// Validate a single variable
+const validateVariable = (key: string) => {
+    // Just triggers reactivity
+};
+
+const setActiveVariableInput = (effectIdx: number, choiceIdx: number) => {
+    activeVariableInput.value = { choiceIdx, effectIdx };
+};
+
+const clearActiveVariableInput = () => {
+    activeVariableInput.value = null;
+};
+
+const setActiveConditionInput = (choiceIdx: number) => {
+    activeConditionInput.value = choiceIdx;
+};
+
+const clearActiveConditionInput = () => {
+    activeConditionInput.value = null;
+};
+
+// ─── Validation Summary ──────────────────────────────────────────────
+
+const hasValidationErrors = computed(() => {
+    // Check all effects
+    for (const choice of choices.value) {
+        for (const effect of (choice.effects ?? [])) {
+            if (isVariableInvalid(effect.variable)) {
+                return true;
+            }
+        }
+        // Check condition
+        if (choice.condition) {
+            const unknown = extractVariableNames(choice.condition)
+                .filter(v => !variableKeys.value.has(v));
+            if (unknown.length > 0) return true;
+        }
+    }
+    return false;
+});
+
+const validationErrors = computed(() => {
+    const errors: string[] = [];
+
+    // Check effects
+    choices.value.forEach((choice, ci) => {
+        for (const effect of (choice.effects ?? [])) {
+            if (isVariableInvalid(effect.variable)) {
+                errors.push(`Choice ${ci + 1}: Unknown variable "${effect.variable}"`);
+            }
+        }
+        if (choice.condition) {
+            const unknown = extractVariableNames(choice.condition)
+                .filter(v => !variableKeys.value.has(v));
+            if (unknown.length > 0) {
+                errors.push(`Choice ${ci + 1}: Unknown vars in condition: ${unknown.join(', ')}`);
+            }
+        }
+    });
+
+    return errors;
+});
+
+// ─── Other computed ────────────────────────────────────────────────────
 
 const expandedChoice = computed<MenuChoice | null>(() => {
     if (expandedIdx.value === null) return null;
     return choices.value[expandedIdx.value] ?? null;
 });
 
-// Writes directly into the underlying choices array — avoids v-model on a
-// computed/optional-chained path, which Vue's template compiler rejects as
-// an invalid assignment target.
+const canSubmit = computed(() => {
+    const hasValidChoices = choices.value.filter(c => c.text.trim()).length >= 2;
+    return hasValidChoices && !hasValidationErrors.value;
+});
+
+// ─── Methods ──────────────────────────────────────────────────────────
+
 function updateExpandedField(field: 'condition' | 'target_scene_id', value: string) {
     if (expandedIdx.value === null) return;
     const choice = choices.value[expandedIdx.value];
@@ -212,7 +346,12 @@ function submit() {
             text: c.text.trim(),
             condition: c.condition?.trim() || undefined,
             target_scene_id: c.target_scene_id?.trim() || undefined,
-            effects: (c.effects ?? []).filter(e => e.variable.trim()),
+            effects: (c.effects ?? [])
+                .filter(e => e.variable.trim())
+                .map(e => ({
+                    ...e,
+                    variable: e.variable.trim()
+                })),
         }));
 
     const node: MenuNode = {
@@ -235,9 +374,12 @@ function reset() {
     prompt.value = '';
     choices.value = makeDefaultChoices();
     expandedIdx.value = null;
+    activeVariableInput.value = null;
+    activeConditionInput.value = null;
 }
 
-// Load existing node when editing
+// ─── Watch for editing ────────────────────────────────────────────────────
+
 watch(() => props.editingNode, (node) => {
     if (!node) {
         reset();
@@ -606,5 +748,59 @@ defineExpose({ reset });
 .btn:hover:not(:disabled) {
     opacity: 0.9;
     transform: translateY(-1px);
+}
+
+/* Variable validation styles */
+.effect-input-wrapper,
+.condition-input-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+.effect-input-wrapper.has-error .effect-input,
+.condition-input-wrapper.has-error .condition-input {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.variable-error {
+    position: absolute;
+    bottom: -1.2rem;
+    left: 0;
+    font-size: 0.6rem;
+    color: #ef4444;
+    white-space: nowrap;
+}
+
+.effect-input-wrapper .variable-error {
+    bottom: -1.2rem;
+}
+
+.condition-input-wrapper .variable-error {
+    bottom: -1.2rem;
+}
+
+.condition-input-wrapper {
+    flex: 1;
+}
+
+/* Validation summary */
+.validation-summary {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+}
+
+.validation-error-text {
+    color: #ef4444;
+    font-size: 0.78rem;
+    margin: 0;
+}
+
+/* Suggestion styling */
+datalist {
+    background: #0f172a;
+    border: 1px solid #334155;
 }
 </style>
