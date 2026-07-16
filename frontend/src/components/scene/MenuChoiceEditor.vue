@@ -60,56 +60,143 @@
                     <div v-for="(effect, eIdx) in expandedChoice.effects" :key="eIdx" class="effect-row"
                         :id="`effect-row-${eIdx}`">
                         <div class="effect-input-wrapper" :class="{ 'has-error': isVariableInvalid(effect.variable) }">
-                            <input v-model="effect.variable" type="text" class="effect-input effect-var"
-                                placeholder="variable_name" :id="`effect-var-${eIdx}`"
-                                @focus="setActiveVariableInput(eIdx, expandedIdx)" @blur="clearActiveVariableInput"
-                                @input="validateVariable(effect.variable)" list="variable-suggestions" />
+                            <select :value="effect.variable" @change="onEffectVariableChange(expandedIdx, eIdx, $event)"
+                                class="effect-select effect-var-select" :id="`effect-var-${eIdx}`">
+                                <option value="" disabled>Select variable…</option>
+                                <option v-if="effect.variable && isVariableInvalid(effect.variable)"
+                                    :value="effect.variable">
+                                    {{ effect.variable }} (not in registry)
+                                </option>
+                                <option v-for="v in props.variables" :key="v.key" :value="v.key">
+                                    {{ v.label || v.key }} ({{ v.type }})
+                                </option>
+                            </select>
                             <div v-if="isVariableInvalid(effect.variable)" class="variable-error">
-                                ⚠️ Variable not found
+                                ⚠️ Not in registry
                             </div>
                         </div>
 
-                        <select v-model="effect.operation" class="effect-select" :id="`effect-op-${eIdx}`">
-                            <option value="add">+ add</option>
-                            <option value="subtract">− subtract</option>
-                            <option value="set">= set</option>
-                            <option value="toggle">⇄ toggle</option>
+                        <!-- Operation selector - dynamically shows options based on variable type -->
+                        <select v-model="effect.operation" class="effect-select" :id="`effect-op-${eIdx}`"
+                            :disabled="!getVariableType(effect.variable)">
+                            <option v-for="op in getAvailableOperations(effect.variable)" :key="op.value"
+                                :value="op.value">
+                                {{ op.label }}
+                            </option>
                         </select>
 
-                        <input v-if="effect.operation !== 'toggle'" v-model.number="effect.value" type="number"
-                            class="effect-input effect-val" placeholder="0" :id="`effect-val-${eIdx}`" />
-                        <span v-else class="effect-toggle-hint" :id="`effect-toggle-hint-${eIdx}`">bool</span>
+                        <!-- Value input - changes based on variable type -->
+                        <template v-if="getVariableType(effect.variable) === 'boolean'">
+                            <select v-model="effect.value" class="effect-select effect-boolean"
+                                :id="`effect-bool-${eIdx}`">
+                                <option :value="true">true</option>
+                                <option :value="false">false</option>
+                            </select>
+                        </template>
+                        <template v-else-if="getVariableType(effect.variable) === 'string'">
+                            <input v-model="effect.value" type="text" class="effect-input effect-val effect-string"
+                                placeholder="value" :id="`effect-string-${eIdx}`" />
+                        </template>
+                        <template v-else-if="effect.operation !== 'toggle'">
+                            <input v-model.number="effect.value" type="number" class="effect-input effect-val"
+                                placeholder="0" :id="`effect-val-${eIdx}`"
+                                :disabled="!getVariableType(effect.variable)" />
+                        </template>
+                        <template v-else>
+                            <span class="effect-toggle-hint" :id="`effect-toggle-hint-${eIdx}`">bool</span>
+                        </template>
 
                         <button class="remove-effect-btn" @click="removeEffect(expandedIdx, eIdx)"
                             :id="`remove-effect-${eIdx}`">✕</button>
                     </div>
                 </div>
 
-                <!-- Condition (dormant) -->
+                <!-- Condition — structured builder, same shape as Effects -->
                 <div class="field-group" id="condition-section">
-                    <label class="field-label" id="condition-label">
-                        Show Condition <span class="field-optional">(dormant — future gating)</span>
-                    </label>
-                    <div class="condition-input-wrapper" :class="{ 'has-error': hasConditionError }">
-                        <input :value="expandedChoice.condition"
-                            @input="updateExpandedField('condition', ($event.target as HTMLInputElement).value)"
-                            @focus="setActiveConditionInput(expandedIdx)" @blur="clearActiveConditionInput" type="text"
-                            class="field-input condition-input" placeholder="e.g. affinity_alice >= 10"
-                            :id="`condition-input-${expandedIdx}`" list="variable-suggestions" />
-                        <div v-if="hasConditionError" class="variable-error">
-                            ⚠️ Unknown variable: {{ unknownConditionVars.join(', ') }}
+                    <div class="condition-header">
+                        <label class="field-label" id="condition-label">
+                            Show Condition <span class="field-optional">(future gating — not yet active)</span>
+                        </label>
+                        <button class="add-effect-btn" @click="addConditionPart(expandedIdx)"
+                            :disabled="(expandedChoice._conditionParts?.length ?? 0) >= 5" id="add-condition-btn">
+                            + Add Condition
+                        </button>
+                    </div>
+
+                    <div v-if="!expandedChoice._conditionParts?.length" class="effects-empty" id="condition-empty">
+                        No conditions yet — this choice is always shown.
+                    </div>
+
+                    <template v-for="(part, pIdx) in expandedChoice._conditionParts" :key="pIdx">
+                        <div class="condition-part-row" :id="`condition-part-${pIdx}`">
+                            <div class="effect-input-wrapper"
+                                :class="{ 'has-error': isVariableInvalid(part.variable) }">
+                                <select :value="part.variable"
+                                    @change="onConditionVariableChange(expandedIdx, pIdx, $event)"
+                                    class="effect-select condition-var-select" :id="`condition-var-${pIdx}`">
+                                    <option value="" disabled>Select variable…</option>
+                                    <option v-if="part.variable && isVariableInvalid(part.variable)"
+                                        :value="part.variable">
+                                        {{ part.variable }} (not in registry)
+                                    </option>
+                                    <option v-for="v in props.variables" :key="v.key" :value="v.key">
+                                        {{ v.label || v.key }} ({{ v.type }})
+                                    </option>
+                                </select>
+                                <div v-if="isVariableInvalid(part.variable)" class="variable-error">
+                                    ⚠️ Not in registry
+                                </div>
+                            </div>
+
+                            <select v-model="part.operator" class="effect-select condition-op-select"
+                                :disabled="!getVariableType(part.variable)" :id="`condition-op-${pIdx}`">
+                                <option v-for="op in getConditionOperators(part.variable)" :key="op.value"
+                                    :value="op.value">
+                                    {{ op.label }}
+                                </option>
+                            </select>
+
+                            <select v-if="getVariableType(part.variable) === 'boolean'" v-model="part.value"
+                                class="effect-select effect-boolean" :id="`condition-val-${pIdx}`">
+                                <option :value="true">true</option>
+                                <option :value="false">false</option>
+                            </select>
+                            <input v-else-if="getVariableType(part.variable) === 'string'" v-model="part.value"
+                                type="text" class="effect-input effect-val effect-string" placeholder="value"
+                                :id="`condition-val-${pIdx}`" />
+                            <input v-else v-model.number="part.value" type="number" class="effect-input effect-val"
+                                placeholder="0" :disabled="!getVariableType(part.variable)"
+                                :id="`condition-val-${pIdx}`" />
+
+                            <button class="remove-effect-btn" @click="removeConditionPart(expandedIdx, pIdx)"
+                                :id="`remove-condition-${pIdx}`">✕</button>
                         </div>
+
+                        <div v-if="pIdx < (expandedChoice._conditionParts?.length ?? 0) - 1" class="logical-op-row">
+                            <select v-model="part.logicalOp" class="logical-op-select" :id="`condition-logic-${pIdx}`">
+                                <option value="AND">AND</option>
+                                <option value="OR">OR</option>
+                            </select>
+                        </div>
+                    </template>
+
+                    <div v-if="legacyConditionNotice" class="condition-hint">
+                        <span class="hint-text">
+                            💡 Existing free-text condition kept as-is: "{{ expandedChoice?.condition }}". Add a
+                            condition above to replace it with structured rules.
+                        </span>
                     </div>
                 </div>
 
-                <!-- Target scene (dormant placeholder, simple text for now) -->
+                <!-- Target scene -->
                 <div class="field-group" id="target-section">
                     <label class="field-label" id="target-label">
-                        Target Scene ID <span class="field-optional">(optional — for later linking)</span>
+                        Target Scene ID <span class="field-optional">(optional — for future scene linking)</span>
                     </label>
                     <input :value="expandedChoice.target_scene_id"
                         @input="updateExpandedField('target_scene_id', ($event.target as HTMLInputElement).value)"
-                        type="text" class="field-input" placeholder="e.g. cp3" :id="`target-input-${expandedIdx}`" />
+                        type="text" class="field-input" placeholder="e.g. scene_3"
+                        :id="`target-input-${expandedIdx}`" />
                 </div>
             </div>
         </div>
@@ -133,19 +220,12 @@
                 Cancel
             </button>
         </div>
-
-        <!-- Datalist for variable suggestions -->
-        <datalist id="variable-suggestions">
-            <option v-for="v in variables" :key="v.key" :value="v.key">
-                {{ v.label || v.key }}
-            </option>
-        </datalist>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import type { MenuNode, MenuChoice, ChoiceEffect, StoryVariable } from '@/types/models';
+import type { MenuNode, MenuChoice, ChoiceEffect, StoryVariable, ConditionPart } from '@/types/models';
 
 interface Props {
     editingNode?: MenuNode | null;
@@ -173,16 +253,12 @@ const prompt = ref('');
 const choices = ref<MenuChoice[]>(makeDefaultChoices());
 const expandedIdx = ref<number | null>(null);
 
-// Track which input is active for validation
-const activeVariableInput = ref<{ choiceIdx: number; effectIdx: number } | null>(null);
-const activeConditionInput = ref<number | null>(null);
-
 // ─── Helpers ────────────────────────────────────────────────────────────
 
 function makeDefaultChoices(): MenuChoice[] {
     return [
-        { id: uid(), text: '', effects: [], condition: '' },
-        { id: uid(), text: '', effects: [], condition: '' },
+        { id: uid(), text: '', effects: [], condition: '', _conditionParts: [] },
+        { id: uid(), text: '', effects: [], condition: '', _conditionParts: [] },
     ];
 }
 
@@ -190,73 +266,188 @@ function uid(): string {
     return `choice_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
 }
 
+// ─── Variable Type Helpers ────────────────────────────────────────────
+
+const variableMap = computed(() => {
+    const map = new Map<string, StoryVariable>();
+    props.variables.forEach(v => map.set(v.key, v));
+    return map;
+});
+
+const getVariableType = (key: string): StoryVariable['type'] | null => {
+    if (!key || !key.trim()) return null;
+    const variable = variableMap.value.get(key.trim());
+    return variable?.type ?? null;
+};
+
+// ─── Operation Helpers (Effects — add/subtract/set/toggle) ────────────
+
+interface EffectOperationOption {
+    value: ChoiceEffect['operation'];
+    label: string;
+}
+
+const getAvailableOperations = (key: string): EffectOperationOption[] => {
+    const type = getVariableType(key);
+
+    switch (type) {
+        case 'number':
+            return [
+                { value: 'add', label: '+ add' },
+                { value: 'subtract', label: '− subtract' },
+                { value: 'set', label: '= set' },
+            ];
+        case 'boolean':
+            return [
+                { value: 'set', label: '= set' },
+                { value: 'toggle', label: '⇄ toggle' },
+            ];
+        case 'string':
+            return [
+                { value: 'set', label: '= set' },
+            ];
+        default:
+            // No variable selected yet — show the full set, disabled via the select itself
+            return [
+                { value: 'add', label: '+ add' },
+                { value: 'subtract', label: '− subtract' },
+                { value: 'set', label: '= set' },
+                { value: 'toggle', label: '⇄ toggle' },
+            ];
+    }
+};
+
+// ─── Condition Operator Helpers (comparisons — =, !=, >=, <=, >, <) ───
+
+interface ConditionOperatorOption {
+    value: ConditionPart['operator'];
+    label: string;
+}
+
+const getConditionOperators = (key: string): ConditionOperatorOption[] => {
+    const type = getVariableType(key);
+
+    switch (type) {
+        case 'number':
+            return [
+                { value: '>', label: '>' },
+                { value: '>=', label: '≥' },
+                { value: '<', label: '<' },
+                { value: '<=', label: '≤' },
+                { value: '==', label: '=' },
+                { value: '!=', label: '≠' },
+            ];
+        case 'boolean':
+            return [
+                { value: '==', label: 'is' },
+                { value: '!=', label: 'is not' },
+            ];
+        case 'string':
+            return [
+                { value: '==', label: '=' },
+                { value: '!=', label: '≠' },
+            ];
+        default:
+            // No variable selected yet — show the full comparison set, disabled via the select itself
+            return [
+                { value: '>', label: '>' },
+                { value: '>=', label: '≥' },
+                { value: '<', label: '<' },
+                { value: '<=', label: '≤' },
+                { value: '==', label: '=' },
+                { value: '!=', label: '≠' },
+            ];
+    }
+};
+
 // ─── Variable Validation ──────────────────────────────────────────────
+// "Invalid" here means "references a key that isn't in the registry" —
+// covers both stale/typo'd legacy data and anything a rename cascade
+// (VariableManagerService) missed.
 
 const variableKeys = computed(() => new Set(props.variables.map(v => v.key)));
 
-const isValidVariable = (key: string): boolean => {
-    if (!key || !key.trim()) return true; // Empty is valid (not yet filled)
-    return variableKeys.value.has(key.trim());
-};
-
 const isVariableInvalid = (key: string): boolean => {
-    if (!key || !key.trim()) return false;
+    if (!key || !key.trim()) return false; // not yet selected — not an error, just incomplete
     return !variableKeys.value.has(key.trim());
 };
 
-// For condition validation — extract all potential variable names
-const extractVariableNames = (condition: string): string[] => {
-    if (!condition) return [];
-    const matches = condition.match(/[a-z][a-z0-9_]*/g) ?? [];
-    return [...new Set(matches)];
-};
+// ─── Condition string <-> ConditionPart[] ──────────────────────────────
+// `condition` stays the canonical dormant/stored string (what a future
+// evaluator reads). `_conditionParts` is the structured editing view.
+// We serialize parts -> string on submit, and best-effort parse
+// string -> parts on load (for data that predates the structured builder).
 
-const unknownConditionVars = computed(() => {
-    if (expandedIdx.value === null) return [];
-    const choice = choices.value[expandedIdx.value];
-    if (!choice?.condition) return [];
-    const vars = extractVariableNames(choice.condition);
-    return vars.filter(v => !variableKeys.value.has(v));
+function formatConditionValue(type: StoryVariable['type'] | null, value: unknown): string {
+    if (type === 'string') return `"${String(value ?? '').replace(/"/g, '\\"')}"`;
+    if (type === 'boolean') return value ? 'true' : 'false';
+    return String(value ?? 0);
+}
+
+function serializeConditionParts(parts: ConditionPart[]): string {
+    return parts
+        .filter(p => p.variable && p.operator)
+        .map((p, i, arr) => {
+            const type = getVariableType(p.variable);
+            const segment = `${p.variable} ${p.operator} ${formatConditionValue(type, p.value)}`;
+            return i < arr.length - 1 ? `${segment} ${p.logicalOp}` : segment;
+        })
+        .join(' ');
+}
+
+// Only understands the exact format serializeConditionParts produces
+// (var OP value [AND|OR] var OP value ...). Anything else — hand-typed
+// conditions from before this feature existed — is left alone rather
+// than guessed at; legacyConditionNotice surfaces that to the editor.
+function parseConditionString(condition: string): ConditionPart[] {
+    if (!condition || !condition.trim()) return [];
+
+    const tokens = condition.split(/\s+(AND|OR)\s+/i);
+    const parts: ConditionPart[] = [];
+
+    for (let i = 0; i < tokens.length; i += 2) {
+        const expr = tokens[i]?.trim();
+        if (!expr) continue;
+
+        const match = expr.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*(==|!=|>=|<=|>|<)\s*(.+)$/);
+        if (!match) return []; // unparseable — bail out, keep raw string as legacy fallback
+
+        const [, variableRaw, operatorRaw, rawValueRaw] = match;
+        if (!variableRaw || !operatorRaw || rawValueRaw === undefined) return [];
+
+        const variable = variableRaw;
+        const operator = operatorRaw as ConditionPart['operator']; // safe — regex only matches this exact union
+        const type = getVariableType(variable);
+        const trimmedValue = rawValueRaw.trim();
+        let value: string | number | boolean = trimmedValue;
+
+        if (type === 'boolean') value = trimmedValue === 'true';
+        else if (type === 'number') value = parseFloat(trimmedValue) || 0;
+        else value = trimmedValue.replace(/^"(.*)"$/, '$1');
+
+        const joinerToken = tokens[i + 1];
+        const logicalOp: 'AND' | 'OR' = joinerToken?.toUpperCase() === 'OR' ? 'OR' : 'AND';
+
+        parts.push({ variable, operator, value, logicalOp });
+    }
+
+    return parts;
+}
+
+const legacyConditionNotice = computed(() => {
+    if (!expandedChoice.value) return false;
+    return !!expandedChoice.value.condition && (expandedChoice.value._conditionParts?.length ?? 0) === 0;
 });
-
-const hasConditionError = computed(() => unknownConditionVars.value.length > 0);
-
-// Validate a single variable
-const validateVariable = (key: string) => {
-    // Just triggers reactivity
-};
-
-const setActiveVariableInput = (effectIdx: number, choiceIdx: number) => {
-    activeVariableInput.value = { choiceIdx, effectIdx };
-};
-
-const clearActiveVariableInput = () => {
-    activeVariableInput.value = null;
-};
-
-const setActiveConditionInput = (choiceIdx: number) => {
-    activeConditionInput.value = choiceIdx;
-};
-
-const clearActiveConditionInput = () => {
-    activeConditionInput.value = null;
-};
 
 // ─── Validation Summary ──────────────────────────────────────────────
 
 const hasValidationErrors = computed(() => {
-    // Check all effects
     for (const choice of choices.value) {
         for (const effect of (choice.effects ?? [])) {
-            if (isVariableInvalid(effect.variable)) {
-                return true;
-            }
+            if (isVariableInvalid(effect.variable)) return true;
         }
-        // Check condition
-        if (choice.condition) {
-            const unknown = extractVariableNames(choice.condition)
-                .filter(v => !variableKeys.value.has(v));
-            if (unknown.length > 0) return true;
+        for (const part of (choice._conditionParts ?? [])) {
+            if (isVariableInvalid(part.variable)) return true;
         }
     }
     return false;
@@ -265,18 +456,15 @@ const hasValidationErrors = computed(() => {
 const validationErrors = computed(() => {
     const errors: string[] = [];
 
-    // Check effects
     choices.value.forEach((choice, ci) => {
         for (const effect of (choice.effects ?? [])) {
             if (isVariableInvalid(effect.variable)) {
                 errors.push(`Choice ${ci + 1}: Unknown variable "${effect.variable}"`);
             }
         }
-        if (choice.condition) {
-            const unknown = extractVariableNames(choice.condition)
-                .filter(v => !variableKeys.value.has(v));
-            if (unknown.length > 0) {
-                errors.push(`Choice ${ci + 1}: Unknown vars in condition: ${unknown.join(', ')}`);
+        for (const part of (choice._conditionParts ?? [])) {
+            if (isVariableInvalid(part.variable)) {
+                errors.push(`Choice ${ci + 1}: Unknown variable in condition "${part.variable}"`);
             }
         }
     });
@@ -298,7 +486,7 @@ const canSubmit = computed(() => {
 
 // ─── Methods ──────────────────────────────────────────────────────────
 
-function updateExpandedField(field: 'condition' | 'target_scene_id', value: string) {
+function updateExpandedField(field: 'target_scene_id', value: string) {
     if (expandedIdx.value === null) return;
     const choice = choices.value[expandedIdx.value];
     if (!choice) return;
@@ -307,7 +495,7 @@ function updateExpandedField(field: 'condition' | 'target_scene_id', value: stri
 
 function addChoice() {
     if (choices.value.length >= 6) return;
-    choices.value.push({ id: uid(), text: '', effects: [], condition: '' });
+    choices.value.push({ id: uid(), text: '', effects: [], condition: '', _conditionParts: [] });
 }
 
 function removeChoice(idx: number) {
@@ -320,11 +508,14 @@ function toggleAdvanced(idx: number) {
     expandedIdx.value = expandedIdx.value === idx ? null : idx;
 }
 
+// ─── Effects ────────────────────────────────────────────────────────
+
 function addEffect(choiceIdx: number) {
     const choice = choices.value[choiceIdx];
     if (!choice) return;
     if (!choice.effects) choice.effects = [];
     if (choice.effects.length >= 5) return;
+
     const effect: ChoiceEffect = { variable: '', operation: 'add', value: 1 };
     choice.effects.push(effect);
 }
@@ -336,23 +527,97 @@ function removeEffect(choiceIdx: number, effectIdx: number) {
     }
 }
 
+// Picking a variable from the dropdown resets operation/value to something
+// valid for that variable's type, so you never end up with e.g. "toggle"
+// selected against a number.
+function onEffectVariableChange(choiceIdx: number, effectIdx: number, event: Event) {
+    const value = (event.target as HTMLSelectElement).value;
+    const effect = choices.value[choiceIdx]?.effects?.[effectIdx];
+    if (!effect) return;
+
+    effect.variable = value;
+    const type = getVariableType(value);
+    const validOps = getAvailableOperations(value).map(o => o.value);
+    if (!validOps.includes(effect.operation)) {
+        effect.operation = validOps[0] ?? 'add';
+    }
+
+    if (type === 'boolean') effect.value = true;
+    else if (type === 'string') effect.value = typeof effect.value === 'string' ? effect.value : '';
+    else effect.value = typeof effect.value === 'number' ? effect.value : 0;
+}
+
+// ─── Condition parts ────────────────────────────────────────────────
+
+function addConditionPart(choiceIdx: number) {
+    const choice = choices.value[choiceIdx];
+    if (!choice) return;
+    if (!choice._conditionParts) choice._conditionParts = [];
+    if (choice._conditionParts.length >= 5) return;
+    choice._conditionParts.push({ variable: '', operator: '==', value: 0, logicalOp: 'AND' });
+}
+
+function removeConditionPart(choiceIdx: number, partIdx: number) {
+    choices.value[choiceIdx]?._conditionParts?.splice(partIdx, 1);
+}
+
+function onConditionVariableChange(choiceIdx: number, partIdx: number, event: Event) {
+    const value = (event.target as HTMLSelectElement).value;
+    const part = choices.value[choiceIdx]?._conditionParts?.[partIdx];
+    if (!part) return;
+
+    part.variable = value;
+    const type = getVariableType(value);
+    const validOps = getConditionOperators(value).map(o => o.value);
+    if (!validOps.includes(part.operator)) {
+        part.operator = validOps[0] ?? '==';
+    }
+
+    if (type === 'boolean') part.value = true;
+    else if (type === 'string') part.value = '';
+    else part.value = 0;
+}
+
+// ─── Submit ─────────────────────────────────────────────────────────
+
 function submit() {
     if (!canSubmit.value) return;
 
     const cleanChoices: MenuChoice[] = choices.value
         .filter(c => c.text.trim())
-        .map(c => ({
-            ...c,
-            text: c.text.trim(),
-            condition: c.condition?.trim() || undefined,
-            target_scene_id: c.target_scene_id?.trim() || undefined,
-            effects: (c.effects ?? [])
-                .filter(e => e.variable.trim())
-                .map(e => ({
-                    ...e,
-                    variable: e.variable.trim()
-                })),
-        }));
+        .map(c => {
+            const parts = (c._conditionParts ?? []).filter(p => p.variable && p.operator);
+            // Only overwrite the stored condition string when there are structured
+            // parts to serialize — otherwise leave any pre-existing legacy string
+            // (one that didn't parse back into parts) untouched rather than wiping it.
+            const condition = parts.length > 0
+                ? serializeConditionParts(parts)
+                : (c.condition?.trim() || undefined);
+
+            return {
+                ...c,
+                text: c.text.trim(),
+                condition,
+                _conditionParts: parts.length > 0 ? parts : undefined,
+                target_scene_id: c.target_scene_id?.trim() || undefined,
+                effects: (c.effects ?? [])
+                    .filter(e => e.variable.trim() && !isVariableInvalid(e.variable))
+                    .map(e => {
+                        const varType = getVariableType(e.variable);
+                        let value: string | number | boolean = e.value;
+
+                        if (varType === 'number' && typeof e.value === 'string') {
+                            value = parseFloat(e.value) || 0;
+                        } else if (varType === 'boolean' && typeof e.value === 'string') {
+                            value = e.value === 'true';
+                        } else if (varType === 'string' && typeof e.value === 'number') {
+                            value = String(e.value);
+                        }
+
+                        return { ...e, variable: e.variable.trim(), value };
+                    }),
+            };
+        });
 
     const node: MenuNode = {
         id: isEditing.value ? props.editingNode!.id : `menu_${Date.now()}`,
@@ -374,8 +639,6 @@ function reset() {
     prompt.value = '';
     choices.value = makeDefaultChoices();
     expandedIdx.value = null;
-    activeVariableInput.value = null;
-    activeConditionInput.value = null;
 }
 
 // ─── Watch for editing ────────────────────────────────────────────────────
@@ -391,6 +654,9 @@ watch(() => props.editingNode, (node) => {
         effects: c.effects ? [...c.effects] : [],
         condition: c.condition ?? '',
         target_scene_id: c.target_scene_id ?? '',
+        _conditionParts: c._conditionParts && c._conditionParts.length > 0
+            ? [...c._conditionParts]
+            : parseConditionString(c.condition ?? ''),
     }));
     expandedIdx.value = null;
 }, { immediate: true });
@@ -443,7 +709,6 @@ defineExpose({ reset });
     border-color: #38bdf8;
 }
 
-/* Choices */
 .choices-header {
     display: flex;
     justify-content: space-between;
@@ -452,8 +717,8 @@ defineExpose({ reset });
 
 .choices-count {
     font-size: 0.72rem;
-    color: #475569;
-    background: rgba(255, 255, 255, 0.04);
+    color: #64748b;
+    background: rgba(255, 255, 255, 0.05);
     padding: 0.15rem 0.5rem;
     border-radius: 10px;
 }
@@ -575,7 +840,8 @@ defineExpose({ reset });
     gap: 0.5rem;
 }
 
-.effects-header {
+.effects-header,
+.condition-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -614,7 +880,8 @@ defineExpose({ reset });
     padding: 0.5rem 0;
 }
 
-.effect-row {
+.effect-row,
+.condition-part-row {
     display: flex;
     align-items: center;
     gap: 0.4rem;
@@ -636,15 +903,13 @@ defineExpose({ reset });
     border-color: #38bdf8;
 }
 
-.effect-var {
-    flex: 2;
-    font-family: 'Courier New', monospace;
-    font-size: 0.75rem;
-}
-
 .effect-val {
     flex: 1;
     max-width: 72px;
+}
+
+.effect-string {
+    max-width: 120px;
 }
 
 .effect-select {
@@ -656,6 +921,28 @@ defineExpose({ reset });
     color: #94a3b8;
     font-size: 0.75rem;
     cursor: pointer;
+}
+
+.effect-select:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.effect-var-select,
+.condition-var-select {
+    flex: 2;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+}
+
+.condition-op-select {
+    flex: 1;
+    max-width: 90px;
+}
+
+.effect-boolean {
+    flex: 1;
+    max-width: 80px;
 }
 
 .effect-toggle-hint {
@@ -684,10 +971,32 @@ defineExpose({ reset });
     background: rgba(248, 113, 113, 0.1);
 }
 
-.condition-input,
-.target-input {
-    font-family: 'Courier New', monospace;
-    font-size: 0.8rem;
+/* Condition logical-op connector between rows */
+.logical-op-row {
+    display: flex;
+    justify-content: center;
+    padding-left: 1.5rem;
+}
+
+.logical-op-select {
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    color: #f59e0b;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border-radius: 4px;
+    padding: 0.1rem 0.5rem;
+    cursor: pointer;
+}
+
+.condition-hint {
+    margin-top: 0.15rem;
+}
+
+.hint-text {
+    font-size: 0.7rem;
+    color: #475569;
 }
 
 /* Add choice button */
@@ -751,14 +1060,12 @@ defineExpose({ reset });
 }
 
 /* Variable validation styles */
-.effect-input-wrapper,
-.condition-input-wrapper {
+.effect-input-wrapper {
     position: relative;
-    flex: 1;
+    flex: 2;
 }
 
-.effect-input-wrapper.has-error .effect-input,
-.condition-input-wrapper.has-error .condition-input {
+.effect-input-wrapper.has-error .effect-select {
     border-color: #ef4444;
     background: rgba(239, 68, 68, 0.05);
 }
@@ -770,18 +1077,6 @@ defineExpose({ reset });
     font-size: 0.6rem;
     color: #ef4444;
     white-space: nowrap;
-}
-
-.effect-input-wrapper .variable-error {
-    bottom: -1.2rem;
-}
-
-.condition-input-wrapper .variable-error {
-    bottom: -1.2rem;
-}
-
-.condition-input-wrapper {
-    flex: 1;
 }
 
 /* Validation summary */
@@ -796,11 +1091,5 @@ defineExpose({ reset });
     color: #ef4444;
     font-size: 0.78rem;
     margin: 0;
-}
-
-/* Suggestion styling */
-datalist {
-    background: #0f172a;
-    border: 1px solid #334155;
 }
 </style>

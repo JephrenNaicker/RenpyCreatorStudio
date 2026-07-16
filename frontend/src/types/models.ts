@@ -110,9 +110,22 @@ export interface MenuChoice {
     effects?: ChoiceEffect[];
 
     // ── Condition to show this option (dormant — stored but not evaluated yet) ──
+    // Derived/output form, serialized from _conditionParts on save.
     // Example: "affinity_alice >= 10"  |  "karma > 0"
     condition?: string;
+    // Structured, editable source of truth for `condition` — MenuChoiceEditor.vue
+    // edits this and regenerates `condition` from it. Falls back to best-effort
+    // parsing `condition` only when this is absent (pre-existing/legacy data).
+    _conditionParts?: ConditionPart[];
 }
+
+export interface ConditionPart {
+    variable: string;
+    operator: '==' | '!=' | '>' | '>=' | '<' | '<=';
+    value: string | number | boolean;
+    logicalOp: 'AND' | 'OR';        // joins this part to the NEXT part; unused on the last part
+}
+
 
 // ─── Point / variable system ──────────────────────────────────────────────────
 // Represents a single side-effect a choice has on story state.
@@ -120,7 +133,7 @@ export interface MenuChoice {
 export interface ChoiceEffect {
     variable: string;               // Must match a StoryVariable.key in the project
     operation: 'add' | 'subtract' | 'set' | 'toggle';
-    value: number | boolean;
+    value: number | boolean | string;   // string needed for 'set' on string-type variables
 }
 
 // Defined once per project — the master registry of all variables.
