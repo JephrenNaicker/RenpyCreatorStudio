@@ -12,13 +12,32 @@
         <!-- Main Panel -->
         <main id="workspace-main" class="flex-1 flex flex-col overflow-hidden">
             <div id="workspace-header" class="border-b border-gray-800 bg-gray-900/50 p-4">
+
                 <div class="flex items-center justify-between flex-wrap gap-4">
-                    <h2 id="workspace-title" class="text-xl font-semibold text-white">
+                    <h2 id="workspace-title" class="text-xl font-semibold text-white flex items-center flex-wrap gap-2">
                         {{ currentProject?.name ?? 'Scene Editor' }}
                         <span v-if="currentScene" :id="`scene-badge-${currentScene.id}`"
-                            class="ml-2 text-sm bg-sky-400/20 text-sky-400 px-2 py-1 rounded">
+                            class="text-sm bg-sky-400/20 text-sky-400 px-2 py-1 rounded">
                             🎬 {{ currentScene.name }}
                         </span>
+
+                        <!-- Current scene background — click to open/change. Lives here (not the
+                             action toolbar) since it's a property of this scene, not a global action. -->
+                        <button v-if="currentScene" id="scene-background-chip" type="button"
+                            class="flex items-center gap-2 text-sm bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg pl-1.5 pr-3 py-1 transition-colors"
+                            @click="showBackgroundLibrary = true">
+                            <span v-if="currentSceneBackgroundThumb"
+                                class="w-6 h-6 rounded overflow-hidden border border-gray-600 flex-shrink-0 bg-gray-900">
+                                <img :src="currentSceneBackgroundThumb" alt="" class="w-full h-full object-cover" />
+                            </span>
+                            <span v-else
+                                class="w-6 h-6 rounded flex items-center justify-center bg-gray-900 border border-dashed border-gray-600 text-gray-500 text-xs flex-shrink-0">
+                                🖼️
+                            </span>
+                            <span class="text-gray-300">
+                                {{ currentSceneBackgroundName ?? 'Set background' }}
+                            </span>
+                        </button>
                     </h2>
 
                     <div class="flex items-center gap-2" id="workspace-actions">
@@ -64,6 +83,22 @@
             </div>
         </main>
     </div>
+
+    <!-- Backdrop — click anywhere outside the panel to close it -->
+    <Transition name="fade-backdrop">
+        <div v-if="showBackgroundLibrary" class="fixed inset-0 bg-black/50 z-40"
+            @click="showBackgroundLibrary = false" />
+    </Transition>
+
+    <Transition name="slide">
+        <div v-if="showBackgroundLibrary" class="fixed right-0 top-0 h-full z-50 shadow-2xl" style="width: 340px;">
+            <BackgroundLibPanel :background-assets="backgroundAssets"
+                :current-background-path="currentScene?.background_image ?? null"
+                @select-background="handleSelectBackground" @add-background="handleAddBackground"
+                @delete-background="handleDeleteBackground" @clear-background="handleClearBackground"
+                @close="showBackgroundLibrary = false" />
+        </div>
+    </Transition>
 
     <!-- Story Variables Modal -->
     <VariableManager :open="showVariableManager" :variables="variables" :scenes="scenes"
@@ -195,6 +230,9 @@ import {
     applyLinePosition,
     applyLineVisibility,
 } from '@/services/dialogueService';
+import BackgroundLibPanel from '@/components/background/BackgroundLibPanel.vue';
+import type { BackgroundAsset } from '@/types/models';
+
 
 const route = useRoute();
 const router = useRouter();
@@ -230,6 +268,10 @@ const projectCharacterIds = ref<string[]>([]);
 const projectCharacters = computed<Character[]>(() =>
     allCharacters.value.filter(c => projectCharacterIds.value.includes(c.id))
 );
+
+// Background library state
+const showBackgroundLibrary = ref(false);
+const backgroundAssets = ref<BackgroundAsset[]>([]);
 
 // Current project — loaded async via projectService
 const currentProject = ref<Project | null>(null);
@@ -307,6 +349,7 @@ const loadProjectData = async () => {
         // Fall back to all character IDs if the project doesn't track them explicitly
         projectCharacterIds.value = project?.character_ids ?? chars.map(c => c.id);
         variables.value = project?.variables ?? [];
+        backgroundAssets.value = project?.background_assets ?? [];
     } catch (err) {
         console.error('Failed to load project data:', err);
         error.value = 'Failed to load project data';
@@ -811,6 +854,75 @@ if (import.meta.env.DEV) {
         addDialogueLine: (line: DialogueLine) => addDialogueLine(line)
     };
 }
+
+// ── Background library handlers ──
+
+const handleAddBackground = (asset: BackgroundAsset) => {
+    backgroundAssets.value.push(asset);
+    // Auto-select this background for the current scene (optional but nice)
+    if (currentScene.value) {
+        handleSelectBackground(asset);
+    }
+    // Mark project as dirty? We'll handle saving later; for now just local.
+};
+
+const handleDeleteBackground = (id: string) => {
+    const assetToDelete = backgroundAssets.value.find(a => a.id === id);
+    if (!assetToDelete) return;
+    if (!confirm(`Delete background "${assetToDelete.name}"?`)) return;
+
+    backgroundAssets.value = backgroundAssets.value.filter(a => a.id !== id);
+
+    // If the current scene uses this background, clear it.
+    if (currentScene.value && currentScene.value.background_image === assetToDelete.path) {
+        currentScene.value.background_image = undefined;
+        dirtyScenes.value.add(currentScene.value.id);
+    }
+};
+
+const handleSelectBackground = (asset: BackgroundAsset) => {
+    if (!currentScene.value) {
+        // Optionally show a toast: "No scene selected"
+        return;
+    }
+    currentScene.value.background_image = asset.path;
+    dirtyScenes.value.add(currentScene.value.id);
+    // Close the panel after selection (optional)
+    showBackgroundLibrary.value = false;
+};
+
+const handleClearBackground = () => {
+    if (!currentScene.value) return;
+    currentScene.value.background_image = undefined;
+    dirtyScenes.value.add(currentScene.value.id);
+    showBackgroundLibrary.value = false;
+};
+
+// Same demo-mode fallback used inside BackgroundLibPanel — blob/data/http render
+// directly, anything else (seeded dummy filenames) falls back to a placeholder.
+const getBackgroundImageSrc = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('blob:') || path.startsWith('data:') || path.startsWith('http')) {
+        return path;
+    }
+    return `https://picsum.photos/seed/${encodeURIComponent(path)}/64/64`;
+};
+
+// Drives the chip next to the scene name in the header
+const currentSceneBackgroundThumb = computed(() => {
+    const path = currentScene.value?.background_image;
+    return path ? getBackgroundImageSrc(path) : null;
+});
+
+const currentSceneBackgroundName = computed(() => {
+    const path = currentScene.value?.background_image;
+    if (!path) return null;
+    const match = backgroundAssets.value.find(a => a.path === path);
+    return match?.name ?? path;
+});
+
+
+
 </script>
 
 <style scoped>
@@ -824,6 +936,26 @@ if (import.meta.env.DEV) {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+.slide-enter-active,
+.slide-leave-active {
+    transition: transform 0.3s ease;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+    transform: translateX(100%);
+}
+
+.fade-backdrop-enter-active,
+.fade-backdrop-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.fade-backdrop-enter-from,
+.fade-backdrop-leave-to {
+    opacity: 0;
 }
 
 .animate-fade-in {

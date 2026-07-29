@@ -42,6 +42,16 @@ export interface Project {
     updated_at: string;
     // Story variables registry — defined at project level, used across all scenes
     variables?: StoryVariable[];
+    // Reusable background library — uploaded once, picked per-scene via Scene.background_image
+    background_assets?: BackgroundAsset[];
+}
+
+// ─── Background asset (project-level, reusable across scenes) ────────────────
+export interface BackgroundAsset {
+    id: string;
+    name: string;
+    path: string;   // blob:/data:/http(s) path — same convention as Expression.image_path
+    createdAt: string;
 }
 
 export interface DialogueLineCharacter {

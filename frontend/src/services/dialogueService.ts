@@ -108,10 +108,11 @@ export function applyLineVisibility(
     });
 }
 
-/**
+/*
  * Return a new lines array with the line at `index` replaced.
- * Used by the edit flow in SceneWorkspace / ProjectSceneEditorView.
+ * Used by the edit flow in DialogueEditor / ProjectSceneEditorView.
  */
+
 export function replaceLine(
     lines: SceneLine[],
     index: number,
