@@ -185,7 +185,27 @@ const initialProjects: Project[] = [
         tags: ['sci-fi', 'cyberpunk', 'thriller', 'choices-matter'],
         created_at: '2024-01-18T16:20:00Z',
         updated_at: '2024-01-19T09:15:00Z',
-        variables: project2Variables
+        variables: project2Variables,
+        background_assets: [
+            {
+                id: 'bg_cyber_alley',
+                name: 'Cyberpunk Alley',
+                path: 'cyberpunk_alley.png',
+                createdAt: '2024-01-19T09:00:00Z'
+            },
+            {
+                id: 'bg_hideout',
+                name: 'Underground Hideout',
+                path: 'cyberpunk_hideout.png',
+                createdAt: '2024-01-19T10:00:00Z'
+            },
+            {
+                id: 'bg_nexus_tower',
+                name: 'Nexus Tower',
+                path: 'nexus_tower.png',
+                createdAt: '2024-01-25T10:30:00Z'
+            }
+        ]
     }
 ];
 
@@ -331,6 +351,262 @@ const scene1Lines: SceneLine[] = [
             { character_id: '2', action: 'show', position: 'left' },
             { character_id: '4', action: 'show', position: 'right' },
             { character_id: '3', action: 'show', position: 'right' }
+        ]
+    }
+];
+
+// ─── Scene 2: The Library - Alice discovers the forbidden section ──────────────────
+const scene2Lines: SceneLine[] = [
+    {
+        id: 's2_line_1',
+        type: 'dialogue',
+        character: {
+            id: '1',
+            name: 'Alice',
+            color: '#FF6B6B'
+        },
+        text: "This library is amazing! I've never seen so many books about magic.",
+        expression: 'happy',
+        image_position: { position: 'center' },
+        order: 1,
+        character_states: [
+            {
+                character_id: '1',
+                action: 'show',
+                position: 'center',
+                expression: 'happy',
+                outfit: 'casual'
+            }
+        ]
+    },
+    {
+        id: 's2_line_2',
+        type: 'dialogue',
+        character: {
+            id: '4',
+            name: 'David',
+            color: '#A78BFA'
+        },
+        text: "Be careful in this section. Some of these books are restricted for a reason.",
+        expression: 'nervous',
+        image_position: { position: 'right' },
+        order: 2,
+        character_states: [
+            {
+                character_id: '4',
+                action: 'show',
+                position: 'right',
+                expression: 'nervous',
+                outfit: 'formal'
+            },
+            { character_id: '1', action: 'show', position: 'left', expression: 'surprised' }
+        ]
+    },
+    {
+        id: 's2_line_3',
+        type: 'dialogue',
+        character: {
+            id: '1',
+            name: 'Alice',
+            color: '#FF6B6B'
+        },
+        text: "Restricted? What kind of secrets are they hiding here?",
+        expression: 'surprised',
+        image_position: { position: 'left' },
+        order: 3,
+        character_states: [
+            {
+                character_id: '1',
+                action: 'show',
+                position: 'left',
+                expression: 'surprised',
+                outfit: 'casual'
+            }
+        ]
+    },
+    {
+        id: 's2_menu_1',
+        type: 'menu',
+        order: 4,
+        prompt: "What do you do?",
+        choices: [
+            {
+                id: 'choice_lib_1',
+                text: "Sneak a peek at the forbidden books",
+                target_scene_id: '7',
+                effects: [
+                    { variable: 'forbidden_knowledge', operation: 'add', value: 10 },
+                    { variable: 'academy_trust', operation: 'subtract', value: 5 }
+                ]
+            },
+            {
+                id: 'choice_lib_2',
+                text: "Ask David to tell you more about them",
+                target_scene_id: '2',
+                effects: [
+                    { variable: 'academy_trust', operation: 'add', value: 5 }
+                ]
+            },
+            {
+                id: 'choice_lib_3',
+                text: "Leave the library and find Bob",
+                target_scene_id: '3',
+                effects: []
+            }
+        ]
+    },
+    {
+        id: 's2_line_4',
+        type: 'dialogue',
+        character: null,
+        text: "A strange shadow flickers across the wall behind the bookshelf...",
+        order: 5,
+        character_states: []
+    }
+];
+
+// ─── Scene 3: Training Grounds ──────────────────────────────────────────────────────
+const scene3Lines: SceneLine[] = [
+    {
+        id: 's3_line_1',
+        type: 'dialogue',
+        character: {
+            id: '2',
+            name: 'Bob',
+            color: '#4ECDC4'
+        },
+        text: "There you are! I was looking for you. The training grounds are incredible!",
+        expression: 'smile',
+        image_position: { position: 'center' },
+        order: 1,
+        character_states: [
+            {
+                character_id: '2',
+                action: 'show',
+                position: 'center',
+                expression: 'smile',
+                outfit: 'casual'
+            }
+        ]
+    },
+    {
+        id: 's3_line_2',
+        type: 'dialogue',
+        character: {
+            id: '1',
+            name: 'Alice',
+            color: '#FF6B6B'
+        },
+        text: "Bob! You won't believe what I found in the library...",
+        expression: 'surprised',
+        image_position: { position: 'left' },
+        order: 2,
+        character_states: [
+            {
+                character_id: '1',
+                action: 'show',
+                position: 'left',
+                expression: 'surprised',
+                outfit: 'casual'
+            },
+            { character_id: '2', action: 'show', position: 'right', expression: 'neutral' }
+        ]
+    },
+    {
+        id: 's3_line_3',
+        type: 'dialogue',
+        character: {
+            id: '3',
+            name: 'Catherine',
+            color: '#FFD166'
+        },
+        text: "The library has many secrets. Some are better left untouched.",
+        expression: 'serious',
+        image_position: { position: 'center' },
+        order: 3,
+        character_states: [
+            {
+                character_id: '3',
+                action: 'show',
+                position: 'center',
+                expression: 'serious',
+                outfit: 'magical'
+            }
+        ]
+    },
+    {
+        id: 's3_line_4',
+        type: 'dialogue',
+        character: {
+            id: '1',
+            name: 'Alice',
+            color: '#FF6B6B'
+        },
+        text: "Catherine! You know about the forbidden books too?",
+        expression: 'surprised',
+        image_position: { position: 'left' },
+        order: 4,
+        character_states: [
+            { character_id: '1', action: 'show', position: 'left', expression: 'surprised' },
+            { character_id: '3', action: 'show', position: 'right', expression: 'mysterious' }
+        ]
+    },
+    {
+        id: 's3_line_5',
+        type: 'dialogue',
+        character: {
+            id: '3',
+            name: 'Catherine',
+            color: '#FFD166'
+        },
+        text: "There's a prophecy about a student who will discover the academy's darkest secret. The last one who tried... disappeared.",
+        expression: 'serious',
+        image_position: { position: 'right' },
+        order: 5,
+        character_states: [
+            {
+                character_id: '3',
+                action: 'show',
+                position: 'right',
+                expression: 'serious',
+                outfit: 'magical'
+            }
+        ]
+    },
+    {
+        id: 's3_menu_1',
+        type: 'menu',
+        order: 6,
+        prompt: "How do you respond?",
+        choices: [
+            {
+                id: 'choice_train_1',
+                text: "I need to uncover the truth, no matter what",
+                target_scene_id: '7',
+                effects: [
+                    { variable: 'forbidden_knowledge', operation: 'add', value: 15 },
+                    { variable: 'magic_power', operation: 'add', value: 10 },
+                    { variable: 'met_shadow_entity', operation: 'set', value: true }
+                ]
+            },
+            {
+                id: 'choice_train_2',
+                text: "That sounds dangerous. Maybe we should focus on training",
+                target_scene_id: '3',
+                effects: [
+                    { variable: 'magic_power', operation: 'add', value: 5 },
+                    { variable: 'academy_trust', operation: 'add', value: 10 }
+                ]
+            },
+            {
+                id: 'choice_train_3',
+                text: "Tell me more about this prophecy",
+                target_scene_id: '2',
+                effects: [
+                    { variable: 'academy_trust', operation: 'add', value: 5 },
+                    { variable: 'forbidden_knowledge', operation: 'add', value: 5 }
+                ]
+            }
         ]
     }
 ];
@@ -927,7 +1203,7 @@ const initialScenes: Scene[] = [
         project_id: '1',
         character_ids: ['1', '4'],
         notes: 'Alice discovers the forbidden section.',
-        dialogue_lines: [],
+        dialogue_lines: scene2Lines,
         created_at: '2024-01-21T14:30:00Z',
         updated_at: '2024-01-21T14:30:00Z'
     },
@@ -937,7 +1213,7 @@ const initialScenes: Scene[] = [
         project_id: '1',
         character_ids: ['1', '2', '3', '4'],
         notes: 'Training session with all characters.',
-        dialogue_lines: [],
+        dialogue_lines: scene3Lines,
         created_at: '2024-01-22T09:15:00Z',
         updated_at: '2024-01-22T09:15:00Z'
     },
