@@ -1,17 +1,43 @@
+<!-- frontend/src/components/scene/DialogueHistory.vue -->
 <template>
     <div class="dialogue-history-container">
         <div class="dialogue-history-header">
             <h4>Dialogue History<span v-if="isDirty" class="dirty-indicator" title="Unsaved changes"> *</span></h4>
-            <span class="line-count">{{ dialogueLines.length }} lines</span>
+            <div class="header-actions">
+                <span class="line-count">{{ dialogueLines.length }} lines</span>
+                <button v-if="hasReordered" class="icon-btn save-order-btn" @click="saveReorderedLines"
+                    title="Save new order">
+                    💾 Save Order
+                </button>
+            </div>
         </div>
         <div class="dialogue-history">
-            <div v-for="(line, index) in dialogueLines" :key="line.id || index" class="dialogue-line" :class="{
-                narrator: line.type !== 'menu' && !(line as DialogueLine).character,
+            <div v-for="(line, index) in displayLines" :key="line.id || index" class="dialogue-line" :class="{
+                narrator: line.type !== 'menu' && line.type !== 'action' && !(line as DialogueLine).character,
                 selected: selectedLineIndex === index,
-                'has-position': line.type !== 'menu' && !!(line as DialogueLine).image_position,
+                'has-position': line.type !== 'menu' && line.type !== 'action' && !!(line as DialogueLine).image_position,
                 'is-menu': line.type === 'menu',
-                'is-hidden': line.type !== 'menu' && (line as DialogueLine).speaker_visible === false
-            }" :style="getLineStyle(line)" @click="handleSelectLine(index)">
+                'is-action': line.type === 'action',
+                'is-hidden': line.type !== 'menu' && line.type !== 'action' && (line as DialogueLine).speaker_visible === false,
+                'dragging': dragState.draggingIndex === index,
+                'drag-over': dragState.dragOverIndex === index
+            }" :style="line.type !== 'menu' && line.type !== 'action'
+                ? { '--line-color': (line as DialogueLine).character?.color || '#475569' }
+                : {}" draggable="true" @click="handleSelectLine(index)" @dragstart="handleDragStart($event, index)"
+                @dragend="handleDragEnd" @dragover.prevent="handleDragOver($event, index)"
+                @dragleave="handleDragLeave(index)" @drop.prevent="handleDrop($event, index)">
+                <!-- Drag Handle -->
+                <div class="drag-handle" title="Drag to reorder">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <circle cx="9" cy="12" r="1" fill="currentColor" />
+                        <circle cx="9" cy="16" r="1" fill="currentColor" />
+                        <circle cx="9" cy="8" r="1" fill="currentColor" />
+                        <circle cx="15" cy="12" r="1" fill="currentColor" />
+                        <circle cx="15" cy="16" r="1" fill="currentColor" />
+                        <circle cx="15" cy="8" r="1" fill="currentColor" />
+                    </svg>
+                </div>
 
                 <!-- ── Menu node row ─────────────────────────────────── -->
                 <template v-if="line.type === 'menu'">
@@ -27,6 +53,21 @@
                             {{ ci + 1 }}. {{ choice.text }}
                             <span v-if="choice.effects && choice.effects.length" class="effect-dot"
                                 :title="`${choice.effects.length} effect(s)`">●</span>
+                        </span>
+                    </div>
+                </template>
+
+                <!-- ── Action node row (e.g. mid-scene background change) ─── -->
+                <template v-else-if="line.type === 'action'">
+                    <div class="line-header">
+                        <span class="action-badge">🖼️ Background Change</span>
+                        <span class="action-preview">
+                            <span v-if="(line as ActionNode).background_path" class="action-thumb">
+                                <img :src="getActionThumb((line as ActionNode).background_path)" alt="" />
+                            </span>
+                            <span v-else class="action-thumb action-thumb-none">🚫</span>
+                            {{ (line as ActionNode).background_name || (line as ActionNode).background_path ||
+                                'No background' }}
                         </span>
                     </div>
                 </template>
@@ -68,8 +109,8 @@
                 </div>
 
                 <!-- Position Selector Popup (dialogue lines only) -->
-                <div v-if="activePositionLineIndex === index && line.type !== 'menu'" class="position-selector-popup"
-                    @click.stop>
+                <div v-if="activePositionLineIndex === index && line.type !== 'menu' && line.type !== 'action'"
+                    class="position-selector-popup" @click.stop>
                     <ImagePositionSelector :model-value="(line as DialogueLine).image_position"
                         :character-name="(line as DialogueLine).character?.name"
                         :character-color="(line as DialogueLine).character?.color"
@@ -82,10 +123,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import ImagePositionSelector from '@/components/scene/ImagePositionSelector.vue';
 import VisibilityToggle from '@/components/scene/VisibilityToggle.vue';
-import type { DialogueLine, MenuNode, SceneLine } from '@/types/models';
+import type { DialogueLine, MenuNode, ActionNode, SceneLine } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
 interface Props {
@@ -100,6 +141,7 @@ interface Emits {
     (e: 'delete-line', index: number): void;
     (e: 'update-line-position', payload: { index: number; position: ImagePosition | undefined }): void;
     (e: 'update-line-visibility', payload: { index: number; visible: boolean }): void;
+    (e: 'reorder-lines', lines: SceneLine[]): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -111,6 +153,29 @@ const emit = defineEmits<Emits>();
 
 // Position selector state
 const activePositionLineIndex = ref<number | null>(null);
+
+// Drag state
+const dragState = ref({
+    draggingIndex: null as number | null,
+    dragOverIndex: null as number | null,
+    fromIndex: null as number | null
+});
+
+// Reorder state
+const hasReordered = ref(false);
+const reorderedLines = ref<SceneLine[]>([...props.dialogueLines]);
+
+// Watch for external changes to reset reorder state
+watch(() => props.dialogueLines, (newLines) => {
+    if (!hasReordered.value) {
+        reorderedLines.value = [...newLines];
+    }
+}, { deep: true });
+
+// Display lines - use reordered lines if reordered, otherwise props
+const displayLines = computed(() => {
+    return hasReordered.value ? reorderedLines.value : props.dialogueLines;
+});
 
 // Helper functions
 const getExpressionEmoji = (expression: string) => {
@@ -152,31 +217,14 @@ const getPositionTooltip = (position: ImagePosition | undefined): string => {
     return label;
 };
 
-// Add this computed style function
-const getLineStyle = (line: SceneLine) => {
-    // Only apply character color border for dialogue lines with a character
-    if (line.type !== 'menu' && (line as DialogueLine).character) {
-        const character = (line as DialogueLine).character;
-        // If it has a position, use the character's color for the border
-        if ((line as DialogueLine).image_position) {
-            return {
-                borderLeftColor: character?.color || '#38bdf8'
-            };
-        }
+// Same demo-mode placeholder fallback used in BackgroundLibPanel — real
+// blob/data/http paths render directly, seeded dummy filenames get a stand-in.
+const getActionThumb = (path?: string) => {
+    if (!path) return '';
+    if (path.startsWith('blob:') || path.startsWith('data:') || path.startsWith('http')) {
+        return path;
     }
-    // For narrator lines without character, keep default or use a neutral color
-    if (line.type !== 'menu' && !(line as DialogueLine).character) {
-        return {
-            borderLeftColor: '#475569' // Same as narrator border
-        };
-    }
-    // For menu nodes, keep amber
-    if (line.type === 'menu') {
-        return {
-            borderLeftColor: '#f59e0b'
-        };
-    }
-    return {};
+    return `https://picsum.photos/seed/${encodeURIComponent(path)}/64/64`;
 };
 
 // Event handlers
@@ -206,20 +254,90 @@ const togglePositionSelector = (index: number) => {
 
 const updateLinePosition = (index: number, position: ImagePosition | undefined) => {
     emit('update-line-position', { index, position });
-    // keep popup open so user can continue adjusting — closes on outside click
+};
+
+// Drag event handlers
+const handleDragStart = (event: DragEvent, index: number) => {
+    dragState.value.draggingIndex = index;
+    dragState.value.fromIndex = index;
+
+    if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', String(index));
+    }
+};
+
+const handleDragEnd = () => {
+    dragState.value.draggingIndex = null;
+    dragState.value.dragOverIndex = null;
+};
+
+const handleDragOver = (event: DragEvent, index: number) => {
+    if (dragState.value.draggingIndex !== null && dragState.value.draggingIndex !== index) {
+        dragState.value.dragOverIndex = index;
+    }
+};
+
+const handleDragLeave = (index: number) => {
+    if (dragState.value.dragOverIndex === index) {
+        dragState.value.dragOverIndex = null;
+    }
+};
+
+const handleDrop = (event: DragEvent, toIndex: number) => {
+    event.preventDefault();
+
+    const fromIndex = dragState.value.fromIndex;
+    if (fromIndex === null || fromIndex === toIndex) {
+        dragState.value.dragOverIndex = null;
+        return;
+    }
+
+    // Perform the reorder on reorderedLines
+    const lines = [...reorderedLines.value];
+    const [movedLine] = lines.splice(fromIndex, 1);
+    if (movedLine) {
+        lines.splice(toIndex, 0, movedLine);
+    }
+
+    reorderedLines.value = lines;
+    hasReordered.value = true;
+
+    // Update selection if needed
+    if (props.selectedLineIndex !== null) {
+        let newSelectedIndex = props.selectedLineIndex;
+        if (fromIndex === props.selectedLineIndex) {
+            newSelectedIndex = toIndex;
+        } else if (
+            fromIndex < props.selectedLineIndex &&
+            toIndex >= props.selectedLineIndex
+        ) {
+            newSelectedIndex = props.selectedLineIndex - 1;
+        } else if (
+            fromIndex > props.selectedLineIndex &&
+            toIndex <= props.selectedLineIndex
+        ) {
+            newSelectedIndex = props.selectedLineIndex + 1;
+        }
+        emit('select-line', newSelectedIndex);
+    }
+
+    // Reset drag state
+    dragState.value.draggingIndex = null;
+    dragState.value.dragOverIndex = null;
+    dragState.value.fromIndex = null;
+};
+
+const saveReorderedLines = () => {
+    emit('reorder-lines', reorderedLines.value);
+    hasReordered.value = false;
 };
 
 // Close position selector when clicking outside.
-// The popup and position button both use @click.stop, so any click that
-// reaches the document came from outside those elements.
-// We ignore clicks on the dialogue-line card itself so line selection
-// doesn't close the popup unexpectedly.
 const handleClickOutside = (event: MouseEvent) => {
     if (activePositionLineIndex.value === null) return;
     const target = event.target as HTMLElement;
-    // If click is inside any position-selector-popup, do nothing (handled by @click.stop)
     if (target.closest('.position-selector-popup')) return;
-    // If click is on the position indicator button, do nothing (toggle handles it)
     if (target.closest('.position-indicator')) return;
     activePositionLineIndex.value = null;
 };
@@ -268,12 +386,34 @@ onUnmounted(() => {
     font-weight: 600;
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
 .line-count {
     color: #94a3b8;
     font-size: 0.85rem;
     background: rgba(56, 189, 248, 0.1);
     padding: 0.25rem 0.75rem;
     border-radius: 12px;
+}
+
+.save-order-btn {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.save-order-btn:hover {
+    background: rgba(56, 189, 248, 0.2);
+    transform: scale(1.05);
 }
 
 .dialogue-history {
@@ -290,27 +430,60 @@ onUnmounted(() => {
     gap: 0.5rem;
     margin-bottom: 1rem;
     padding: 1rem;
+    padding-left: 2.5rem;
     border-radius: 8px;
     border: 1px solid transparent;
     transition: all 0.2s;
     cursor: pointer;
     position: relative;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Drag handle */
+.drag-handle {
+    position: absolute;
+    left: 0.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #475569;
+    cursor: grab;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+    opacity: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dialogue-line:hover .drag-handle {
+    opacity: 1;
+}
+
+.drag-handle:hover {
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Drag states */
+.dialogue-line.dragging {
+    opacity: 0.5;
+    transform: scale(0.98);
+}
+
+.dialogue-line.drag-over {
+    border-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.08);
+    transform: translateY(4px);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
 }
 
 .dialogue-line.has-position {
-    /* Remove the hardcoded color, will use inline style */
-    border-left-width: 3px;
-    border-left-style: solid;
-}
-
-/* Keep narrator fallback */
-.dialogue-line.narrator {
-    border-left-color: #475569 !important;
-}
-
-/* Keep menu styling */
-.dialogue-line.is-menu {
-    border-left-color: #f59e0b !important;
+    border-left: 3px solid var(--line-color, #38bdf8);
 }
 
 .dialogue-line:hover {
@@ -347,6 +520,62 @@ onUnmounted(() => {
     font-weight: 700;
     color: #f59e0b;
     letter-spacing: 0.03em;
+}
+
+/* Action node (background change) gets its own teal accent — distinct from
+   the menu's amber so the two special row types don't get confused at a glance */
+.dialogue-line.is-action {
+    border-left: 3px solid #2dd4bf;
+    background: rgba(45, 212, 191, 0.03);
+}
+
+.dialogue-line.is-action:hover {
+    border-color: rgba(45, 212, 191, 0.5);
+}
+
+.dialogue-line.is-action.selected {
+    background: rgba(45, 212, 191, 0.08);
+    border-color: #2dd4bf;
+}
+
+.action-badge {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #2dd4bf;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+}
+
+.action-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+}
+
+.action-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #334155;
+    background: #0f172a;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+}
+
+.action-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.action-thumb-none {
+    color: #64748b;
 }
 
 .menu-prompt {

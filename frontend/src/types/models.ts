@@ -51,7 +51,6 @@ export interface BackgroundAsset {
     id: string;
     name: string;
     path: string;   // blob:/data:/http(s) path — same convention as Expression.image_path
-    createdAt: string;
 }
 
 export interface DialogueLineCharacter {
@@ -108,6 +107,23 @@ export interface MenuNode {
     choices: MenuChoice[];
 }
 
+// ─── Action node ───────────────────────────────────────────────────────────────
+// A mid-scene event that isn't spoken dialogue and isn't a choice — e.g. changing
+// the backdrop partway through a scene. `action_type` is a discriminant so this
+// can grow (music cues, transitions, etc.) without breaking existing nodes.
+export interface ActionNode {
+    id: string;
+    type: 'action';
+    order: number;
+    action_type: 'background_change';
+    // Snapshot fields (same convention as DialogueLine.character) so history
+    // still reads correctly even if the underlying background asset is later
+    // renamed or removed from the project library.
+    background_path?: string;   // undefined = "no background" from this point on
+    background_name?: string;
+    transition?: 'instant' | 'fade' | 'dissolve';
+}
+
 export interface MenuChoice {
     id: string;
     text: string;                   // The option label the player sees
@@ -155,9 +171,16 @@ export interface StoryVariable {
     category?: 'affinity' | 'flag' | 'resource' | 'karma' | 'other';
 }
 
+// Add drag metadata
+export interface DragData {
+    index: number;
+    type: 'dialogue' | 'menu' | 'action';
+    line: SceneLine;
+}
+
 // ─── Union type — use this in Scene.dialogue_lines ────────────────────────────
-// A scene line is either a spoken dialogue line OR a menu node.
-export type SceneLine = DialogueLine | MenuNode;
+// A scene line is a spoken dialogue line, a menu node, OR an action node.
+export type SceneLine = DialogueLine | MenuNode | ActionNode;
 
 // ─── Image & transform (unchanged) ───────────────────────────────────────────
 export interface ImagePosition {

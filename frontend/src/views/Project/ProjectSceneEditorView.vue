@@ -72,13 +72,13 @@
 
             <div id="workspace-content" class="flex-1 overflow-y-auto p-4">
                 <DialogueEditor id="scene-workspace-component" :key="currentScene?.id" :dialogue-lines="dialogueLines"
-                    :characters="projectCharacters" :variables="variables" :selected-line-index="selectedLineIndex"
-                    :selected-speaker-id="selectedCharacterId"
+                    :characters="projectCharacters" :variables="variables" :background-assets="backgroundAssets"
+                    :selected-line-index="selectedLineIndex" :selected-speaker-id="selectedCharacterId"
                     :is-dirty="currentScene ? dirtyScenes.has(currentScene.id) : false"
                     :scene-character-ids="currentScene?.character_ids || undefined" @add-line="addDialogueLine"
                     @edit-line="handleEditLine" @delete-line="deleteDialogueLine" @select-line="selectLine"
                     @speaker-change="handleSpeakerChange" @add-menu="addMenuChoice"
-                    @update-line-position="handleUpdateLinePosition"
+                    @add-background-action="handleAddBackgroundAction" @update-line-position="handleUpdateLinePosition"
                     @update-line-visibility="handleUpdateLineVisibility" />
             </div>
         </main>
@@ -213,7 +213,7 @@ import { useRoute, useRouter } from 'vue-router';
 import ProjectSidebar from '@/components/scene/ProjectSidebar.vue';
 import DialogueEditor from '@/components/scene/DialogueEditor.vue';
 import VariableManager from '@/components/scene/VariableManager.vue';
-import type { Character, DialogueLine, MenuNode, SceneLine, Scene, Project, StoryVariable } from '@/utils/dummyData';
+import type { Character, DialogueLine, MenuNode, ActionNode, SceneLine, Scene, Project, StoryVariable } from '@/utils/dummyData';
 import type { ImagePosition } from '@/types/models';
 import { getProject } from '@/services/projectService';
 import { getCharacters, createCharacter as createCharacterService } from '@/services/characterService';
@@ -238,7 +238,7 @@ const route = useRoute();
 const router = useRouter();
 
 // Type guard — narrows a SceneLine to DialogueLine (excludes menu/action nodes)
-const isDialogueLine = (line: SceneLine): line is DialogueLine => line.type !== 'menu';
+const isDialogueLine = (line: SceneLine): line is DialogueLine => line.type !== 'menu' && line.type !== 'action';
 
 // State
 const selectedCharacterId = ref<string | null>(null);
@@ -682,12 +682,25 @@ const addMenuChoice = (node: MenuNode) => {
     scheduleAutoSave();
 };
 
+const handleAddBackgroundAction = (node: Omit<ActionNode, 'id' | 'order'>) => {
+    const newNode: ActionNode = {
+        ...node,
+        id: `action_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        order: dialogueLines.value.length + 1,
+    };
+    dialogueLines.value.push(newNode);
+    selectedLineIndex.value = dialogueLines.value.length - 1;
+    selectedCharacterId.value = null;
+    if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
+    scheduleAutoSave();
+};
+
 const handleEditLine = (payload: { index: number; line: SceneLine }) => {
     dialogueLines.value = replaceLine(dialogueLines.value, payload.index, payload.line);
     selectedLineIndex.value = null;
-    selectedCharacterId.value = payload.line.type === 'menu'
-        ? null
-        : (payload.line as DialogueLine).character?.id || null;
+    selectedCharacterId.value = isDialogueLine(payload.line)
+        ? payload.line.character?.id || null
+        : null;
     if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
     scheduleAutoSave();
 };
@@ -705,8 +718,8 @@ const selectLine = (index: number | null) => {
     selectedLineIndex.value = index;
     if (index !== null && index >= 0 && index < dialogueLines.value.length) {
         const line = dialogueLines.value[index];
-        selectedCharacterId.value = (line && line.type !== 'menu')
-            ? (line as DialogueLine).character?.id ?? null
+        selectedCharacterId.value = (line && isDialogueLine(line))
+            ? line.character?.id ?? null
             : null;
     } else {
         selectedCharacterId.value = null;

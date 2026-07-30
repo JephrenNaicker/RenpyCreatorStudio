@@ -5,6 +5,7 @@ import {
     type Scene,
     type DialogueLine,
     type MenuNode,
+    type ActionNode,
     type SceneLine,
     type StoryVariable,
     type ChoiceEffect,
@@ -190,20 +191,17 @@ const initialProjects: Project[] = [
             {
                 id: 'bg_cyber_alley',
                 name: 'Cyberpunk Alley',
-                path: 'cyberpunk_alley.png',
-                createdAt: '2024-01-19T09:00:00Z'
+                path: 'cyberpunk_alley.png'
             },
             {
                 id: 'bg_hideout',
                 name: 'Underground Hideout',
-                path: 'cyberpunk_hideout.png',
-                createdAt: '2024-01-19T10:00:00Z'
+                path: 'cyberpunk_hideout.png'
             },
             {
                 id: 'bg_nexus_tower',
                 name: 'Nexus Tower',
-                path: 'nexus_tower.png',
-                createdAt: '2024-01-25T10:30:00Z'
+                path: 'nexus_tower.png'
             }
         ]
     }
@@ -1258,4 +1256,4 @@ export const dummyProjects: Project[] = initialProjects;
 export const dummyScenes: Scene[] = initialScenes;
 
 // Export types for convenience
-export type { Character, Project, Scene, DialogueLine, MenuNode, SceneLine, StoryVariable, ChoiceEffect, CharacterState };
+export type { Character, Project, Scene, DialogueLine, MenuNode, ActionNode, SceneLine, StoryVariable, ChoiceEffect, CharacterState };
