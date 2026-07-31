@@ -55,6 +55,13 @@
                     <span class="info-label">Birth Date:</span>
                     <span id="character-birth-date" class="info-value">{{ character.birth_date }}</span>
                 </div>
+                <div v-if="zodiacSign" class="info-item">
+                    <span class="info-label">Zodiac Sign:</span>
+                    <span id="character-zodiac" class="info-value zodiac-value" :title="zodiacSign.dateRange">
+                        <span class="zodiac-icon" aria-hidden="true">{{ zodiacSign.symbol }}</span>
+                        {{ zodiacSign.name }}
+                    </span>
+                </div>
             </div>
 
             <!-- Bio Card -->
@@ -155,9 +162,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getCharacter } from '@/services/characterService';
+import { getZodiacSign } from '@/utils/zodiac';
 import type { Character } from '@/utils/dummyData';
 
 const route = useRoute();
@@ -165,6 +173,9 @@ const router = useRouter();
 
 // Loaded async via characterService — starts null, populated on mount
 const character = ref<Character | null>(null);
+
+// Derived, not stored — always reflects the current birth_date
+const zodiacSign = computed(() => getZodiacSign(character.value?.birth_date));
 
 const loadCharacter = async (id: string) => {
     character.value = await getCharacter(id);
@@ -365,6 +376,19 @@ onMounted(() => {
     font-family: monospace;
     font-size: 0.9rem;
     color: #cbd5e1;
+}
+
+.zodiac-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: help;
+}
+
+.zodiac-icon {
+    font-size: 1.15rem;
+    color: #38bdf8;
+    line-height: 1;
 }
 
 .bio-text {

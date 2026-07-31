@@ -94,6 +94,10 @@
                         <span>🔊</span>
                         <span>{{ character.voice_lines?.length || 0 }}</span>
                     </div>
+                    <div v-if="getZodiacSign(character.birth_date)" class="character-meta-item ml-auto"
+                        :id="`character-zodiac-${character.id}`" :title="getZodiacSign(character.birth_date)?.name">
+                        <span class="text-sky-400">{{ getZodiacSign(character.birth_date)?.symbol }}</span>
+                    </div>
                 </div>
 
                 <!-- Bio -->
@@ -137,6 +141,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { getCharacters, deleteCharacter as deleteCharacterService } from '@/services/characterService';
+import { getZodiacSign } from '@/utils/zodiac';
 import type { Character } from '@/utils/dummyData';
 
 // Reactive data
