@@ -38,7 +38,7 @@
                     <h3 class="text-xl text-slate-50 mb-5 flex items-center gap-2" id="overview-title">📖
                         Project Overview</h3>
                     <p class="text-slate-300 leading-relaxed mb-6" id="project-main-plot">{{ project.main_plot
-                    }}</p>
+                        }}</p>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4" id="stats-grid">
                         <div class="flex flex-col items-center p-4 bg-white/5 rounded-lg" id="stat-characters">
@@ -48,12 +48,12 @@
                         </div>
                         <div class="flex flex-col items-center p-4 bg-white/5 rounded-lg" id="stat-scenes">
                             <span class="text-3xl font-bold text-sky-400" id="scene-count">{{ projectScenes.length
-                            }}</span>
+                                }}</span>
                             <span class="text-sm text-slate-400 mt-1">Scenes</span>
                         </div>
                         <div class="flex flex-col items-center p-4 bg-white/5 rounded-lg" id="stat-dialogue">
                             <span class="text-3xl font-bold text-sky-400" id="dialogue-count">{{ totalDialogueLines
-                            }}</span>
+                                }}</span>
                             <span class="text-sm text-slate-400 mt-1">Dialogue Lines</span>
                         </div>
                     </div>
@@ -104,7 +104,7 @@
                                 <p class="text-slate-50 text-sm mb-1" :id="`activity-text-${index}`">{{ activity.text }}
                                 </p>
                                 <span class="text-slate-400 text-xs" :id="`activity-time-${index}`">{{ activity.time
-                                }}</span>
+                                    }}</span>
                             </div>
                         </div>
                     </div>
@@ -276,7 +276,7 @@
                             <div class="text-slate-50 font-medium">Keep as "Removed Character" placeholder</div>
                             <div class="text-slate-400 text-sm">Dialogue lines will show "[Removed: {{
                                 characterToRemove?.name
-                            }}]" and can be reassigned later</div>
+                                }}]" and can be reassigned later</div>
                         </div>
                     </label>
 
@@ -346,13 +346,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import CharacterPickerDropdown from '@/components/character/CharacterPickerDropdown.vue';
 import type { Character, Project, Scene, DialogueLine, SceneLine } from '@/utils/dummyData';
 import { getProject, deleteProject as deleteProjectService } from '@/services/projectService';
 import { getCharacters, createCharacter as createCharacterService } from '@/services/characterService';
 import { getScenesByProject, saveScene as saveSceneService } from '@/services/sceneService';
+import { logActivity, getActivityLog, formatRelativeTime, type ActivityEntry } from '@/utils/activityLog';
 
 // Type guard — narrows a SceneLine to DialogueLine (excludes menu/action nodes),
 // same pattern used in ProjectSceneEditorView.vue
@@ -442,13 +443,112 @@ const availableSwapCharacters = computed(() =>
     allAvailableCharacters.value.filter(c => c.id !== characterToRemove.value?.id)
 );
 
-// Recent activity
-const recentActivity = ref([
-    { id: 1, icon: '💬', text: 'Added dialogue scene "First Encounter"', time: '2 hours ago' },
-    { id: 2, icon: '👤', text: 'Created character "Professor Morgan"', time: '1 day ago' },
-    { id: 3, icon: '🎬', text: 'Updated scene transitions in Chapter 2', time: '2 days ago' },
-    { id: 4, icon: '📝', text: 'Edited main plot description', time: '3 days ago' }
-]);
+// ── Recent Activity ─────────────────────────────────────────────────────
+// Kept deliberately narrow — just the handful of events actually worth
+// surfacing to a writer glancing at this page:
+//   🎬 the most recently created scene
+//   📝 the most recently updated scene
+//   👥 an (existing) character was added to the project
+//   👤 a character was removed from the project
+//   📖 the project's own details were edited (e.g. plot, in Edit Project)
+//
+// Two sources feed it:
+//  1. "Derived" — read straight off created_at/updated_at fields that
+//     already exist on scenes/the project. Free, no logging needed, and
+//     correct even for data that predates this feature. Scenes autosave
+//     every few seconds while someone's typing dialogue, so rather than
+//     emitting one "updated" entry per scene (which would spam the feed
+//     as it changes), only the single most-recently-updated scene is
+//     tracked — it just keeps refreshing to "just now" as edits continue,
+//     which is the useful signal without the noise.
+//  2. "Logged" — real actions whose effect wouldn't otherwise leave a
+//     timestamp once the data changes (a removed character just vanishes
+//     from projectCharacters, taking any trace of the event with it).
+//     Persisted per-project via localStorage, see @/utils/activityLog.
+
+// Actions logged this session / previously, loaded once we know the project id
+const loggedActivity = ref<ActivityEntry[]>([]);
+
+// Ticks once a minute purely to force recentActivity to recompute so
+// "2 minutes ago" labels stay fresh without any other state changing.
+const activityClockTick = ref(0);
+let activityClockInterval: number | null = null;
+
+const derivedActivity = computed<ActivityEntry[]>(() => {
+    const entries: ActivityEntry[] = [];
+
+    // Find just the single latest-created and latest-updated scene —
+    // not one entry per scene (see note above on autosave noise).
+    // "Updated" only counts if updated_at differs from created_at, so a
+    // brand-new untouched scene doesn't double up as its own "update".
+    let latestCreatedScene: Scene | null = null;
+    let latestCreatedAt = -Infinity;
+    let latestUpdatedScene: Scene | null = null;
+    let latestUpdatedAt = -Infinity;
+
+    projectScenes.value.forEach(scene => {
+        const createdAt = new Date(scene.created_at).getTime();
+        const updatedAt = new Date(scene.updated_at).getTime();
+
+        if (!Number.isNaN(createdAt) && createdAt > latestCreatedAt) {
+            latestCreatedAt = createdAt;
+            latestCreatedScene = scene;
+        }
+        if (!Number.isNaN(updatedAt) && updatedAt !== createdAt && updatedAt > latestUpdatedAt) {
+            latestUpdatedAt = updatedAt;
+            latestUpdatedScene = scene;
+        }
+    });
+
+    if (latestCreatedScene) {
+        entries.push({
+            id: `scene-created-${latestCreatedScene.id}`,
+            icon: '🎬',
+            text: `Created scene "${latestCreatedScene.name}"`,
+            timestamp: latestCreatedAt
+        });
+    }
+
+    if (latestUpdatedScene) {
+        entries.push({
+            id: `scene-updated-${latestUpdatedScene.id}-${latestUpdatedScene.updated_at}`,
+            icon: '📝',
+            text: `Updated scene "${latestUpdatedScene.name}"`,
+            timestamp: latestUpdatedAt
+        });
+    }
+
+    if (project.value) {
+        const createdAt = new Date(project.value.created_at).getTime();
+        const updatedAt = new Date(project.value.updated_at).getTime();
+        if (!Number.isNaN(updatedAt) && updatedAt !== createdAt) {
+            entries.push({
+                id: `project-updated-${project.value.id}-${project.value.updated_at}`,
+                icon: '📖',
+                text: `Updated project details`,
+                timestamp: updatedAt
+            });
+        }
+    }
+
+    return entries;
+});
+
+// Merge, de-duplicate by id, newest first, capped for display, with
+// human-readable relative times attached.
+const recentActivity = computed(() => {
+    void activityClockTick.value; // establishes reactive dependency for the periodic refresh
+
+    const merged = new Map<string, ActivityEntry>();
+    [...derivedActivity.value, ...loggedActivity.value].forEach(entry => {
+        merged.set(entry.id, entry);
+    });
+
+    return Array.from(merged.values())
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .slice(0, 5)
+        .map(entry => ({ ...entry, time: formatRelativeTime(entry.timestamp) }));
+});
 
 // Load project data via the services
 const loadProjectData = async () => {
@@ -466,6 +566,7 @@ const loadProjectData = async () => {
         project.value = loadedProject;
         allAvailableCharacters.value = loadedCharacters;
         projectScenes.value = loadedScenes;
+        loggedActivity.value = getActivityLog(projectId);
 
         // For demo purposes, we'll use all characters as project characters.
         // TODO: once Project actually tracks character_ids meaningfully, filter by that instead.
@@ -559,6 +660,13 @@ const performCharacterRemoval = async (characterId: string, swapWithId?: string)
                 // a real backend returns fresh copies on every fetch.
                 await Promise.all(projectScenes.value.map(scene => saveSceneService(scene)));
                 showSuccess(`Character "${removedCharacter?.name}" replaced with "${newCharacter?.name}"`);
+                if (project.value) {
+                    logActivity(project.value.id, {
+                        icon: '👤',
+                        text: `Replaced "${removedCharacter?.name}" with "${newCharacter?.name}" throughout project`
+                    });
+                    loggedActivity.value = getActivityLog(project.value.id);
+                }
             } else if (removalOption.value === 'delete') {
                 // Delete all dialogue lines for this character
                 projectScenes.value.forEach(scene => {
@@ -568,6 +676,13 @@ const performCharacterRemoval = async (characterId: string, swapWithId?: string)
                 });
                 await Promise.all(projectScenes.value.map(scene => saveSceneService(scene)));
                 showSuccess(`Character "${removedCharacter?.name}" removed and all dialogue lines deleted`);
+                if (project.value) {
+                    logActivity(project.value.id, {
+                        icon: '👤',
+                        text: `Removed character "${removedCharacter?.name}" and deleted their dialogue`
+                    });
+                    loggedActivity.value = getActivityLog(project.value.id);
+                }
             }
         } else if (characterUsageInfo.value.hasUsage && removalOption.value === 'keep_as_placeholder') {
             // Keep as placeholder - mark character as removed in dialogue
@@ -588,6 +703,22 @@ const performCharacterRemoval = async (characterId: string, swapWithId?: string)
             });
             await Promise.all(projectScenes.value.map(scene => saveSceneService(scene)));
             showSuccess(`Character "${removedCharacter?.name}" removed from project (dialogue preserved as placeholder)`);
+            if (project.value) {
+                logActivity(project.value.id, {
+                    icon: '👤',
+                    text: `Removed character "${removedCharacter?.name}" from project (dialogue kept as placeholder)`
+                });
+                loggedActivity.value = getActivityLog(project.value.id);
+            }
+        } else if (!characterUsageInfo.value.hasUsage && project.value) {
+            // No dialogue to touch — still worth a log entry since the
+            // character simply vanishes from projectCharacters otherwise,
+            // leaving no trace of the removal in derived activity.
+            logActivity(project.value.id, {
+                icon: '👤',
+                text: `Removed character "${removedCharacter?.name}" from project`
+            });
+            loggedActivity.value = getActivityLog(project.value.id);
         }
 
         // Remove character from project characters list
@@ -642,6 +773,18 @@ const handleAddCharactersToProject = (characterIds: string[]) => {
             projectCharacterIds.value.includes(c.id)
         );
         showSuccess(`Added ${addedCharacters.map(c => c.name).join(', ')} to project`);
+
+        // Log each addition — unlike character creation, this isn't captured
+        // by character.created_at (the character may have existed already).
+        if (project.value) {
+            addedCharacters.forEach(character => {
+                logActivity(project.value!.id, {
+                    icon: '👥',
+                    text: `Added character "${character.name}" to project`
+                });
+            });
+            loggedActivity.value = getActivityLog(project.value.id);
+        }
     }
 
     // Handle removals
@@ -719,6 +862,16 @@ const runExport = () => {
 onMounted(() => {
     console.log('Loading project:', route.params.id);
     loadProjectData();
+    activityClockInterval = window.setInterval(() => {
+        activityClockTick.value++;
+    }, 60000);
+});
+
+onUnmounted(() => {
+    if (activityClockInterval !== null) {
+        clearInterval(activityClockInterval);
+        activityClockInterval = null;
+    }
 });
 
 // Watch for route changes
