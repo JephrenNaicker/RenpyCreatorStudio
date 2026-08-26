@@ -300,7 +300,7 @@ export function getAllVariableUsage(scenes: Scene[]): Record<string, VariableUsa
     return usageByKey;
 }
 
-function describeEffect(operation: string, value: number | boolean): string {
+function describeEffect(operation: string, value: string | number | boolean): string {
     switch (operation) {
         case 'add': return `+${value}`;
         case 'subtract': return `-${value}`;

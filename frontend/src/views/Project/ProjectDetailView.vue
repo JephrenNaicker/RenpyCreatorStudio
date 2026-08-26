@@ -38,7 +38,7 @@
                     <h3 class="text-xl text-slate-50 mb-5 flex items-center gap-2" id="overview-title">📖
                         Project Overview</h3>
                     <p class="text-slate-300 leading-relaxed mb-6" id="project-main-plot">{{ project.main_plot
-                        }}</p>
+                    }}</p>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4" id="stats-grid">
                         <div class="flex flex-col items-center p-4 bg-white/5 rounded-lg" id="stat-characters">
@@ -48,12 +48,12 @@
                         </div>
                         <div class="flex flex-col items-center p-4 bg-white/5 rounded-lg" id="stat-scenes">
                             <span class="text-3xl font-bold text-sky-400" id="scene-count">{{ projectScenes.length
-                                }}</span>
+                            }}</span>
                             <span class="text-sm text-slate-400 mt-1">Scenes</span>
                         </div>
                         <div class="flex flex-col items-center p-4 bg-white/5 rounded-lg" id="stat-dialogue">
                             <span class="text-3xl font-bold text-sky-400" id="dialogue-count">{{ totalDialogueLines
-                                }}</span>
+                            }}</span>
                             <span class="text-sm text-slate-400 mt-1">Dialogue Lines</span>
                         </div>
                     </div>
@@ -104,7 +104,7 @@
                                 <p class="text-slate-50 text-sm mb-1" :id="`activity-text-${index}`">{{ activity.text }}
                                 </p>
                                 <span class="text-slate-400 text-xs" :id="`activity-time-${index}`">{{ activity.time
-                                    }}</span>
+                                }}</span>
                             </div>
                         </div>
                     </div>
@@ -276,7 +276,7 @@
                             <div class="text-slate-50 font-medium">Keep as "Removed Character" placeholder</div>
                             <div class="text-slate-400 text-sm">Dialogue lines will show "[Removed: {{
                                 characterToRemove?.name
-                                }}]" and can be reassigned later</div>
+                            }}]" and can be reassigned later</div>
                         </div>
                     </label>
 
@@ -501,19 +501,21 @@ const derivedActivity = computed<ActivityEntry[]>(() => {
     });
 
     if (latestCreatedScene) {
+        const createdScene = latestCreatedScene as Scene;
         entries.push({
-            id: `scene-created-${latestCreatedScene.id}`,
+            id: `scene-created-${createdScene.id}`,
             icon: '🎬',
-            text: `Created scene "${latestCreatedScene.name}"`,
+            text: `Created scene "${createdScene.name}"`,
             timestamp: latestCreatedAt
         });
     }
 
     if (latestUpdatedScene) {
+        const updatedScene = latestUpdatedScene as Scene;
         entries.push({
-            id: `scene-updated-${latestUpdatedScene.id}-${latestUpdatedScene.updated_at}`,
+            id: `scene-updated-${updatedScene.id}-${updatedScene.updated_at}`,
             icon: '📝',
-            text: `Updated scene "${latestUpdatedScene.name}"`,
+            text: `Updated scene "${updatedScene.name}"`,
             timestamp: latestUpdatedAt
         });
     }
