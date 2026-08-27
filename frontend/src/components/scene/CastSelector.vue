@@ -81,6 +81,9 @@ interface Props {
     showExpression?: boolean;
     showOutfit?: boolean;
     sceneCharacterIds?: string[];
+    // NEW: External control for outfit and expression
+    externalOutfit?: string;
+    externalExpression?: string;
 }
 
 interface Emits {
@@ -93,13 +96,18 @@ const props = withDefaults(defineProps<Props>(), {
     label: 'Speaker',
     showExpression: true,
     showOutfit: true,
-    sceneCharacterIds: undefined
+    sceneCharacterIds: undefined,
+    externalOutfit: '',
+    externalExpression: ''
 });
 
 const emit = defineEmits<Emits>();
 
 const selectedOutfit = ref('');
 const selectedExpression = ref('');
+
+// Track if we're in the middle of an external update to prevent loops
+let isExternalUpdate = false;
 
 // Only show characters assigned to the current scene
 const availableCharacters = computed(() => {
@@ -130,30 +138,51 @@ const sortedExpressions = computed((): Expression[] => {
 });
 
 // Auto-select the default/first outfit when character changes
-const autoSelectOutfit = () => {
+const autoSelectOutfit = (preferredOutfit?: string) => {
     const outfits = sortedOutfits.value;
     if (!outfits.length) {
         selectedOutfit.value = '';
+        emit('outfit-change', '');
         return;
     }
-    // Prefer the outfit with default_image flag, else first alphabetically
-    const defaultOutfit = outfits.find(o => o.default_image) ?? outfits[0];
-    selectedOutfit.value = defaultOutfit!.name;
-    emit('outfit-change', selectedOutfit.value);
+
+    // If a preferred outfit is provided and exists, use it
+    if (preferredOutfit && outfits.some(o => o.name === preferredOutfit)) {
+        selectedOutfit.value = preferredOutfit;
+    } else {
+        // Prefer the outfit with default_image flag, else first alphabetically
+        const defaultOutfit = outfits.find(o => o.default_image) ?? outfits[0];
+        selectedOutfit.value = defaultOutfit!.name;
+    }
+
+    if (!isExternalUpdate) {
+        emit('outfit-change', selectedOutfit.value);
+    }
 };
 
 // Auto-select default expression for the current outfit
-const autoSelectExpression = () => {
+const autoSelectExpression = (preferredExpression?: string) => {
     const expressions = sortedExpressions.value;
     if (!expressions.length) {
         selectedExpression.value = '';
-        emit('expression-change', '');
+        if (!isExternalUpdate) {
+            emit('expression-change', '');
+        }
         return;
     }
-    // Prefer expression with default_image, else first alphabetically
-    const defaultExpr = (expressions as any[]).find(e => e.default_image) ?? expressions[0];
-    selectedExpression.value = defaultExpr!.name;
-    emit('expression-change', selectedExpression.value);
+
+    // If a preferred expression is provided and exists, use it
+    if (preferredExpression && expressions.some(e => e.name === preferredExpression)) {
+        selectedExpression.value = preferredExpression;
+    } else {
+        // Prefer expression with default_image, else first alphabetically
+        const defaultExpr = (expressions as any[]).find(e => e.default_image) ?? expressions[0];
+        selectedExpression.value = defaultExpr!.name;
+    }
+
+    if (!isExternalUpdate) {
+        emit('expression-change', selectedExpression.value);
+    }
 };
 
 const handleOutfitChange = () => {
@@ -168,25 +197,79 @@ const selectExpression = (name: string) => {
     emit('expression-change', name);
 };
 
-// When speaker changes, reset and auto-select
+// ─── Watch for external changes to speaker ──────────────────────────────
 watch(() => props.modelValue, (newSpeakerId) => {
+    isExternalUpdate = true;
     selectedOutfit.value = '';
     selectedExpression.value = '';
+
     if (newSpeakerId) {
-        // Wait for computed to update then auto-select
+        // Use nextTick to ensure computed properties have updated
         setTimeout(() => {
-            autoSelectOutfit();
-            setTimeout(() => autoSelectExpression(), 0);
+            // Pass the external outfit/expression if they exist
+            autoSelectOutfit(props.externalOutfit || undefined);
+            setTimeout(() => {
+                autoSelectExpression(props.externalExpression || undefined);
+            }, 0);
         }, 0);
     } else {
         emit('outfit-change', '');
         emit('expression-change', '');
     }
+
+    setTimeout(() => {
+        isExternalUpdate = false;
+    }, 100);
 }, { immediate: true });
 
-// When outfit auto-changes, update expressions
+// ─── Watch for external outfit changes ──────────────────────────────────
+watch(() => props.externalOutfit, (newOutfit) => {
+    if (isExternalUpdate) return;
+    if (newOutfit && newOutfit !== selectedOutfit.value) {
+        isExternalUpdate = true;
+        selectedOutfit.value = newOutfit;
+        emit('outfit-change', newOutfit);
+        // Re-evaluate expressions for the new outfit
+        setTimeout(() => {
+            autoSelectExpression(props.externalExpression || undefined);
+        }, 0);
+        setTimeout(() => {
+            isExternalUpdate = false;
+        }, 100);
+    }
+});
+
+// ─── Watch for external expression changes ──────────────────────────────
+watch(() => props.externalExpression, (newExpression) => {
+    if (isExternalUpdate) return;
+    if (newExpression && newExpression !== selectedExpression.value) {
+        isExternalUpdate = true;
+        selectedExpression.value = newExpression;
+        emit('expression-change', newExpression);
+        setTimeout(() => {
+            isExternalUpdate = false;
+        }, 100);
+    }
+});
+
+// ─── Watch internal outfit changes ──────────────────────────────────────
 watch(() => selectedOutfit.value, () => {
-    autoSelectExpression();
+    if (!isExternalUpdate) {
+        autoSelectExpression(props.externalExpression || undefined);
+    }
+});
+
+// ─── Watch for character changes from parent ────────────────────────────
+// This catches when DialogueEditor updates currentSpeaker from a selected line
+watch(() => props.modelValue, (newSpeakerId, oldSpeakerId) => {
+    // If the speaker changed and we have a selected character, make sure
+    // outfit and expression are properly set
+    if (newSpeakerId && newSpeakerId !== oldSpeakerId) {
+        const character = props.characters.find(c => c.id === newSpeakerId);
+        if (character) {
+            // The autoSelectOutfit/Expression will handle this via the other watch
+        }
+    }
 });
 
 const getExpressionEmoji = (expression: string) => {
@@ -207,7 +290,15 @@ defineExpose({
     selectedCharacter,
     sortedExpressions,
     sortedOutfits,
-    getExpressionEmoji
+    getExpressionEmoji,
+    // Allow parent to set outfit/expression programmatically
+    setOutfit: (outfit: string) => {
+        selectedOutfit.value = outfit;
+        autoSelectExpression();
+    },
+    setExpression: (expression: string) => {
+        selectedExpression.value = expression;
+    }
 });
 </script>
 

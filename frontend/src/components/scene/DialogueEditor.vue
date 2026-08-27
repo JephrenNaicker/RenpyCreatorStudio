@@ -19,6 +19,7 @@
                     <div class="speaker-input" id="speaker-input">
                         <CastSelector v-model="currentSpeaker" :characters="characters"
                             :scene-character-ids="sceneCharacterIds" label="Select Speaker"
+                            :external-outfit="currentOutfit" :external-expression="currentExpression"
                             @update:modelValue="handleSpeakerChange" @expression-change="handleExpressionChange"
                             @outfit-change="handleOutfitChange" id="cast-selector" />
                     </div>
