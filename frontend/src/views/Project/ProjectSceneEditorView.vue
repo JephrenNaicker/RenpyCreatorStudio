@@ -215,7 +215,7 @@ import DialogueEditor from '@/components/scene/DialogueEditor.vue';
 import VariableManager from '@/components/scene/VariableManager.vue';
 import type { Character, DialogueLine, MenuNode, ActionNode, SceneLine, Scene, Project, StoryVariable } from '@/utils/dummyData';
 import type { ImagePosition } from '@/types/models';
-import { getProject } from '@/services/projectService';
+import { getProject, updateProject } from '@/services/projectService';
 import { getCharacters, createCharacter as createCharacterService } from '@/services/characterService';
 import {
     getScenesByProject,
@@ -358,13 +358,35 @@ const loadProjectData = async () => {
     }
 };
 
+// Persist the current character roster to the project record itself.
+// Without this, adding/removing a character only ever lived in this
+// component's local refs — switching to ProjectDetailView (or reloading)
+// would re-fetch the project via getProject() and the old roster would
+// come right back. Called after every mutation of projectCharacterIds so
+// both views read the same source of truth.
+const persistCharacterRoster = async () => {
+    if (!currentProject.value) return;
+    try {
+        const updated = await updateProject(currentProject.value.id, {
+            character_ids: projectCharacterIds.value
+        });
+        if (updated) currentProject.value = updated;
+    } catch (err) {
+        console.error('Failed to persist character roster:', err);
+        error.value = 'Failed to save project roster changes';
+    }
+};
+
 // Methods
-const handleAddCharactersToProject = (characterIds: string[]) => {
+const handleAddCharactersToProject = async (characterIds: string[]) => {
+    let changed = false;
     characterIds.forEach(id => {
         if (!projectCharacterIds.value.includes(id)) {
             projectCharacterIds.value.push(id);
+            changed = true;
         }
     });
+    if (changed) await persistCharacterRoster();
 };
 
 const handleSelectCharacter = (character: Character) => {
@@ -383,7 +405,7 @@ const handleCreateCharacter = async (characterData: Omit<Character, 'id' | 'crea
         // Add to project if projectId is provided
         if (route.params.id) {
             projectCharacterIds.value.push(newCharacter.id);
-            // TODO: Update project via projectService
+            await persistCharacterRoster();
         }
 
         // Auto-select the new character if needed
@@ -488,13 +510,24 @@ const confirmRemoveCharacter = async () => {
 
     const characterId = characterToRemove.value.id;
     const swapWithId = removalAction.value === 'swap' ? swapCharacterId.value : undefined;
+    const removedCharacterName = characterToRemove.value.name;
 
-    // Handle dialogue lines based on action
+    // Build the updated scene list locally first (dialogue reassignment +
+    // character_ids cleanup), then persist every touched scene below — not
+    // just whichever one happens to be open right now. Previously this only
+    // relied on autosave for `currentScene`, so edits to any *other* scene
+    // the character appeared in were silently lost (never sent to
+    // saveSceneService, and never reflected in ProjectDetailView).
+    let updatedScenes = scenes.value.map(scene => ({
+        ...scene,
+        character_ids: scene.character_ids.filter(id => id !== characterId)
+    }));
+
     if (totalDialogueLinesAffected.value > 0) {
         if (removalAction.value === 'swap' && swapWithId) {
             const swapCharacter = projectCharacters.value.find(c => c.id === swapWithId);
-            // Replace character in all scenes (menu nodes pass through untouched)
-            scenes.value = scenes.value.map(scene => ({
+            // Replace character in all scenes (menu/action nodes pass through untouched)
+            updatedScenes = updatedScenes.map(scene => ({
                 ...scene,
                 dialogue_lines: scene.dialogue_lines.map((line): SceneLine => {
                     if (isDialogueLine(line) && line.character?.id === characterId && swapCharacter) {
@@ -510,36 +543,19 @@ const confirmRemoveCharacter = async () => {
                     return line;
                 })
             }));
-            // Also update current scene dialogue lines
-            dialogueLines.value = dialogueLines.value.map((line): SceneLine => {
-                if (isDialogueLine(line) && line.character?.id === characterId && swapCharacter) {
-                    return {
-                        ...line,
-                        character: {
-                            id: swapCharacter.id,
-                            name: swapCharacter.name,
-                            color: swapCharacter.color
-                        }
-                    };
-                }
-                return line;
-            });
-            showTempSuccess(`Replaced "${characterToRemove.value.name}" with "${swapCharacter?.name}"`);
+            showTempSuccess(`Replaced "${removedCharacterName}" with "${swapCharacter?.name}"`);
         } else if (removalAction.value === 'delete') {
-            // Delete all dialogue lines for this character (menu nodes are kept — they have no speaker)
-            scenes.value = scenes.value.map(scene => ({
+            // Delete all dialogue lines for this character (menu/action nodes are kept)
+            updatedScenes = updatedScenes.map(scene => ({
                 ...scene,
                 dialogue_lines: scene.dialogue_lines.filter(
                     line => !isDialogueLine(line) || line.character?.id !== characterId
                 )
             }));
-            dialogueLines.value = dialogueLines.value.filter(
-                line => !isDialogueLine(line) || line.character?.id !== characterId
-            );
-            showTempSuccess(`Deleted all dialogue for "${characterToRemove.value.name}"`);
+            showTempSuccess(`Deleted all dialogue for "${removedCharacterName}"`);
         } else {
-            // Keep as placeholder - mark as removed (menu nodes pass through untouched)
-            scenes.value = scenes.value.map(scene => ({
+            // Keep as placeholder - mark as removed (menu/action nodes pass through untouched)
+            updatedScenes = updatedScenes.map(scene => ({
                 ...scene,
                 dialogue_lines: scene.dialogue_lines.map((line): SceneLine => {
                     if (isDialogueLine(line) && line.character?.id === characterId) {
@@ -555,47 +571,47 @@ const confirmRemoveCharacter = async () => {
                     return line;
                 })
             }));
-            dialogueLines.value = dialogueLines.value.map((line): SceneLine => {
-                if (isDialogueLine(line) && line.character?.id === characterId) {
-                    return {
-                        ...line,
-                        character: {
-                            ...line.character,
-                            name: `[Removed: ${line.character.name}]`,
-                            color: '#6B7280'
-                        }
-                    };
-                }
-                return line;
-            });
-            showTempSuccess(`Character "${characterToRemove.value.name}" removed (dialogue preserved as placeholder)`);
+            showTempSuccess(`Character "${removedCharacterName}" removed (dialogue preserved as placeholder)`);
         }
     }
 
-    // Remove character from project roster
-    projectCharacterIds.value = projectCharacterIds.value.filter(id => id !== characterId);
-
-    // Remove character from scene character_ids
-    scenes.value = scenes.value.map(s => ({
-        ...s,
-        character_ids: s.character_ids.filter(id => id !== characterId)
-    }));
-
-    // Mark affected scenes as dirty
-    scenes.value.forEach(s => {
-        if (!s.character_ids.includes(characterId)) {
-            dirtyScenes.value.add(s.id);
-        }
+    // Persist every scene that actually changed (dialogue and/or
+    // character_ids) — comparing against the pre-mutation snapshot avoids
+    // re-saving (and re-timestamping) scenes the removed character never
+    // touched.
+    const changedScenes = updatedScenes.filter(scene => {
+        const original = scenes.value.find(s => s.id === scene.id);
+        return !original || JSON.stringify(original) !== JSON.stringify(scene);
     });
+
+    try {
+        const savedScenes = await Promise.all(changedScenes.map(scene => saveSceneService(scene)));
+        // Merge saved (server-timestamped) versions back into local state
+        scenes.value = updatedScenes.map(scene => savedScenes.find(s => s.id === scene.id) ?? scene);
+        savedScenes.forEach(s => dirtyScenes.value.delete(s.id));
+    } catch (err) {
+        console.error('Failed to save scenes during character removal:', err);
+        error.value = 'Some scene changes could not be saved';
+    }
+
+    // Keep the open scene's dialogue editor in sync with what was just saved
+    if (currentScene.value) {
+        const refreshed = scenes.value.find(s => s.id === currentScene.value!.id);
+        if (refreshed) {
+            currentScene.value = refreshed;
+            dialogueLines.value = [...refreshed.dialogue_lines];
+            delete sceneDialogueCache.value[refreshed.id];
+        }
+    }
+
+    // Remove character from project roster and persist it so
+    // ProjectDetailView sees the same membership on next load.
+    projectCharacterIds.value = projectCharacterIds.value.filter(id => id !== characterId);
+    await persistCharacterRoster();
 
     // Clear selection if that character was selected
     if (selectedCharacterId.value === characterId) {
         selectedCharacterId.value = null;
-    }
-
-    // If current scene dialogue was affected, mark as dirty
-    if (currentScene.value) {
-        dirtyScenes.value.add(currentScene.value.id);
     }
 
     closeRemovalModal();

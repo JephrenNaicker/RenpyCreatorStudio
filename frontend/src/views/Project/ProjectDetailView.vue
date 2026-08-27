@@ -350,7 +350,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import CharacterPickerDropdown from '@/components/character/CharacterPickerDropdown.vue';
 import type { Character, Project, Scene, DialogueLine, SceneLine } from '@/utils/dummyData';
-import { getProject, deleteProject as deleteProjectService } from '@/services/projectService';
+import { getProject, updateProject, deleteProject as deleteProjectService } from '@/services/projectService';
 import { getCharacters, createCharacter as createCharacterService } from '@/services/characterService';
 import { getScenesByProject, saveScene as saveSceneService } from '@/services/sceneService';
 import { logActivity, getActivityLog, formatRelativeTime, type ActivityEntry } from '@/utils/activityLog';
@@ -570,10 +570,17 @@ const loadProjectData = async () => {
         projectScenes.value = loadedScenes;
         loggedActivity.value = getActivityLog(projectId);
 
-        // For demo purposes, we'll use all characters as project characters.
-        // TODO: once Project actually tracks character_ids meaningfully, filter by that instead.
-        projectCharacters.value = [...loadedCharacters];
-        projectCharacterIds.value = loadedCharacters.map(c => c.id);
+        // Filter by the project's actual roster — was previously ignoring
+        // character_ids entirely and showing every character in the system
+        // regardless of project, which is why removals/additions never
+        // seemed to "stick": nothing here was reading the field that
+        // performCharacterRemoval/handleAddCharactersToProject write to.
+        // Falls back to "all characters" only if the project has no
+        // character_ids set yet (matches ProjectSceneEditorView.vue).
+        projectCharacterIds.value = loadedProject?.character_ids ?? loadedCharacters.map(c => c.id);
+        projectCharacters.value = loadedCharacters.filter(c =>
+            projectCharacterIds.value.includes(c.id)
+        );
 
         if (!loadedProject) {
             error.value = 'Project not found';
@@ -607,6 +614,25 @@ const showSuccess = (message: string) => {
     setTimeout(() => {
         showSuccessToast.value = false;
     }, 3000);
+};
+
+// Persist the current character roster to the project record itself.
+// Without this, removing/adding a character only ever lived in this
+// component's local refs — switching to ProjectSceneEditorView (or just
+// reloading) would re-fetch the project via getProject() and the old
+// roster would come right back. Called after every mutation of
+// projectCharacterIds so both views read the same source of truth.
+const persistCharacterRoster = async () => {
+    if (!project.value) return;
+    try {
+        const updated = await updateProject(project.value.id, {
+            character_ids: projectCharacterIds.value
+        });
+        if (updated) project.value = updated;
+    } catch (err) {
+        console.error('Failed to persist character roster:', err);
+        error.value = 'Failed to save project roster changes';
+    }
 };
 
 // Remove character from project with warning
@@ -726,6 +752,7 @@ const performCharacterRemoval = async (characterId: string, swapWithId?: string)
         // Remove character from project characters list
         projectCharacters.value = projectCharacters.value.filter(c => c.id !== characterId);
         projectCharacterIds.value = projectCharacterIds.value.filter(id => id !== characterId);
+        await persistCharacterRoster();
 
         // Close modal
         closeRemovalWarning();
@@ -761,7 +788,7 @@ const closeRemovalWarning = () => {
 };
 
 // Handle adding characters to project
-const handleAddCharactersToProject = (characterIds: string[]) => {
+const handleAddCharactersToProject = async (characterIds: string[]) => {
     const currentIds = projectCharacterIds.value;
     const addedIds = characterIds.filter(id => !currentIds.includes(id));
     const removedIds = currentIds.filter(id => !characterIds.includes(id));
@@ -774,6 +801,7 @@ const handleAddCharactersToProject = (characterIds: string[]) => {
         projectCharacters.value = allAvailableCharacters.value.filter(c =>
             projectCharacterIds.value.includes(c.id)
         );
+        await persistCharacterRoster();
         showSuccess(`Added ${addedCharacters.map(c => c.name).join(', ')} to project`);
 
         // Log each addition — unlike character creation, this isn't captured
@@ -810,6 +838,7 @@ const handleCreateCharacter = async (characterData: Omit<Character, 'id' | 'crea
         // Auto-add to project characters
         projectCharacters.value.push(newCharacter);
         projectCharacterIds.value.push(newCharacter.id);
+        await persistCharacterRoster();
 
         showSuccess(`Character "${newCharacter.name}" created and added to project!`);
     } catch (err) {
