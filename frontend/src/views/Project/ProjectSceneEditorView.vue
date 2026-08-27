@@ -52,9 +52,15 @@
                             📤 Export
                         </button>
                         <button id="undo-btn"
-                            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm"
+                            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-800"
+                            :disabled="!canUndo" :title="canUndo ? 'Undo last change (Ctrl+Z)' : 'Nothing to undo'"
                             @click="undo">
                             ↩️ Undo
+                        </button>
+                        <button id="redo-btn"
+                            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-800"
+                            :disabled="!canRedo" :title="canRedo ? 'Redo (Ctrl+Y)' : 'Nothing to redo'" @click="redo">
+                            ↪️ Redo
                         </button>
                         <button id="manage-variables-btn"
                             class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors text-sm"
@@ -153,7 +159,7 @@
                             <div class="text-slate-50 font-medium">Keep as "Removed Character" placeholder</div>
                             <div class="text-slate-400 text-sm">Dialogue lines will show "[Removed: {{
                                 characterToRemove?.name
-                                }}]" and can be reassigned later</div>
+                            }}]" and can be reassigned later</div>
                         </div>
                     </label>
 
@@ -252,6 +258,17 @@ const isLoading = ref(false);
 const error = ref<string | null>(null);
 const autoSaveTimer = ref<number | null>(null);
 
+// Undo/redo history — a per-scene stack of dialogueLines snapshots taken
+// immediately *before* each mutation. Undo pops the most recent snapshot
+// and restores it, rather than blindly removing the last array element
+// (which only happened to look correct for "add line"). Redo mirrors this:
+// undo pushes the state it's replacing onto the redo stack, and any new
+// mutation clears the redo stack (the old "future" is no longer valid
+// once the user branches off with a fresh edit).
+const MAX_UNDO_HISTORY = 50;
+const sceneHistory = ref<Record<string, SceneLine[][]>>({});
+const sceneRedoHistory = ref<Record<string, SceneLine[][]>>({});
+
 // Character removal modal state
 const showRemovalModal = ref(false);
 const characterToRemove = ref<Character | null>(null);
@@ -292,6 +309,33 @@ const selectedCharacter = computed<Character | null>(() =>
 const hasUnsavedChanges = computed(() => {
     return currentScene.value ? dirtyScenes.value.has(currentScene.value.id) : false;
 });
+
+// Computed: Whether there's an undo snapshot available for the current scene
+const canUndo = computed(() => {
+    if (!currentScene.value) return false;
+    return (sceneHistory.value[currentScene.value.id]?.length ?? 0) > 0;
+});
+
+// Computed: Whether there's a redo snapshot available for the current scene
+const canRedo = computed(() => {
+    if (!currentScene.value) return false;
+    return (sceneRedoHistory.value[currentScene.value.id]?.length ?? 0) > 0;
+});
+
+// Snapshot the current scene's dialogue lines onto its undo stack, and
+// clear its redo stack — a fresh mutation invalidates whatever "future"
+// redo used to point to.
+// Call this BEFORE mutating dialogueLines so undo() can restore the
+// pre-mutation state, regardless of what kind of edit just happened
+// (add, edit, delete, reposition, visibility toggle, etc).
+const pushHistory = () => {
+    if (!currentScene.value) return;
+    const sceneId = currentScene.value.id;
+    const stack = sceneHistory.value[sceneId] ?? (sceneHistory.value[sceneId] = []);
+    stack.push(JSON.parse(JSON.stringify(dialogueLines.value)));
+    if (stack.length > MAX_UNDO_HISTORY) stack.shift();
+    sceneRedoHistory.value[sceneId] = [];
+};
 
 // Get character usage across all scenes in this project
 const getCharacterUsage = (characterId: string) => {
@@ -652,6 +696,8 @@ const handleDeleteScene = async (sceneId: string) => {
             await deleteSceneService(sceneId);
             scenes.value = scenes.value.filter(s => s.id !== sceneId);
             delete sceneDialogueCache.value[sceneId];
+            delete sceneHistory.value[sceneId];
+            delete sceneRedoHistory.value[sceneId];
             dirtyScenes.value.delete(sceneId);
             if (currentScene.value?.id === sceneId) {
                 currentScene.value = null;
@@ -679,6 +725,7 @@ const handleUpdateScene = async (scene: Scene) => {
 };
 
 const addDialogueLine = (line: DialogueLine) => {
+    pushHistory();
     dialogueLines.value.push(line);
     selectedLineIndex.value = dialogueLines.value.length - 1;
     selectedCharacterId.value = line.character?.id || null;
@@ -687,6 +734,7 @@ const addDialogueLine = (line: DialogueLine) => {
 };
 
 const addMenuChoice = (node: MenuNode) => {
+    pushHistory();
     const newNode = createMenuNode(
         { prompt: node.prompt, choices: node.choices },
         dialogueLines.value.length + 1
@@ -699,6 +747,7 @@ const addMenuChoice = (node: MenuNode) => {
 };
 
 const handleAddBackgroundAction = (node: Omit<ActionNode, 'id' | 'order'>) => {
+    pushHistory();
     const newNode: ActionNode = {
         ...node,
         id: `action_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -712,6 +761,7 @@ const handleAddBackgroundAction = (node: Omit<ActionNode, 'id' | 'order'>) => {
 };
 
 const handleEditLine = (payload: { index: number; line: SceneLine }) => {
+    pushHistory();
     dialogueLines.value = replaceLine(dialogueLines.value, payload.index, payload.line);
     selectedLineIndex.value = null;
     selectedCharacterId.value = isDialogueLine(payload.line)
@@ -723,6 +773,7 @@ const handleEditLine = (payload: { index: number; line: SceneLine }) => {
 
 const deleteDialogueLine = (index: number) => {
     if (confirm('Delete this line?')) {
+        pushHistory();
         dialogueLines.value = deleteLine(dialogueLines.value, index);
         selectedLineIndex.value = null;
         if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
@@ -743,11 +794,13 @@ const selectLine = (index: number | null) => {
 };
 
 const handleUpdateLinePosition = ({ index, position }: { index: number; position: ImagePosition | undefined }) => {
+    pushHistory();
     dialogueLines.value = applyLinePosition(dialogueLines.value, index, position);
     if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
 };
 
 const handleUpdateLineVisibility = ({ index, visible }: { index: number; visible: boolean }) => {
+    pushHistory();
     dialogueLines.value = applyLineVisibility(dialogueLines.value, index, visible);
     if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
 };
@@ -814,16 +867,61 @@ const exportScene = () => {
 };
 
 const undo = () => {
-    if (dialogueLines.value.length > 0) {
-        const removed = dialogueLines.value.pop();
-        selectedLineIndex.value = null;
-        selectedCharacterId.value = null;
-        if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
-        console.log('Undo: removed line', removed);
-        scheduleAutoSave();
-    } else {
+    if (!currentScene.value) {
         console.log('Nothing to undo');
+        return;
     }
+
+    const sceneId = currentScene.value.id;
+    const stack = sceneHistory.value[sceneId];
+    if (!stack || stack.length === 0) {
+        console.log('Nothing to undo');
+        return;
+    }
+
+    // Stash the current (about-to-be-replaced) state on the redo stack
+    // before restoring, so redo() can bring it back.
+    const redoStack = sceneRedoHistory.value[sceneId] ?? (sceneRedoHistory.value[sceneId] = []);
+    redoStack.push(JSON.parse(JSON.stringify(dialogueLines.value)));
+    if (redoStack.length > MAX_UNDO_HISTORY) redoStack.shift();
+
+    // Restore the snapshot taken right before the last mutation — this
+    // correctly reverts adds, edits, deletes, repositions, and visibility
+    // toggles alike, instead of assuming the last mutation only ever
+    // appended to the end of the array.
+    const previous = stack.pop()!;
+    dialogueLines.value = previous;
+    selectedLineIndex.value = null;
+    selectedCharacterId.value = null;
+    dirtyScenes.value.add(currentScene.value.id);
+    scheduleAutoSave();
+};
+
+const redo = () => {
+    if (!currentScene.value) {
+        console.log('Nothing to redo');
+        return;
+    }
+
+    const sceneId = currentScene.value.id;
+    const redoStack = sceneRedoHistory.value[sceneId];
+    if (!redoStack || redoStack.length === 0) {
+        console.log('Nothing to redo');
+        return;
+    }
+
+    // Stash the current state back on the undo stack so undo can reverse
+    // the redo, then restore the most recently undone snapshot.
+    const stack = sceneHistory.value[sceneId] ?? (sceneHistory.value[sceneId] = []);
+    stack.push(JSON.parse(JSON.stringify(dialogueLines.value)));
+    if (stack.length > MAX_UNDO_HISTORY) stack.shift();
+
+    const next = redoStack.pop()!;
+    dialogueLines.value = next;
+    selectedLineIndex.value = null;
+    selectedCharacterId.value = null;
+    dirtyScenes.value.add(currentScene.value.id);
+    scheduleAutoSave();
 };
 
 const resetState = async () => {
@@ -832,6 +930,8 @@ const resetState = async () => {
     currentScene.value = null;
     dialogueLines.value = [];
     sceneDialogueCache.value = {};
+    sceneHistory.value = {};
+    sceneRedoHistory.value = {};
     dirtyScenes.value.clear();
     error.value = null;
     if (autoSaveTimer.value) {
@@ -846,9 +946,18 @@ const handleKeydown = (event: KeyboardEvent) => {
         event.preventDefault();
         saveScene();
     }
-    if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
+    // Undo: Ctrl/Cmd+Z (without Shift)
+    if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z') {
         event.preventDefault();
         undo();
+    }
+    // Redo: Ctrl/Cmd+Y, or the common Ctrl/Cmd+Shift+Z alternative
+    if (
+        ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') ||
+        ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'z')
+    ) {
+        event.preventDefault();
+        redo();
     }
 };
 
@@ -880,6 +989,9 @@ if (import.meta.env.DEV) {
         getCurrentScene: () => currentScene.value,
         getDialogueLines: () => dialogueLines.value,
         hasUnsavedChanges: () => hasUnsavedChanges.value,
+        canUndo: () => canUndo.value,
+        redo,
+        canRedo: () => canRedo.value,
         addDialogueLine: (line: DialogueLine) => addDialogueLine(line)
     };
 }
