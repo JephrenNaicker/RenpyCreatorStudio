@@ -122,6 +122,11 @@ export interface ActionNode {
     background_path?: string;   // undefined = "no background" from this point on
     background_name?: string;
     transition?: 'instant' | 'fade' | 'dissolve';
+    // True only for the auto-seeded first line of a scene ("background: none").
+    // Every scene must start with one of these — it sets the initial backdrop
+    // before anything else plays, so it can be edited (to pick a real starting
+    // background) but never deleted or reordered away from index 0.
+    is_initial?: boolean;
 }
 
 export interface MenuChoice {
@@ -169,13 +174,6 @@ export interface StoryVariable {
     default_value: number | boolean | string;
     label?: string;                 // Human-friendly name e.g. "Alice Affinity"
     category?: 'affinity' | 'flag' | 'resource' | 'karma' | 'other';
-}
-
-// Add drag metadata
-export interface DragData {
-    index: number;
-    type: 'dialogue' | 'menu' | 'action';
-    line: SceneLine;
 }
 
 // ─── Union type — use this in Scene.dialogue_lines ────────────────────────────

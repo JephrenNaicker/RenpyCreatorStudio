@@ -18,16 +18,22 @@
                 'has-position': line.type !== 'menu' && line.type !== 'action' && !!(line as DialogueLine).image_position,
                 'is-menu': line.type === 'menu',
                 'is-action': line.type === 'action',
+                'is-locked': isLockedLine(line, index),
                 'is-hidden': line.type !== 'menu' && line.type !== 'action' && (line as DialogueLine).speaker_visible === false,
                 'dragging': dragState.draggingIndex === index,
                 'drag-over': dragState.dragOverIndex === index
             }" :style="line.type !== 'menu' && line.type !== 'action'
                 ? { '--line-color': (line as DialogueLine).character?.color || '#475569' }
-                : {}" draggable="true" @click="handleSelectLine(index)" @dragstart="handleDragStart($event, index)"
-                @dragend="handleDragEnd" @dragover.prevent="handleDragOver($event, index)"
-                @dragleave="handleDragLeave(index)" @drop.prevent="handleDrop($event, index)">
-                <!-- Drag Handle -->
-                <div class="drag-handle" title="Drag to reorder">
+                : {}" :draggable="!isLockedLine(line, index)" @click="handleSelectLine(index)"
+                @dragstart="handleDragStart($event, index)" @dragend="handleDragEnd"
+                @dragover.prevent="handleDragOver($event, index)" @dragleave="handleDragLeave(index)"
+                @drop.prevent="handleDrop($event, index)">
+                <!-- Drag Handle — replaced with a lock icon for the required first line -->
+                <div v-if="isLockedLine(line, index)" class="drag-handle lock-handle"
+                    title="Required — always first, can't be moved or deleted">
+                    🔒
+                </div>
+                <div v-else class="drag-handle" title="Drag to reorder">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2">
                         <circle cx="9" cy="12" r="1" fill="currentColor" />
@@ -59,16 +65,24 @@
 
                 <!-- ── Action node row (e.g. mid-scene background change) ─── -->
                 <template v-else-if="line.type === 'action'">
-                    <div class="line-header">
-                        <span class="action-badge">🖼️ Background Change</span>
-                        <span class="action-preview">
-                            <span v-if="(line as ActionNode).background_path" class="action-thumb">
-                                <img :src="getActionThumb((line as ActionNode).background_path)" alt="" />
-                            </span>
-                            <span v-else class="action-thumb action-thumb-none">🚫</span>
-                            {{ (line as ActionNode).background_name || (line as ActionNode).background_path ||
-                                'No background' }}
+                    <div class="line-header action-line-header">
+                        <span class="action-badge">
+                            🖼️ {{ isLockedLine(line, index) ? 'Initial Background' : 'Background Change' }}
                         </span>
+                    </div>
+                    <div class="action-banner"
+                        :class="{ 'action-banner-empty': !(line as ActionNode).background_path }">
+                        <img v-if="(line as ActionNode).background_path"
+                            :src="getActionThumb((line as ActionNode).background_path)" alt=""
+                            class="action-banner-img" />
+                        <div class="action-banner-fade"></div>
+                        <div class="action-banner-label">
+                            <span v-if="!(line as ActionNode).background_path"
+                                class="action-banner-empty-icon">🚫</span>
+                            <span class="action-name" :data-full-name="getActionName(line as ActionNode)">
+                                {{ getActionName(line as ActionNode) }}
+                            </span>
+                        </div>
                     </div>
                 </template>
 
@@ -103,9 +117,13 @@
                     <button class="icon-btn" @click.stop="handleEditLine(index)" title="Edit">
                         ✏️
                     </button>
-                    <button class="icon-btn danger" @click.stop="handleDeleteLine(index)" title="Delete">
+                    <button v-if="!isLockedLine(line, index)" class="icon-btn danger"
+                        @click.stop="handleDeleteLine(index)" title="Delete">
                         🗑️
                     </button>
+                    <span v-else class="icon-btn locked-hint" title="Required — can't be deleted">
+                        🔒
+                    </span>
                 </div>
 
                 <!-- Position Selector Popup (dialogue lines only) -->
@@ -217,6 +235,12 @@ const getPositionTooltip = (position: ImagePosition | undefined): string => {
     return label;
 };
 
+// The scene's mandatory opening "background: none" line — always index 0,
+// always an action node flagged is_initial. Locked: no drag, no delete.
+const isLockedLine = (line: SceneLine | undefined, index: number): boolean => {
+    return !!line && index === 0 && line.type === 'action' && !!(line as ActionNode).is_initial;
+};
+
 // Same demo-mode placeholder fallback used in BackgroundLibPanel — real
 // blob/data/http paths render directly, seeded dummy filenames get a stand-in.
 const getActionThumb = (path?: string) => {
@@ -225,6 +249,10 @@ const getActionThumb = (path?: string) => {
         return path;
     }
     return `https://picsum.photos/seed/${encodeURIComponent(path)}/64/64`;
+};
+
+const getActionName = (node: ActionNode): string => {
+    return node.background_name || node.background_path || 'None';
 };
 
 // Event handlers
@@ -237,6 +265,7 @@ const handleEditLine = (index: number) => {
 };
 
 const handleDeleteLine = (index: number) => {
+    if (isLockedLine(displayLines.value[index], index)) return;
     emit('delete-line', index);
 };
 
@@ -258,6 +287,11 @@ const updateLinePosition = (index: number, position: ImagePosition | undefined) 
 
 // Drag event handlers
 const handleDragStart = (event: DragEvent, index: number) => {
+    if (isLockedLine(displayLines.value[index], index)) {
+        event.preventDefault();
+        return;
+    }
+
     dragState.value.draggingIndex = index;
     dragState.value.fromIndex = index;
 
@@ -273,6 +307,7 @@ const handleDragEnd = () => {
 };
 
 const handleDragOver = (event: DragEvent, index: number) => {
+    if (index === 0 && isLockedLine(displayLines.value[0], 0)) return;
     if (dragState.value.draggingIndex !== null && dragState.value.draggingIndex !== index) {
         dragState.value.dragOverIndex = index;
     }
@@ -290,6 +325,14 @@ const handleDrop = (event: DragEvent, toIndex: number) => {
     const fromIndex = dragState.value.fromIndex;
     if (fromIndex === null || fromIndex === toIndex) {
         dragState.value.dragOverIndex = null;
+        return;
+    }
+    // Index 0 is reserved for the locked initial background line — never
+    // let another line get dropped there and push it out of place.
+    if (toIndex === 0 && isLockedLine(reorderedLines.value[0], 0)) {
+        dragState.value.dragOverIndex = null;
+        dragState.value.draggingIndex = null;
+        dragState.value.fromIndex = null;
         return;
     }
 
@@ -546,36 +589,106 @@ onUnmounted(() => {
     flex-shrink: 0;
 }
 
-.action-preview {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    color: #cbd5e1;
+.action-line-header {
+    margin-bottom: 0.5rem;
 }
 
-.action-thumb {
-    width: 28px;
-    height: 28px;
-    border-radius: 4px;
+/* Full-width banner — image stretches to fill the row instead of a small
+   square thumbnail, with feathered left/right edges (mask) and a bottom
+   gradient (fade) that both looks softer and gives the name label
+   somewhere legible to sit. */
+.action-banner {
+    position: relative;
+    width: 100%;
+    height: 88px;
+    border-radius: 8px;
     overflow: hidden;
     border: 1px solid #334155;
-    background: #0f172a;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
 }
 
-.action-thumb img {
+.action-banner-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    opacity: 0.8;
+    -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+    transition: opacity 0.2s ease, transform 0.3s ease;
 }
 
-.action-thumb-none {
-    color: #64748b;
+.dialogue-line:hover .action-banner-img {
+    opacity: 0.95;
+    transform: scale(1.03);
+}
+
+.action-banner-fade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(2, 6, 23, 0.85) 0%, rgba(2, 6, 23, 0.2) 60%, transparent 100%);
+    pointer-events: none;
+}
+
+.action-banner-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-banner-empty .action-banner-fade {
+    background: transparent;
+}
+
+.action-banner-empty-icon {
+    font-size: 1.1rem;
+    color: #475569;
+}
+
+.action-banner-label {
+    position: absolute;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
+/* Name is truncated with an ellipsis by default; hovering reveals the full
+   name in a small floating tooltip built from the data attribute, so long
+   filenames don't force the banner (or the row) to grow. */
+.action-name {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #f1f5f9;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+    cursor: default;
+}
+
+.action-name:hover::after {
+    content: attr(data-full-name);
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 8px);
+    background: #0f172a;
+    border: 1px solid #2dd4bf;
+    color: #f8fafc;
+    padding: 0.35rem 0.65rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-shadow: none;
+    z-index: 20;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
 }
 
 .menu-prompt {
@@ -727,6 +840,19 @@ onUnmounted(() => {
 .icon-btn.danger:hover {
     color: #f87171;
     background: rgba(248, 113, 113, 0.1);
+}
+
+/* Locked initial background line — non-interactive drag handle, no
+   hover "grab" affordance; row itself stays clickable to open the editor */
+.lock-handle {
+    cursor: default;
+    opacity: 0.6;
+    font-size: 0.85rem;
+}
+
+.locked-hint {
+    opacity: 0.5;
+    cursor: default;
 }
 
 /* Hidden character — dims the card, red left border */

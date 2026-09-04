@@ -76,10 +76,13 @@
                 <div v-else class="menu-input-section" id="background-input-section">
                     <div class="section-header" id="background-input-header">
                         <h4 id="background-input-title">
-                            {{ editingActionNode ? 'Edit Background Change' : 'New Background Change' }}
+                            {{ editingActionNode?.is_initial ? 'Edit Initial Background'
+                                : editingActionNode ? 'Edit Background Change' : 'New Background Change' }}
                         </h4>
                         <p class="text-xs text-slate-400 mt-1">
-                            Pick a background — it takes effect from this point in the scene onward.
+                            {{ editingActionNode?.is_initial
+                                ? "This is the scene's starting background — every scene has one and it can't be removed."
+                                : 'Pick a background — it takes effect from this point in the scene onward.' }}
                         </p>
                     </div>
 
@@ -98,10 +101,19 @@
                             </span>
                             <span class="background-picker-label">{{ asset.name }}</span>
                         </button>
+                        <!-- Upload a new image straight from this picker — no need to leave
+                             to the header's background library panel first. -->
+                        <button type="button" class="background-picker-card background-picker-upload"
+                            @click="triggerBgUpload" id="bg-picker-upload">
+                            <span class="background-picker-thumb background-picker-thumb-upload">➕</span>
+                            <span class="background-picker-label">Add New</span>
+                        </button>
+                        <input ref="bgFileInputRef" type="file" accept="image/*" class="hidden" @change="handleBgUpload"
+                            id="bg-picker-file-input" />
                     </div>
 
                     <div v-if="backgroundAssets.length === 0" class="text-sm text-slate-500 mt-2">
-                        No backgrounds in this project's library yet — add one from the background panel first.
+                        No backgrounds in this project's library yet — click "Add New" to upload one.
                     </div>
 
                     <div class="input-actions" style="margin-top: 1rem;">
@@ -141,6 +153,7 @@ interface Emits {
     (e: 'add-line', line: DialogueLine): void;
     (e: 'add-menu', node: MenuNode): void;
     (e: 'add-background-action', node: Omit<ActionNode, 'id' | 'order'>): void;
+    (e: 'add-background-asset', asset: BackgroundAsset): void;
     (e: 'edit-line', payload: { index: number; line: SceneLine }): void;
     (e: 'delete-line', index: number): void;
     (e: 'select-line', index: number | null): void;
@@ -176,6 +189,7 @@ const editingMenuNode = ref<MenuNode | null>(null);
 const editingActionNode = ref<ActionNode | null>(null);
 const pendingBackgroundPath = ref<string | null>(null);
 const pendingBackgroundName = ref<string | null>(null);
+const bgFileInputRef = ref<HTMLInputElement>();
 
 // --- Event Handlers ---
 
@@ -370,6 +384,32 @@ const confirmBackgroundAction = () => {
     closeBackgroundEditor();
 };
 
+const triggerBgUpload = () => {
+    bgFileInputRef.value?.click();
+};
+
+const handleBgUpload = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const objectUrl = URL.createObjectURL(file);
+    const newAsset: BackgroundAsset = {
+        id: `bg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        name: file.name,
+        path: objectUrl,
+    };
+
+    emit('add-background-asset', newAsset);
+
+    // Auto-select the freshly uploaded image so the user can just hit
+    // "Insert"/"Update" without having to find it in the grid again.
+    pendingBackgroundPath.value = newAsset.path;
+    pendingBackgroundName.value = newAsset.name;
+
+    input.value = '';
+};
+
 const getBackgroundThumb = (path: string) => {
     if (!path) return '';
     if (path.startsWith('blob:') || path.startsWith('data:') || path.startsWith('http')) {
@@ -557,6 +597,20 @@ watch(() => props.selectedLineIndex, (index) => {
 
 .background-picker-thumb-none {
     color: #64748b;
+}
+
+.background-picker-upload {
+    border-style: dashed;
+}
+
+.background-picker-upload:hover {
+    border-color: #2dd4bf;
+    background: rgba(45, 212, 191, 0.08);
+}
+
+.background-picker-thumb-upload {
+    color: #2dd4bf;
+    font-size: 1.3rem;
 }
 
 .background-picker-label {

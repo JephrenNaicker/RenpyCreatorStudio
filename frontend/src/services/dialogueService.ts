@@ -15,6 +15,7 @@ import type {
     DialogueLine,
     MenuNode,
     MenuChoice,
+    ActionNode,
     SceneLine,
 } from '@/types/models';
 import type { ImagePosition } from '@/types/models';
@@ -29,6 +30,9 @@ const generateMenuId = (): string =>
 
 const generateChoiceId = (): string =>
     `choice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+const generateActionId = (): string =>
+    `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 // ─── Factories ────────────────────────────────────────────────────────────────
 
@@ -66,6 +70,35 @@ export function createMenuNode(
             id: choice.id || generateChoiceId(),
         })),
     };
+}
+
+/**
+ * Build the mandatory "background: none" action node every scene must open
+ * with. Always order 1, always at index 0 — see `is_initial` on ActionNode.
+ */
+export function createInitialBackgroundNode(): ActionNode {
+    return {
+        id: generateActionId(),
+        type: 'action',
+        order: 1,
+        action_type: 'background_change',
+        background_path: undefined,
+        background_name: undefined,
+        transition: 'instant',
+        is_initial: true,
+    };
+}
+
+/**
+ * Guarantee `lines` opens with the initial background node. Used both when
+ * creating a scene and defensively when loading one (older/dummy scenes may
+ * predate this requirement) — a no-op if it's already there.
+ */
+export function ensureInitialBackgroundLine(lines: SceneLine[]): SceneLine[] {
+    const first = lines[0];
+    const hasInitial = !!first && first.type === 'action' && (first as ActionNode).is_initial;
+    if (hasInitial) return lines;
+    return reorderLines([createInitialBackgroundNode(), ...lines]);
 }
 
 // ─── Array utilities ──────────────────────────────────────────────────────────
@@ -126,6 +159,13 @@ export function replaceLine(
  * with order values re-assigned.
  */
 export function deleteLine(lines: SceneLine[], index: number): SceneLine[] {
+    const target = lines[index];
+    if (index === 0 && target?.type === 'action' && (target as ActionNode).is_initial) {
+        // Required line — every scene must keep its opening background set.
+        // The UI already hides the delete affordance for it; this is the
+        // data-layer backstop in case something else calls deleteLine directly.
+        return lines;
+    }
     const filtered = lines.filter((_, i) => i !== index);
     return reorderLines(filtered);
 }

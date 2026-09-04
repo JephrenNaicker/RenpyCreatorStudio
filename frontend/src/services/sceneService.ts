@@ -5,6 +5,7 @@
 // is ready, only the bodies below change, not the components that use them.
 
 import { dummyScenes, type Scene } from '@/utils/dummyData';
+import { createInitialBackgroundNode } from '@/services/dialogueService';
 
 /**
  * Get all scenes belonging to a project.
@@ -57,7 +58,9 @@ export async function createScene(
     const newScene: Scene = {
         ...data,
         id: `scene_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        dialogue_lines: [],
+        // Every scene opens with a locked "background: none" line — see
+        // ActionNode.is_initial.
+        dialogue_lines: [createInitialBackgroundNode()],
         created_at: now,
         updated_at: now,
     };
