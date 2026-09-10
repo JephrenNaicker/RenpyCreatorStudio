@@ -1,13 +1,12 @@
-<!-- frontend/src/components/scene/DialogueEditor.vue -->
 <template>
     <div class="dialogue-editor" id="dialogue-editor">
         <!-- Main container for side-by-side layout -->
         <div class="editor-layout" id="editor-layout">
             <!-- Left panel: Dialogue History Component (dialogue lines + menu nodes) -->
             <DialogueHistory :dialogue-lines="dialogueLines" :selected-line-index="selectedLineIndex"
-                :is-dirty="isDirty" @select-line="handleSelectLine" @edit-line="startEdit"
+                :is-dirty="isDirty" :characters="characters" @select-line="handleSelectLine" @edit-line="startEdit"
                 @delete-line="handleDeleteLine" @update-line-position="handleUpdateLinePosition"
-                @update-line-visibility="handleUpdateLineVisibility" @reorder-lines="handleReorderLines" />
+                @update-line-visibility="handleUpdateLineVisibility" />
 
             <!-- Right panel: Speaker Selection and Input -->
             <div class="input-panel" id="input-panel">
@@ -17,6 +16,12 @@
                         <h4 id="speaker-section-title">Speaker & Expression</h4>
                     </div>
                     <div class="speaker-input" id="speaker-input">
+                        <!-- external-outfit / external-expression tell CastSelector what the
+                             currently-selected line actually has, so clicking a line to edit it
+                             shows that line's outfit & expression instead of the character's
+                             default. CastSelector already falls back to its normal
+                             default-selection logic when these are empty or don't match a
+                             valid outfit/expression for the character (e.g. adding a new line). -->
                         <CastSelector v-model="currentSpeaker" :characters="characters"
                             :scene-character-ids="sceneCharacterIds" label="Select Speaker"
                             :external-outfit="currentOutfit" :external-expression="currentExpression"
@@ -54,14 +59,11 @@
                         <button class="btn secondary" @click="openMenuEditor" id="add-menu-btn">
                             Add Menu Choice
                         </button>
-                        <button class="btn secondary" @click="openBackgroundEditor" id="add-background-btn">
-                            🖼️ Change Background
-                        </button>
                     </div>
                 </div>
 
                 <!-- Menu Choice Editor — swaps into the same slot -->
-                <div v-else-if="mode === 'menu'" class="menu-input-section" id="menu-input-section">
+                <div v-else class="menu-input-section" id="menu-input-section">
                     <div class="section-header" id="menu-input-header">
                         <h4 id="menu-input-title">
                             {{ editingMenuNode ? 'Edit Menu Choice' : 'New Menu Choice' }}
@@ -70,60 +72,6 @@
                     <MenuChoiceEditor :editing-node="editingMenuNode" :line-count="dialogueLines.length"
                         @add-menu="handleAddMenuNode" @update-menu="handleUpdateMenuNode" @cancel="closeMenuEditor"
                         id="menu-choice-editor" />
-                </div>
-
-                <!-- Background Change Editor — swaps into the same slot -->
-                <div v-else class="menu-input-section" id="background-input-section">
-                    <div class="section-header" id="background-input-header">
-                        <h4 id="background-input-title">
-                            {{ editingActionNode?.is_initial ? 'Edit Initial Background'
-                                : editingActionNode ? 'Edit Background Change' : 'New Background Change' }}
-                        </h4>
-                        <p class="text-xs text-slate-400 mt-1">
-                            {{ editingActionNode?.is_initial
-                                ? "This is the scene's starting background — every scene has one and it can't be removed."
-                                : 'Pick a background — it takes effect from this point in the scene onward.' }}
-                        </p>
-                    </div>
-
-                    <div class="background-picker-grid">
-                        <button type="button" class="background-picker-card" :class="{ active: !pendingBackgroundPath }"
-                            @click="pendingBackgroundPath = null; pendingBackgroundName = null" id="bg-picker-none">
-                            <span class="background-picker-thumb background-picker-thumb-none">🚫</span>
-                            <span class="background-picker-label">None</span>
-                        </button>
-                        <button v-for="asset in backgroundAssets" :key="asset.id" type="button"
-                            class="background-picker-card" :class="{ active: pendingBackgroundPath === asset.path }"
-                            @click="pendingBackgroundPath = asset.path; pendingBackgroundName = asset.name"
-                            :id="`bg-picker-${asset.id}`">
-                            <span class="background-picker-thumb">
-                                <img :src="getBackgroundThumb(asset.path)" :alt="asset.name" />
-                            </span>
-                            <span class="background-picker-label">{{ asset.name }}</span>
-                        </button>
-                        <!-- Upload a new image straight from this picker — no need to leave
-                             to the header's background library panel first. -->
-                        <button type="button" class="background-picker-card background-picker-upload"
-                            @click="triggerBgUpload" id="bg-picker-upload">
-                            <span class="background-picker-thumb background-picker-thumb-upload">➕</span>
-                            <span class="background-picker-label">Add New</span>
-                        </button>
-                        <input ref="bgFileInputRef" type="file" accept="image/*" class="hidden" @change="handleBgUpload"
-                            id="bg-picker-file-input" />
-                    </div>
-
-                    <div v-if="backgroundAssets.length === 0" class="text-sm text-slate-500 mt-2">
-                        No backgrounds in this project's library yet — click "Add New" to upload one.
-                    </div>
-
-                    <div class="input-actions" style="margin-top: 1rem;">
-                        <button class="btn primary" @click="confirmBackgroundAction" id="confirm-background-btn">
-                            {{ editingActionNode ? 'Update' : 'Insert' }} Background Change
-                        </button>
-                        <button class="btn secondary" @click="closeBackgroundEditor" id="cancel-background-btn">
-                            Cancel
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -136,13 +84,12 @@ import CastSelector from '@/components/scene/CastSelector.vue';
 import DialogueHistory from '@/components/scene/DialogueHistory.vue';
 import MenuChoiceEditor from '@/components/scene/MenuChoiceEditor.vue';
 import { createDialogueLine } from '@/services/dialogueService';
-import type { DialogueLine, MenuNode, ActionNode, Character, SceneLine, BackgroundAsset } from '@/types/models';
+import type { DialogueLine, MenuNode, Character, SceneLine } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
 interface Props {
     dialogueLines: SceneLine[];
     characters: Character[];
-    backgroundAssets?: BackgroundAsset[];
     selectedLineIndex?: number | null;
     selectedSpeakerId?: string | null;
     isDirty?: boolean;
@@ -152,8 +99,6 @@ interface Props {
 interface Emits {
     (e: 'add-line', line: DialogueLine): void;
     (e: 'add-menu', node: MenuNode): void;
-    (e: 'add-background-action', node: Omit<ActionNode, 'id' | 'order'>): void;
-    (e: 'add-background-asset', asset: BackgroundAsset): void;
     (e: 'edit-line', payload: { index: number; line: SceneLine }): void;
     (e: 'delete-line', index: number): void;
     (e: 'select-line', index: number | null): void;
@@ -161,14 +106,12 @@ interface Emits {
     (e: 'add-action'): void;
     (e: 'update-line-position', payload: { index: number; position: ImagePosition | undefined }): void;
     (e: 'update-line-visibility', payload: { index: number; visible: boolean }): void;
-    (e: 'reorder-lines', lines: SceneLine[]): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     selectedLineIndex: null,
     selectedSpeakerId: null,
-    sceneCharacterIds: undefined,
-    backgroundAssets: () => []
+    sceneCharacterIds: undefined
 });
 
 const emit = defineEmits<Emits>();
@@ -182,14 +125,9 @@ const textAreaRef = ref<HTMLTextAreaElement>();
 const isEditing = ref(false);
 const editingIndex = ref<number | null>(null);
 
-// Panel mode — 'dialogue' (default), 'menu', or 'background'. Swaps the
-// right-hand input panel in place.
-const mode = ref<'dialogue' | 'menu' | 'background'>('dialogue');
+// Panel mode — 'dialogue' (default) or 'menu'. Swaps the right-hand input panel in place.
+const mode = ref<'dialogue' | 'menu'>('dialogue');
 const editingMenuNode = ref<MenuNode | null>(null);
-const editingActionNode = ref<ActionNode | null>(null);
-const pendingBackgroundPath = ref<string | null>(null);
-const pendingBackgroundName = ref<string | null>(null);
-const bgFileInputRef = ref<HTMLInputElement>();
 
 // --- Event Handlers ---
 
@@ -239,8 +177,21 @@ const handleUpdateLinePosition = (payload: { index: number; position: ImagePosit
     emit('update-line-position', payload);
 };
 
-const handleReorderLines = (reorderedLines: SceneLine[]) => {
-    emit('reorder-lines', reorderedLines);
+// `DialogueLine.outfit` is often empty — only `expression` gets set reliably
+// (e.g. seed/legacy data only stores outfit inside `character_states`, never
+// on the line itself). Derive it from the speaking character's own
+// expression→outfit mapping instead of trusting a field that may be blank,
+// same approach used for the outfit badge in DialogueHistory.vue. Falls back
+// to the line's stored `outfit` (if any), then to '' so CastSelector's own
+// default-selection logic takes over.
+const resolveLineOutfit = (line: DialogueLine): string => {
+    if (!line.character) return '';
+    const character = props.characters.find(c => c.id === line.character!.id);
+    if (line.expression) {
+        const matchedExpression = character?.expressions?.find(e => e.name === line.expression);
+        if (matchedExpression?.outfit) return matchedExpression.outfit;
+    }
+    return line.outfit || '';
 };
 
 const addLine = () => {
@@ -346,78 +297,6 @@ const handleUpdateMenuNode = (node: MenuNode) => {
     closeMenuEditor();
 };
 
-// --- Background action editor handlers ---
-
-const openBackgroundEditor = () => {
-    mode.value = 'background';
-    editingActionNode.value = null;
-    editingIndex.value = null;
-    pendingBackgroundPath.value = null;
-    pendingBackgroundName.value = null;
-};
-
-const closeBackgroundEditor = () => {
-    mode.value = 'dialogue';
-    editingActionNode.value = null;
-    editingIndex.value = null;
-    pendingBackgroundPath.value = null;
-    pendingBackgroundName.value = null;
-    emit('select-line', null);
-};
-
-const confirmBackgroundAction = () => {
-    const node: Omit<ActionNode, 'id' | 'order'> = {
-        type: 'action',
-        action_type: 'background_change',
-        background_path: pendingBackgroundPath.value ?? undefined,
-        background_name: pendingBackgroundName.value ?? undefined,
-    };
-
-    if (editingActionNode.value && editingIndex.value !== null) {
-        emit('edit-line', {
-            index: editingIndex.value,
-            line: { ...editingActionNode.value, ...node }
-        });
-    } else {
-        emit('add-background-action', node);
-    }
-    closeBackgroundEditor();
-};
-
-const triggerBgUpload = () => {
-    bgFileInputRef.value?.click();
-};
-
-const handleBgUpload = (event: Event) => {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-
-    const objectUrl = URL.createObjectURL(file);
-    const newAsset: BackgroundAsset = {
-        id: `bg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        name: file.name,
-        path: objectUrl,
-    };
-
-    emit('add-background-asset', newAsset);
-
-    // Auto-select the freshly uploaded image so the user can just hit
-    // "Insert"/"Update" without having to find it in the grid again.
-    pendingBackgroundPath.value = newAsset.path;
-    pendingBackgroundName.value = newAsset.name;
-
-    input.value = '';
-};
-
-const getBackgroundThumb = (path: string) => {
-    if (!path) return '';
-    if (path.startsWith('blob:') || path.startsWith('data:') || path.startsWith('http')) {
-        return path;
-    }
-    return `https://picsum.photos/seed/${encodeURIComponent(path)}/64/64`;
-};
-
 // --- Watchers ---
 
 // Watch for speaker changes from parent
@@ -434,12 +313,6 @@ watch(() => props.selectedLineIndex, (index) => {
             mode.value = 'dialogue';
             editingMenuNode.value = null;
         }
-        if (mode.value === 'background') {
-            mode.value = 'dialogue';
-            editingActionNode.value = null;
-            pendingBackgroundPath.value = null;
-            pendingBackgroundName.value = null;
-        }
         currentSpeaker.value = props.selectedSpeakerId || '';
         currentOutfit.value = '';
         return;
@@ -454,27 +327,18 @@ watch(() => props.selectedLineIndex, (index) => {
         editingMenuNode.value = line as MenuNode;
         isEditing.value = false;
         editingIndex.value = index;
-    } else if (line && line.type === 'action') {
-        // Switch the input panel into background-edit mode for this node
-        mode.value = 'background';
-        editingActionNode.value = line as ActionNode;
-        pendingBackgroundPath.value = (line as ActionNode).background_path ?? null;
-        pendingBackgroundName.value = (line as ActionNode).background_name ?? null;
-        isEditing.value = false;
-        editingIndex.value = index;
-    } else if (line) {
+    } else if (line && line.type !== 'action') {
         const dialogueLine = line as DialogueLine;
         mode.value = 'dialogue';
         editingMenuNode.value = null;
-        editingActionNode.value = null;
         currentSpeaker.value = dialogueLine.character?.id || '';
         currentText.value = dialogueLine.text;
         currentExpression.value = dialogueLine.expression || '';
-        currentOutfit.value = dialogueLine.outfit || '';
+        currentOutfit.value = resolveLineOutfit(dialogueLine);
         isEditing.value = true;
         editingIndex.value = index;
     } else {
-        // Undefined — cancel editing
+        // Action node or undefined — cancel editing
         cancelEdit();
         currentSpeaker.value = props.selectedSpeakerId || '';
         currentOutfit.value = '';
@@ -538,89 +402,6 @@ watch(() => props.selectedLineIndex, (index) => {
 
 #menu-input-title {
     color: #f59e0b;
-}
-
-/* Teal accent for background-change mode — matches the row accent in DialogueHistory */
-#background-input-section {
-    border-color: rgba(45, 212, 191, 0.3);
-}
-
-#background-input-title {
-    color: #2dd4bf;
-}
-
-.background-picker-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
-    gap: 0.75rem;
-}
-
-.background-picker-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.4rem;
-    background: #0f172a;
-    border: 2px solid #334155;
-    border-radius: 8px;
-    padding: 0.5rem;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.background-picker-card:hover {
-    border-color: #475569;
-}
-
-.background-picker-card.active {
-    border-color: #2dd4bf;
-    background: rgba(45, 212, 191, 0.08);
-}
-
-.background-picker-thumb {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    border-radius: 4px;
-    overflow: hidden;
-    background: #1e293b;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.1rem;
-}
-
-.background-picker-thumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.background-picker-thumb-none {
-    color: #64748b;
-}
-
-.background-picker-upload {
-    border-style: dashed;
-}
-
-.background-picker-upload:hover {
-    border-color: #2dd4bf;
-    background: rgba(45, 212, 191, 0.08);
-}
-
-.background-picker-thumb-upload {
-    color: #2dd4bf;
-    font-size: 1.3rem;
-}
-
-.background-picker-label {
-    font-size: 0.72rem;
-    color: #cbd5e1;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
 }
 
 .section-header {

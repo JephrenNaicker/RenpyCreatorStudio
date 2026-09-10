@@ -35,7 +35,7 @@ const initialCharacters: Character[] = [
             { name: 'happy', image_path: 'alice_happy.png', outfit: 'casual' },
             { name: 'sad', image_path: 'alice_sad.png', outfit: 'casual' },
             { name: 'angry', image_path: 'alice_angry.png', outfit: 'casual' },
-            { name: 'surprised', image_path: 'alice_surprised.png', outfit: 'casual' },
+            { name: 'surprised', image_path: 'alice_surprised.png', outfit: 'magical' },
             { name: 'magical', image_path: 'alice_magical.png', outfit: 'magical' }
         ],
         created_at: '2024-01-10T09:30:00Z',

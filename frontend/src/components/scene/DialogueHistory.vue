@@ -98,9 +98,18 @@
                             :model-value="(line as DialogueLine).speaker_visible === false"
                             @change="(hidden) => updateVisibility(index, hidden)" @click.stop />
 
-                        <div v-if="(line as DialogueLine).expression" class="expression">
-                            {{ getExpressionEmoji((line as DialogueLine).expression!) }}
-                            <span class="expression-name">{{ (line as DialogueLine).expression }}</span>
+                        <div v-if="(line as DialogueLine).expression || resolveOutfit(line as DialogueLine)"
+                            class="expression">
+                            <span v-if="resolveOutfit(line as DialogueLine)" class="outfit-badge"
+                                :title="`Outfit: ${resolveOutfit(line as DialogueLine)}`">
+                                👕 {{ resolveOutfit(line as DialogueLine) }}
+                            </span>
+                            <span v-if="resolveOutfit(line as DialogueLine) && (line as DialogueLine).expression"
+                                class="expression-divider">|</span>
+                            <span v-if="(line as DialogueLine).expression" class="expression-emoji-group">
+                                {{ getExpressionEmoji((line as DialogueLine).expression!) }}
+                                <span class="expression-name">{{ (line as DialogueLine).expression }}</span>
+                            </span>
                         </div>
                         <!-- Position indicator button -->
                         <button class="position-indicator" @click.stop="togglePositionSelector(index)"
@@ -144,13 +153,17 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import ImagePositionSelector from '@/components/scene/ImagePositionSelector.vue';
 import VisibilityToggle from '@/components/scene/VisibilityToggle.vue';
-import type { DialogueLine, MenuNode, ActionNode, SceneLine } from '@/types/models';
+import type { DialogueLine, MenuNode, ActionNode, SceneLine, Character } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
 interface Props {
     dialogueLines: SceneLine[];
     selectedLineIndex?: number | null;
     isDirty?: boolean;
+    // Full character roster — needed to resolve each dialogue line's outfit
+    // from its character's current expression→outfit mapping (Asset Library),
+    // rather than trusting a stale per-line snapshot.
+    characters?: Character[];
 }
 
 interface Emits {
@@ -233,6 +246,18 @@ const getPositionTooltip = (position: ImagePosition | undefined): string => {
     if (position.transform?.flip_x) label += ' (Flipped)';
     if (position.transform?.zoom && position.transform.zoom !== 1) label += ` (Zoom: ${position.transform.zoom}x)`;
     return label;
+};
+
+// Derive the outfit from the character's live expression list rather than
+// trusting a per-line snapshot — keeps it accurate if outfits are reassigned
+// later in the Asset Library, and ties the badge to the character record.
+// Falls back to `line.outfit` only if the character/expression can't be
+// resolved (e.g. character removed from the roster).
+const resolveOutfit = (line: DialogueLine): string | undefined => {
+    if (!line.expression) return undefined;
+    const character = props.characters?.find(c => c.id === line.character?.id);
+    const matchedExpression = character?.expressions?.find(e => e.name === line.expression);
+    return matchedExpression?.outfit || line.outfit || undefined;
 };
 
 // The scene's mandatory opening "background: none" line — always index 0,
@@ -752,11 +777,32 @@ onUnmounted(() => {
     color: #94a3b8;
     margin-left: auto;
     flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.expression-emoji-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
 }
 
 .expression-name {
     font-size: 0.8rem;
     opacity: 0.8;
+}
+
+.expression-divider {
+    color: #475569;
+    font-size: 0.75rem;
+}
+
+/* Let the shared .outfit-badge (Tailwind design-system class from tailwind.css)
+   keep its own sky-tinted color/background instead of inheriting .expression's
+   muted gray text color. */
+.expression :deep(.outfit-badge),
+.expression .outfit-badge {
+    color: #38bdf8;
+    white-space: nowrap;
 }
 
 .position-indicator {

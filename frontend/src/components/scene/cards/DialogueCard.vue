@@ -32,9 +32,15 @@
                 <VisibilityToggle v-if="line.character" :model-value="line.speaker_visible === false"
                     @change="(hidden) => emit('update-visibility', { index, visible: !hidden })" @click.stop />
 
-                <div v-if="line.expression" class="expression">
-                    {{ getExpressionEmoji(line.expression) }}
-                    <span class="expression-name">{{ line.expression }}</span>
+                <div v-if="line.expression || resolvedOutfit" class="expression">
+                    <span v-if="resolvedOutfit" class="outfit-badge" :title="`Outfit: ${resolvedOutfit}`">
+                        👕 {{ resolvedOutfit }}
+                    </span>
+                    <span v-if="resolvedOutfit && line.expression" class="expression-divider">|</span>
+                    <span v-if="line.expression" class="expression-emoji-group">
+                        {{ getExpressionEmoji(line.expression) }}
+                        <span class="expression-name">{{ line.expression }}</span>
+                    </span>
                 </div>
 
                 <button class="position-indicator" @click.stop="emit('toggle-position', index)"
@@ -61,8 +67,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import type { DialogueLine } from '@/types/models';
+import { ref, computed } from 'vue';
+import type { DialogueLine, Character } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 import VisibilityToggle from '../VisibilityToggle.vue';
 import ImagePositionSelector from '../ImagePositionSelector.vue';
@@ -72,9 +78,28 @@ interface Props {
     index: number;
     selected: boolean;
     activePositionIndex: number | null;
+    // Full character roster (not just the {id,name,color} snapshot on the line)
+    // so the outfit shown here is always the character's *current* expression→outfit
+    // mapping, rather than whatever was true when the line was authored.
+    characters?: Character[];
 }
 
 const props = defineProps<Props>();
+
+// Derive the outfit from the character's live expression list rather than
+// trusting `line.outfit` (a snapshot taken when the line was created/edited).
+// This keeps the badge accurate if the character's outfits are later
+// reassigned in the Asset Library, and ties it directly to the character
+// record instead of stale per-line data.
+// Falls back to `line.outfit` only if the character/expression can no longer
+// be resolved (e.g. character removed, or a custom expression not in the
+// library) so we still show something rather than nothing.
+const resolvedOutfit = computed(() => {
+    if (!props.line.expression) return undefined;
+    const character = props.characters?.find(c => c.id === props.line.character?.id);
+    const matchedExpression = character?.expressions?.find(e => e.name === props.line.expression);
+    return matchedExpression?.outfit || props.line.outfit || undefined;
+});
 
 interface Emits {
     (e: 'select', index: number): void;
@@ -282,11 +307,32 @@ const handleDrop = (event: DragEvent) => {
     color: #94a3b8;
     margin-left: auto;
     flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.expression-emoji-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
 }
 
 .expression-name {
     font-size: 0.8rem;
     opacity: 0.8;
+}
+
+.expression-divider {
+    color: #475569;
+    font-size: 0.75rem;
+}
+
+/* Let the shared .outfit-badge (Tailwind design-system class from tailwind.css)
+   keep its own sky-tinted color/background instead of inheriting .expression's
+   muted gray text color. */
+.expression :deep(.outfit-badge),
+.expression .outfit-badge {
+    color: #38bdf8;
+    white-space: nowrap;
 }
 
 .position-indicator {
