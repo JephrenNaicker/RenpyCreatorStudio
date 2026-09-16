@@ -26,7 +26,7 @@
                     @speaker-change="handleSpeakerChange" @add-menu="addMenuChoice"
                     @add-background-action="handleAddBackgroundAction" @add-background-asset="handleAddBackgroundAsset"
                     @update-line-position="handleUpdateLinePosition"
-                    @update-line-visibility="handleUpdateLineVisibility" />
+                    @update-line-visibility="handleUpdateLineVisibility" @insert-line="handleInsertLine" />
             </div>
         </main>
     </div>
@@ -162,6 +162,7 @@ import {
     applyLinePosition,
     applyLineVisibility,
     ensureInitialBackgroundLine,
+    reorderLines,
 } from '@/services/dialogueService';
 import type { BackgroundAsset } from '@/types/models';
 
@@ -737,6 +738,30 @@ const handleUpdateLineVisibility = ({ index, visible }: { index: number; visible
     pushHistory();
     dialogueLines.value = applyLineVisibility(dialogueLines.value, index, visible);
     if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
+};
+
+// Inserts a line built by the hover divider's quick-add popover at a specific
+// position, rather than appending to the end like addDialogueLine/addMenuChoice/
+// handleAddBackgroundAction do. Clamped defensively so nothing can land before
+// the locked initial-background line, even though DialogueHistory's divider
+// already never offers that position. Re-assigns `order` the same way
+// deleteLine does, and selects the new (blank) line so it opens straight in
+// the right-side editor for the user to fill in.
+const handleInsertLine = ({ index, line }: { index: number; line: SceneLine }) => {
+    pushHistory();
+
+    const first = dialogueLines.value[0];
+    const minIndex = (first?.type === 'action' && (first as ActionNode).is_initial) ? 1 : 0;
+    const clampedIndex = Math.max(minIndex, Math.min(index, dialogueLines.value.length));
+
+    const lines = [...dialogueLines.value];
+    lines.splice(clampedIndex, 0, line);
+    dialogueLines.value = reorderLines(lines);
+
+    selectedLineIndex.value = clampedIndex;
+    selectedCharacterId.value = isDialogueLine(line) ? (line.character?.id || null) : null;
+    if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
+    scheduleAutoSave();
 };
 
 const saveScene = async () => {

@@ -2,26 +2,21 @@
     <div class="dialogue-editor" id="dialogue-editor">
         <!-- Main container for side-by-side layout -->
         <div class="editor-layout" id="editor-layout">
-            <!-- Left panel: Dialogue History Component (dialogue lines + menu nodes) -->
+            <!-- Left panel: Dialogue History Component -->
             <DialogueHistory :dialogue-lines="dialogueLines" :selected-line-index="selectedLineIndex"
                 :is-dirty="isDirty" :characters="characters" @select-line="handleSelectLine" @edit-line="startEdit"
                 @delete-line="handleDeleteLine" @update-line-position="handleUpdateLinePosition"
-                @update-line-visibility="handleUpdateLineVisibility" />
+                @update-line-visibility="handleUpdateLineVisibility" @insert-dialogue="handleInsertDialogue"
+                @insert-menu="handleInsertMenu" @insert-background="handleInsertBackground" />
 
             <!-- Right panel: Speaker Selection and Input -->
             <div class="input-panel" id="input-panel">
-                <!-- Speaker Selection Section -->
-                <div class="speaker-section" id="speaker-section">
+                <!-- Speaker Selection Section (Hidden when editing Background Action Nodes) -->
+                <div v-if="mode !== 'action'" class="speaker-section" id="speaker-section">
                     <div class="section-header" id="speaker-section-header">
                         <h4 id="speaker-section-title">Speaker & Expression</h4>
                     </div>
                     <div class="speaker-input" id="speaker-input">
-                        <!-- external-outfit / external-expression tell CastSelector what the
-                             currently-selected line actually has, so clicking a line to edit it
-                             shows that line's outfit & expression instead of the character's
-                             default. CastSelector already falls back to its normal
-                             default-selection logic when these are empty or don't match a
-                             valid outfit/expression for the character (e.g. adding a new line). -->
                         <CastSelector v-model="currentSpeaker" :characters="characters"
                             :scene-character-ids="sceneCharacterIds" label="Select Speaker"
                             :external-outfit="currentOutfit" :external-expression="currentExpression"
@@ -37,7 +32,7 @@
                     </div>
                     <div class="textarea-wrapper" id="textarea-wrapper">
                         <textarea ref="textAreaRef" v-model="currentText" placeholder="Type dialogue here..."
-                            @keydown.enter.prevent="addLine" rows="4" class="dialogue-textarea"
+                            @keydown.enter.prevent="handleEnterKey" rows="4" class="dialogue-textarea"
                             id="dialogue-textarea" />
                         <div class="textarea-hint" id="textarea-hint">
                             Press Enter to submit, Shift+Enter for new line
@@ -62,8 +57,8 @@
                     </div>
                 </div>
 
-                <!-- Menu Choice Editor — swaps into the same slot -->
-                <div v-else class="menu-input-section" id="menu-input-section">
+                <!-- Menu Choice Editor Panel -->
+                <div v-else-if="mode === 'menu'" class="menu-input-section" id="menu-input-section">
                     <div class="section-header" id="menu-input-header">
                         <h4 id="menu-input-title">
                             {{ editingMenuNode ? 'Edit Menu Choice' : 'New Menu Choice' }}
@@ -72,6 +67,82 @@
                     <MenuChoiceEditor :editing-node="editingMenuNode" :line-count="dialogueLines.length"
                         @add-menu="handleAddMenuNode" @update-menu="handleUpdateMenuNode" @cancel="closeMenuEditor"
                         id="menu-choice-editor" />
+                </div>
+
+                <!-- Background Action Editor Panel -->
+                <div v-else-if="mode === 'action'" class="action-input-section" id="action-input-section">
+                    <div class="section-header" id="action-input-header">
+                        <h4 id="action-input-title">
+                            {{ isEditing ? 'Edit Background Action' : 'New Background Action' }}
+                        </h4>
+                    </div>
+
+                    <div class="action-editor-content">
+                        <!-- Current Selected Background Preview -->
+                        <div class="bg-preview-box mb-4">
+                            <label class="text-xs text-gray-400 block mb-1">Selected Background</label>
+                            <div
+                                class="preview-banner relative h-24 rounded-lg overflow-hidden border border-gray-700 bg-gray-900 flex items-center justify-center">
+                                <img v-if="currentBgPath" :src="getBgThumb(currentBgPath)" alt="Background Preview"
+                                    class="w-full h-full object-cover" />
+                                <span v-else class="text-gray-500 text-sm">No Background Selected</span>
+                                <div
+                                    class="absolute bottom-1 left-2 text-xs text-white bg-black/60 px-2 py-0.5 rounded">
+                                    {{ currentBgName || 'None' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Picker for Existing Background Assets -->
+                        <div class="asset-picker mb-4">
+                            <label class="text-xs text-gray-400 block mb-1">Choose from Project Library</label>
+                            <div
+                                class="grid grid-cols-3 gap-2 max-h-36 overflow-y-auto p-1 bg-gray-900/50 rounded-lg border border-gray-800">
+                                <button type="button"
+                                    class="text-xs p-2 rounded border text-left truncate transition-colors flex flex-col items-center gap-1"
+                                    :class="!currentBgPath ? 'border-sky-500 bg-sky-500/10 text-white' : 'border-gray-700 text-gray-400 hover:border-gray-500'"
+                                    @click="selectBackground('', 'None')">
+                                    <span class="text-lg">🚫</span>
+                                    <span class="truncate w-full text-center">None</span>
+                                </button>
+                                <button v-for="asset in backgroundAssets" :key="asset.id" type="button"
+                                    class="text-xs p-1 rounded border text-left transition-colors relative group overflow-hidden h-14"
+                                    :class="currentBgPath === asset.path ? 'border-sky-500 ring-1 ring-sky-500' : 'border-gray-700 hover:border-gray-500'"
+                                    @click="selectBackground(asset.path, asset.name)">
+                                    <img :src="getBgThumb(asset.path)"
+                                        class="w-full h-full object-cover rounded opacity-70 group-hover:opacity-100" />
+                                    <span
+                                        class="absolute bottom-0 inset-x-0 bg-black/70 text-[10px] text-white px-1 truncate text-center">
+                                        {{ asset.name }}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Upload / Add New Asset -->
+                        <div class="asset-upload mb-4">
+                            <label class="text-xs text-gray-400 block mb-1">Or Upload New Asset</label>
+                            <input type="file" ref="fileInputRef" accept="image/*" class="hidden"
+                                @change="handleFileUpload" />
+                            <button type="button"
+                                class="btn secondary w-full !py-2 text-xs flex items-center justify-center gap-2"
+                                @click="triggerFileInput">
+                                <span>📤</span> Upload Local Image
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="input-actions mt-auto">
+                        <button v-if="!isEditing" class="btn primary" @click="addBackgroundAction" id="add-action-btn">
+                            Add Action
+                        </button>
+                        <button v-else class="btn primary" @click="updateBackgroundAction" id="update-action-btn">
+                            Update Action
+                        </button>
+                        <button class="btn secondary" @click="cancelEdit" id="cancel-action-btn">
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -83,13 +154,14 @@ import { ref, nextTick, watch } from 'vue';
 import CastSelector from '@/components/scene/CastSelector.vue';
 import DialogueHistory from '@/components/scene/DialogueHistory.vue';
 import MenuChoiceEditor from '@/components/scene/MenuChoiceEditor.vue';
-import { createDialogueLine } from '@/services/dialogueService';
-import type { DialogueLine, MenuNode, Character, SceneLine } from '@/types/models';
+import { createDialogueLine, createMenuNode } from '@/services/dialogueService';
+import type { DialogueLine, MenuNode, ActionNode, Character, SceneLine, BackgroundAsset } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
 interface Props {
     dialogueLines: SceneLine[];
     characters: Character[];
+    backgroundAssets?: BackgroundAsset[];
     selectedLineIndex?: number | null;
     selectedSpeakerId?: string | null;
     isDirty?: boolean;
@@ -99,16 +171,19 @@ interface Props {
 interface Emits {
     (e: 'add-line', line: DialogueLine): void;
     (e: 'add-menu', node: MenuNode): void;
+    (e: 'add-background-action', node: Omit<ActionNode, 'id' | 'order'>): void;
+    (e: 'add-background-asset', asset: BackgroundAsset): void;
     (e: 'edit-line', payload: { index: number; line: SceneLine }): void;
     (e: 'delete-line', index: number): void;
     (e: 'select-line', index: number | null): void;
     (e: 'speaker-change', characterId: string | null): void;
-    (e: 'add-action'): void;
     (e: 'update-line-position', payload: { index: number; position: ImagePosition | undefined }): void;
     (e: 'update-line-visibility', payload: { index: number; visible: boolean }): void;
+    (e: 'insert-line', payload: { index: number; line: SceneLine }): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
+    backgroundAssets: () => [],
     selectedLineIndex: null,
     selectedSpeakerId: null,
     sceneCharacterIds: undefined
@@ -122,29 +197,120 @@ const currentExpression = ref('');
 const currentText = ref('');
 const currentOutfit = ref('');
 const textAreaRef = ref<HTMLTextAreaElement>();
+const fileInputRef = ref<HTMLInputElement>();
+
+// Background Action State
+const currentBgPath = ref('');
+const currentBgName = ref('');
+
 const isEditing = ref(false);
 const editingIndex = ref<number | null>(null);
 
-// Panel mode — 'dialogue' (default) or 'menu'. Swaps the right-hand input panel in place.
-const mode = ref<'dialogue' | 'menu'>('dialogue');
+// Mode: 'dialogue' | 'menu' | 'action'
+const mode = ref<'dialogue' | 'menu' | 'action'>('dialogue');
 const editingMenuNode = ref<MenuNode | null>(null);
 
-// --- Event Handlers ---
+// --- Helpers ---
+const getBgThumb = (path?: string) => {
+    if (!path) return '';
+    if (path.startsWith('blob:') || path.startsWith('data:') || path.startsWith('http')) {
+        return path;
+    }
+    return `https://picsum.photos/seed/${encodeURIComponent(path)}/128/72`;
+};
+
+const resolveLineOutfit = (line: DialogueLine): string => {
+    if (!line.character) return '';
+    const character = props.characters.find(c => c.id === line.character!.id);
+    if (line.expression) {
+        const matchedExpression = character?.expressions?.find(e => e.name === line.expression);
+        if (matchedExpression?.outfit) return matchedExpression.outfit;
+    }
+    return line.outfit || '';
+};
 
 const resetForm = () => {
     currentText.value = '';
     currentExpression.value = '';
     currentOutfit.value = '';
+    currentBgPath.value = '';
+    currentBgName.value = '';
     nextTick(() => {
-        textAreaRef.value?.focus();
+        if (mode.value === 'dialogue') {
+            textAreaRef.value?.focus();
+        }
     });
 };
 
 const cancelEdit = () => {
     isEditing.value = false;
     editingIndex.value = null;
+    mode.value = 'dialogue';
+    editingMenuNode.value = null;
     resetForm();
     emit('select-line', null);
+};
+
+// --- Action / Background Handlers ---
+const selectBackground = (path: string, name: string) => {
+    currentBgPath.value = path;
+    currentBgName.value = name;
+};
+
+const triggerFileInput = () => {
+    fileInputRef.value?.click();
+};
+
+const handleFileUpload = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    if (!file) return; // Guarantees TypeScript that 'file' is not undefined
+
+    const assetUrl = URL.createObjectURL(file);
+    const newAsset: BackgroundAsset = {
+        id: `bg_${Date.now()}`,
+        name: file.name,
+        path: assetUrl
+    };
+
+    emit('add-background-asset', newAsset);
+    selectBackground(newAsset.path, newAsset.name);
+};
+
+const addBackgroundAction = () => {
+    emit('add-background-action', {
+        type: 'action',
+        action_type: 'background_change',
+        background_path: currentBgPath.value || undefined,
+        background_name: currentBgName.value || undefined,
+    });
+    cancelEdit();
+};
+
+const updateBackgroundAction = () => {
+    if (editingIndex.value === null) return;
+    const existing = props.dialogueLines[editingIndex.value] as ActionNode;
+
+    const updatedNode: ActionNode = {
+        ...existing,
+        background_path: currentBgPath.value || undefined,
+        background_name: currentBgName.value || undefined,
+    };
+
+    emit('edit-line', { index: editingIndex.value, line: updatedNode });
+    cancelEdit();
+};
+
+// --- Form & Line Handlers ---
+const handleEnterKey = (e: KeyboardEvent) => {
+    if (e.shiftKey) return; // Allow Shift+Enter for newlines
+    if (isEditing.value) {
+        updateLine();
+    } else {
+        addLine();
+    }
 };
 
 const handleSpeakerChange = (characterId: string) => {
@@ -158,7 +324,6 @@ const handleExpressionChange = (expression: string) => {
 
 const handleOutfitChange = (outfit: string) => {
     currentOutfit.value = outfit;
-    console.log('Outfit changed:', outfit);
 };
 
 const handleSelectLine = (index: number | null) => {
@@ -177,29 +342,11 @@ const handleUpdateLinePosition = (payload: { index: number; position: ImagePosit
     emit('update-line-position', payload);
 };
 
-// `DialogueLine.outfit` is often empty — only `expression` gets set reliably
-// (e.g. seed/legacy data only stores outfit inside `character_states`, never
-// on the line itself). Derive it from the speaking character's own
-// expression→outfit mapping instead of trusting a field that may be blank,
-// same approach used for the outfit badge in DialogueHistory.vue. Falls back
-// to the line's stored `outfit` (if any), then to '' so CastSelector's own
-// default-selection logic takes over.
-const resolveLineOutfit = (line: DialogueLine): string => {
-    if (!line.character) return '';
-    const character = props.characters.find(c => c.id === line.character!.id);
-    if (line.expression) {
-        const matchedExpression = character?.expressions?.find(e => e.name === line.expression);
-        if (matchedExpression?.outfit) return matchedExpression.outfit;
-    }
-    return line.outfit || '';
-};
-
 const addLine = () => {
     if (!currentText.value.trim()) return;
 
     const character = props.characters.find(c => c.id === currentSpeaker.value);
 
-    // Build the line data with default position if character exists
     const lineData: Omit<DialogueLine, 'id' | 'order' | 'type'> = {
         character: character
             ? { id: character.id, name: character.name, color: character.color }
@@ -207,22 +354,14 @@ const addLine = () => {
         text: currentText.value,
         expression: currentExpression.value || undefined,
         outfit: currentOutfit.value || undefined,
-        // Add default position for characters so they get the colored border
         image_position: character ? {
             position: 'center',
-            transform: {
-                flip_x: false,
-                zoom: 1
-            }
+            transform: { flip_x: false, zoom: 1 }
         } : undefined,
         speaker_visible: true
     };
 
-    const newLine = createDialogueLine(
-        lineData,
-        props.dialogueLines.length + 1
-    );
-
+    const newLine = createDialogueLine(lineData, props.dialogueLines.length + 1);
     emit('add-line', newLine);
     resetForm();
 };
@@ -233,9 +372,7 @@ const updateLine = () => {
     const character = props.characters.find(c => c.id === currentSpeaker.value);
     const existingLine = props.dialogueLines[editingIndex.value];
 
-    if (!existingLine || existingLine.type === 'menu' || existingLine.type === 'action') {
-        return;
-    }
+    if (!existingLine || existingLine.type === 'menu' || existingLine.type === 'action') return;
 
     const dialogueLine = existingLine as DialogueLine;
 
@@ -251,19 +388,14 @@ const updateLine = () => {
         expression: currentExpression.value || undefined,
         outfit: currentOutfit.value || undefined,
         order: dialogueLine.order,
-        // Preserve the existing image_position when updating
         image_position: dialogueLine.image_position || (character ? {
             position: 'center',
-            transform: {
-                flip_x: false,
-                zoom: 1
-            }
+            transform: { flip_x: false, zoom: 1 }
         } : undefined),
         speaker_visible: dialogueLine.speaker_visible ?? true
     };
 
     emit('edit-line', { index: editingIndex.value, line: updatedLine });
-    resetForm();
     cancelEdit();
 };
 
@@ -271,8 +403,7 @@ const startEdit = (index: number) => {
     emit('select-line', index);
 };
 
-// --- Menu editor handlers ---
-
+// --- Menu Handlers ---
 const openMenuEditor = () => {
     mode.value = 'menu';
     editingMenuNode.value = null;
@@ -280,10 +411,7 @@ const openMenuEditor = () => {
 };
 
 const closeMenuEditor = () => {
-    mode.value = 'dialogue';
-    editingMenuNode.value = null;
-    editingIndex.value = null;
-    emit('select-line', null);
+    cancelEdit();
 };
 
 const handleAddMenuNode = (node: MenuNode) => {
@@ -297,68 +425,94 @@ const handleUpdateMenuNode = (node: MenuNode) => {
     closeMenuEditor();
 };
 
-// --- Watchers ---
+// --- Divider Insert Handlers ---
+const handleInsertDialogue = (payload: { index: number }) => {
+    const lineData: Omit<DialogueLine, 'id' | 'order' | 'type'> = {
+        character: null,
+        text: '',
+        speaker_visible: true
+    };
+    const newLine = createDialogueLine(lineData, payload.index + 1);
+    emit('insert-line', { index: payload.index, line: newLine });
+};
 
-// Watch for speaker changes from parent
+const handleInsertMenu = (payload: { index: number }) => {
+    const newNode = createMenuNode(
+        {
+            prompt: undefined,
+            choices: [
+                { id: `choice_${Date.now()}_0_${Math.random().toString(36).slice(2, 6)}`, text: '' },
+                { id: `choice_${Date.now()}_1_${Math.random().toString(36).slice(2, 6)}`, text: '' }
+            ]
+        },
+        payload.index + 1
+    );
+    emit('insert-line', { index: payload.index, line: newNode });
+};
+
+const handleInsertBackground = (payload: { index: number }) => {
+    const newNode: ActionNode = {
+        id: `action_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        type: 'action',
+        order: payload.index + 1,
+        action_type: 'background_change',
+        background_path: undefined,
+        background_name: undefined,
+    };
+    emit('insert-line', { index: payload.index, line: newNode });
+};
+
+// --- Watchers ---
 watch(() => props.selectedSpeakerId, (newSpeakerId) => {
-    currentSpeaker.value = newSpeakerId || '';
+    if (!isEditing.value) {
+        currentSpeaker.value = newSpeakerId || '';
+    }
 }, { immediate: true });
 
-// Watch for line selection - FIXED with proper null/undefined checks
 watch(() => props.selectedLineIndex, (index) => {
-    // Check if index is valid
     if (index === null || index === undefined || index < 0 || index >= props.dialogueLines.length) {
-        cancelEdit();
-        if (mode.value === 'menu') {
-            mode.value = 'dialogue';
-            editingMenuNode.value = null;
+        if (isEditing.value) {
+            cancelEdit();
         }
-        currentSpeaker.value = props.selectedSpeakerId || '';
-        currentOutfit.value = '';
         return;
     }
 
-    // Get the line at the index
     const line = props.dialogueLines[index];
+    editingIndex.value = index;
 
-    if (line && line.type === 'menu') {
-        // Switch the input panel into menu-edit mode for this node
+    if (!line) return;
+
+    if (line.type === 'menu') {
         mode.value = 'menu';
         editingMenuNode.value = line as MenuNode;
-        isEditing.value = false;
-        editingIndex.value = index;
-    } else if (line && line.type !== 'action') {
+        isEditing.value = true;
+    } else if (line.type === 'action') {
+        const actionNode = line as ActionNode;
+        mode.value = 'action';
+        editingMenuNode.value = null;
+        currentBgPath.value = actionNode.background_path || '';
+        currentBgName.value = actionNode.background_name || '';
+        isEditing.value = true;
+    } else {
         const dialogueLine = line as DialogueLine;
         mode.value = 'dialogue';
         editingMenuNode.value = null;
         currentSpeaker.value = dialogueLine.character?.id || '';
-        currentText.value = dialogueLine.text;
+        currentText.value = dialogueLine.text || '';
         currentExpression.value = dialogueLine.expression || '';
         currentOutfit.value = resolveLineOutfit(dialogueLine);
         isEditing.value = true;
-        editingIndex.value = index;
-    } else {
-        // Action node or undefined — cancel editing
-        cancelEdit();
-        currentSpeaker.value = props.selectedSpeakerId || '';
-        currentOutfit.value = '';
     }
 }, { immediate: true });
 </script>
 
 <style scoped>
-.dirty-indicator {
-    color: #38bdf8;
-    font-weight: bold;
-}
-
 .dialogue-editor {
     height: 100%;
     padding: 1.5rem;
     box-sizing: border-box;
 }
 
-/* Main layout container */
 .editor-layout {
     display: flex;
     gap: 1.5rem;
@@ -366,7 +520,6 @@ watch(() => props.selectedLineIndex, (index) => {
     min-height: 500px;
 }
 
-/* Right panel styles */
 .input-panel {
     flex: 2;
     display: flex;
@@ -377,7 +530,8 @@ watch(() => props.selectedLineIndex, (index) => {
 
 .speaker-section,
 .dialogue-input-section,
-.menu-input-section {
+.menu-input-section,
+.action-input-section {
     background: #020617;
     border: 1px solid #334155;
     border-radius: 12px;
@@ -391,21 +545,21 @@ watch(() => props.selectedLineIndex, (index) => {
 }
 
 .dialogue-input-section,
-.menu-input-section {
+.menu-input-section,
+.action-input-section {
     flex: 1;
 }
 
-/* Amber accent so it's visually obvious you're in menu-building mode */
 .menu-input-section {
     border-color: rgba(245, 158, 11, 0.3);
 }
 
-#menu-input-title {
-    color: #f59e0b;
+.action-input-section {
+    border-color: rgba(45, 212, 191, 0.3);
 }
 
-.section-header {
-    margin-bottom: 1rem;
+#action-input-title {
+    color: #2dd4bf;
 }
 
 .section-header h4 {
@@ -415,11 +569,6 @@ watch(() => props.selectedLineIndex, (index) => {
     font-weight: 600;
 }
 
-.speaker-input {
-    flex: 1;
-}
-
-/* Textarea styles */
 .textarea-wrapper {
     flex: 1;
     display: flex;
@@ -437,7 +586,6 @@ watch(() => props.selectedLineIndex, (index) => {
     resize: none;
     min-height: 120px;
     transition: border-color 0.2s;
-    box-sizing: border-box;
     font-family: inherit;
 }
 
@@ -451,10 +599,8 @@ watch(() => props.selectedLineIndex, (index) => {
     color: #64748b;
     text-align: right;
     margin-top: 0.25rem;
-    padding-right: 0.25rem;
 }
 
-/* Button styles */
 .input-actions {
     display: flex;
     gap: 0.75rem;
@@ -493,61 +639,5 @@ watch(() => props.selectedLineIndex, (index) => {
 .btn:hover:not(:disabled) {
     opacity: 0.9;
     transform: translateY(-1px);
-}
-
-/* Responsive design */
-@media (max-width: 1024px) {
-    .editor-layout {
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .input-panel {
-        min-height: 300px;
-    }
-
-    .input-panel {
-        flex-direction: row;
-        gap: 1rem;
-    }
-
-    .speaker-section {
-        flex: 1;
-    }
-
-    .dialogue-input-section,
-    .menu-input-section {
-        flex: 2;
-    }
-}
-
-@media (max-width: 768px) {
-    .dialogue-editor {
-        padding: 1rem;
-    }
-
-    .input-panel {
-        flex-direction: column;
-    }
-
-    .btn {
-        min-width: 100px;
-        padding: 0.6rem 1rem;
-        font-size: 0.85rem;
-    }
-
-    .input-actions {
-        gap: 0.5rem;
-    }
-
-    .editor-layout {
-        gap: 1rem;
-    }
-}
-
-@media (max-height: 700px) {
-    .dialogue-textarea {
-        min-height: 80px;
-    }
 }
 </style>

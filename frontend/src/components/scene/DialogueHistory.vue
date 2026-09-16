@@ -12,139 +12,195 @@
             </div>
         </div>
         <div class="dialogue-history">
-            <div v-for="(line, index) in displayLines" :key="line.id || index" class="dialogue-line" :class="{
-                narrator: line.type !== 'menu' && line.type !== 'action' && !(line as DialogueLine).character,
-                selected: selectedLineIndex === index,
-                'has-position': line.type !== 'menu' && line.type !== 'action' && !!(line as DialogueLine).image_position,
-                'is-menu': line.type === 'menu',
-                'is-action': line.type === 'action',
-                'is-locked': isLockedLine(line, index),
-                'is-hidden': line.type !== 'menu' && line.type !== 'action' && (line as DialogueLine).speaker_visible === false,
-                'dragging': dragState.draggingIndex === index,
-                'drag-over': dragState.dragOverIndex === index
-            }" :style="line.type !== 'menu' && line.type !== 'action'
-                ? { '--line-color': (line as DialogueLine).character?.color || '#475569' }
-                : {}" :draggable="!isLockedLine(line, index)" @click="handleSelectLine(index)"
-                @dragstart="handleDragStart($event, index)" @dragend="handleDragEnd"
-                @dragover.prevent="handleDragOver($event, index)" @dragleave="handleDragLeave(index)"
-                @drop.prevent="handleDrop($event, index)">
-                <!-- Drag Handle — replaced with a lock icon for the required first line -->
-                <div v-if="isLockedLine(line, index)" class="drag-handle lock-handle"
-                    title="Required — always first, can't be moved or deleted">
-                    🔒
-                </div>
-                <div v-else class="drag-handle" title="Drag to reorder">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2">
-                        <circle cx="9" cy="12" r="1" fill="currentColor" />
-                        <circle cx="9" cy="16" r="1" fill="currentColor" />
-                        <circle cx="9" cy="8" r="1" fill="currentColor" />
-                        <circle cx="15" cy="12" r="1" fill="currentColor" />
-                        <circle cx="15" cy="16" r="1" fill="currentColor" />
-                        <circle cx="15" cy="8" r="1" fill="currentColor" />
-                    </svg>
-                </div>
+            <template v-for="item in historyItems"
+                :key="item.kind === 'divider' ? `divider-${item.index}` : (item.line.id || `line-${item.index}`)">
 
-                <!-- ── Menu node row ─────────────────────────────────── -->
-                <template v-if="line.type === 'menu'">
-                    <div class="line-header">
-                        <span class="menu-badge">🔀 Menu</span>
-                        <span v-if="(line as MenuNode).prompt" class="menu-prompt">
-                            "{{ (line as MenuNode).prompt }}"
-                        </span>
-                        <span class="menu-count">{{ (line as MenuNode).choices.length }} choices</span>
+                <!-- ══════════════════════════════════════════════════════════
+                     Insert divider — hover reveals a "+" smart-add tag.
+                     Never above index 0 (the locked initial-background line
+                     can't be pushed out of first place) — except when the
+                     scene has no lines at all, where this is the only way
+                     to add the first one.
+                ══════════════════════════════════════════════════════════ -->
+                <div v-if="item.kind === 'divider'" class="insert-divider relative h-4 group">
+                    <div
+                        class="absolute inset-x-2 top-1/2 -translate-y-1/2 h-px bg-transparent group-hover:bg-sky-400/40 transition-colors duration-200">
                     </div>
-                    <div class="menu-choices-preview">
-                        <span v-for="(choice, ci) in (line as MenuNode).choices" :key="choice.id" class="choice-chip">
-                            {{ ci + 1 }}. {{ choice.text }}
-                            <span v-if="choice.effects && choice.effects.length" class="effect-dot"
-                                :title="`${choice.effects.length} effect(s)`">●</span>
-                        </span>
-                    </div>
-                </template>
 
-                <!-- ── Action node row (e.g. mid-scene background change) ─── -->
-                <template v-else-if="line.type === 'action'">
-                    <div class="line-header action-line-header">
-                        <span class="action-badge">
-                            🖼️ {{ isLockedLine(line, index) ? 'Initial Background' : 'Background Change' }}
-                        </span>
-                    </div>
-                    <div class="action-banner"
-                        :class="{ 'action-banner-empty': !(line as ActionNode).background_path }">
-                        <img v-if="(line as ActionNode).background_path"
-                            :src="getActionThumb((line as ActionNode).background_path)" alt=""
-                            class="action-banner-img" />
-                        <div class="action-banner-fade"></div>
-                        <div class="action-banner-label">
-                            <span v-if="!(line as ActionNode).background_path"
-                                class="action-banner-empty-icon">🚫</span>
-                            <span class="action-name" :data-full-name="getActionName(line as ActionNode)">
-                                {{ getActionName(line as ActionNode) }}
-                            </span>
-                        </div>
-                    </div>
-                </template>
+                    <button type="button"
+                        class="insert-trigger absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-800 border border-gray-600 text-gray-400 text-sm leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-sky-400 hover:text-gray-900 hover:border-sky-400 transition-all duration-150 z-10"
+                        :class="{ 'opacity-100 bg-sky-400 text-gray-900 border-sky-400': activeDividerIndex === item.index }"
+                        @click.stop="toggleDivider(item.index)"
+                        :aria-label="`Insert new line at position ${item.index + 1}`" title="Insert here">
+                        +
+                    </button>
 
-                <!-- ── Dialogue line row ─────────────────────────────── -->
-                <template v-else>
-                    <div class="line-header">
-                        <div class="speaker" :style="{ color: (line as DialogueLine).character?.color || '#94a3b8' }">
-                            {{ (line as DialogueLine).character?.name || 'Narrator' }}
-                        </div>
-
-                        <!-- Visibility toggle — only for named characters, not Narrator -->
-                        <VisibilityToggle v-if="(line as DialogueLine).character"
-                            :model-value="(line as DialogueLine).speaker_visible === false"
-                            @change="(hidden) => updateVisibility(index, hidden)" @click.stop />
-
-                        <div v-if="(line as DialogueLine).expression || resolveOutfit(line as DialogueLine)"
-                            class="expression">
-                            <span v-if="resolveOutfit(line as DialogueLine)" class="outfit-badge"
-                                :title="`Outfit: ${resolveOutfit(line as DialogueLine)}`">
-                                👕 {{ resolveOutfit(line as DialogueLine) }}
-                            </span>
-                            <span v-if="resolveOutfit(line as DialogueLine) && (line as DialogueLine).expression"
-                                class="expression-divider">|</span>
-                            <span v-if="(line as DialogueLine).expression" class="expression-emoji-group">
-                                {{ getExpressionEmoji((line as DialogueLine).expression!) }}
-                                <span class="expression-name">{{ (line as DialogueLine).expression }}</span>
-                            </span>
-                        </div>
-                        <!-- Position indicator button -->
-                        <button class="position-indicator" @click.stop="togglePositionSelector(index)"
-                            :class="{ active: activePositionLineIndex === index }"
-                            :title="getPositionTooltip((line as DialogueLine).image_position)">
-                            {{ getPositionIcon((line as DialogueLine).image_position) }}
+                    <!-- Just the type picker — picking one inserts a blank/default
+                         line immediately, no typing here. -->
+                    <div v-if="activeDividerIndex === item.index" class="insert-popover
+                            absolute left-1/2 -translate-x-1/2 top-full mt-2 z-20
+                            bg-gray-900 border border-gray-700 rounded-xl shadow-xl p-2
+                            grid grid-cols-3 gap-2" @click.stop>
+                        <button type="button" class="btn-secondary btn-small flex flex-col items-center gap-1 !py-2"
+                            @click="insertDialogueAt(item.index)" title="Insert a blank dialogue line">
+                            <span class="text-base">💬</span>
+                            <span class="text-[11px]">Dialogue</span>
+                        </button>
+                        <button type="button" class="btn-secondary btn-small flex flex-col items-center gap-1 !py-2"
+                            @click="insertBackgroundAt(item.index)" title="Insert a background change">
+                            <span class="text-base">🖼️</span>
+                            <span class="text-[11px]">Background</span>
+                        </button>
+                        <button type="button" class="btn-secondary btn-small flex flex-col items-center gap-1 !py-2"
+                            @click="insertMenuAt(item.index)" title="Insert a menu choice">
+                            <span class="text-base">🔀</span>
+                            <span class="text-[11px]">Menu</span>
                         </button>
                     </div>
-                    <div class="text">{{ (line as DialogueLine).text }}</div>
-                </template>
+                </div>
 
-                <!-- ── Shared actions (edit/delete work for both types) ── -->
-                <div class="line-actions">
-                    <button class="icon-btn" @click.stop="handleEditLine(index)" title="Edit">
-                        ✏️
-                    </button>
-                    <button v-if="!isLockedLine(line, index)" class="icon-btn danger"
-                        @click.stop="handleDeleteLine(index)" title="Delete">
-                        🗑️
-                    </button>
-                    <span v-else class="icon-btn locked-hint" title="Required — can't be deleted">
+                <!-- ══════════════════════════════════════════════════════════
+                     Existing line card — unchanged behavior, just reading
+                     from item.line / item.index instead of line / index.
+                ══════════════════════════════════════════════════════════ -->
+                <div v-else class="dialogue-line" :class="{
+                    narrator: item.line.type !== 'menu' && item.line.type !== 'action' && !(item.line as DialogueLine).character,
+                    selected: selectedLineIndex === item.index,
+                    'has-position': item.line.type !== 'menu' && item.line.type !== 'action' && !!(item.line as DialogueLine).image_position,
+                    'is-menu': item.line.type === 'menu',
+                    'is-action': item.line.type === 'action',
+                    'is-locked': isLockedLine(item.line, item.index),
+                    'is-hidden': item.line.type !== 'menu' && item.line.type !== 'action' && (item.line as DialogueLine).speaker_visible === false,
+                    'dragging': dragState.draggingIndex === item.index,
+                    'drag-over': dragState.dragOverIndex === item.index
+                }" :style="item.line.type !== 'menu' && item.line.type !== 'action'
+                    ? { '--line-color': (item.line as DialogueLine).character?.color || '#475569' }
+                    : {}" :draggable="!isLockedLine(item.line, item.index)" @click="handleSelectLine(item.index)"
+                    @dragstart="handleDragStart($event, item.index)" @dragend="handleDragEnd"
+                    @dragover.prevent="handleDragOver($event, item.index)" @dragleave="handleDragLeave(item.index)"
+                    @drop.prevent="handleDrop($event, item.index)">
+                    <!-- Drag Handle — replaced with a lock icon for the required first line -->
+                    <div v-if="isLockedLine(item.line, item.index)" class="drag-handle lock-handle"
+                        title="Required — always first, can't be moved or deleted">
                         🔒
-                    </span>
-                </div>
+                    </div>
+                    <div v-else class="drag-handle" title="Drag to reorder">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="12" r="1" fill="currentColor" />
+                            <circle cx="9" cy="16" r="1" fill="currentColor" />
+                            <circle cx="9" cy="8" r="1" fill="currentColor" />
+                            <circle cx="15" cy="12" r="1" fill="currentColor" />
+                            <circle cx="15" cy="16" r="1" fill="currentColor" />
+                            <circle cx="15" cy="8" r="1" fill="currentColor" />
+                        </svg>
+                    </div>
 
-                <!-- Position Selector Popup (dialogue lines only) -->
-                <div v-if="activePositionLineIndex === index && line.type !== 'menu' && line.type !== 'action'"
-                    class="position-selector-popup" @click.stop>
-                    <ImagePositionSelector :model-value="(line as DialogueLine).image_position"
-                        :character-name="(line as DialogueLine).character?.name"
-                        :character-color="(line as DialogueLine).character?.color"
-                        @update:model-value="(pos) => updateLinePosition(index, pos)"
-                        @change="(pos) => updateLinePosition(index, pos)" />
+                    <!-- ── Menu node row ─────────────────────────────────── -->
+                    <template v-if="item.line.type === 'menu'">
+                        <div class="line-header">
+                            <span class="menu-badge">🔀 Menu</span>
+                            <span v-if="(item.line as MenuNode).prompt" class="menu-prompt">
+                                "{{ (item.line as MenuNode).prompt }}"
+                            </span>
+                            <span class="menu-count">{{ (item.line as MenuNode).choices.length }} choices</span>
+                        </div>
+                        <div class="menu-choices-preview">
+                            <span v-for="(choice, ci) in (item.line as MenuNode).choices" :key="choice.id"
+                                class="choice-chip">
+                                {{ ci + 1 }}. {{ choice.text }}
+                                <span v-if="choice.effects && choice.effects.length" class="effect-dot"
+                                    :title="`${choice.effects.length} effect(s)`">●</span>
+                            </span>
+                        </div>
+                    </template>
+
+                    <!-- ── Action node row (e.g. mid-scene background change) ─── -->
+                    <template v-else-if="item.line.type === 'action'">
+                        <div class="line-header action-line-header">
+                            <span class="action-badge">
+                                🖼️ {{ isLockedLine(item.line, item.index) ? 'Initial Background' : 'Background Change'
+                                }}
+                            </span>
+                        </div>
+                        <div class="action-banner"
+                            :class="{ 'action-banner-empty': !(item.line as ActionNode).background_path }">
+                            <img v-if="(item.line as ActionNode).background_path"
+                                :src="getActionThumb((item.line as ActionNode).background_path)" alt=""
+                                class="action-banner-img" />
+                            <div class="action-banner-fade"></div>
+                            <div class="action-banner-label">
+                                <span v-if="!(item.line as ActionNode).background_path"
+                                    class="action-banner-empty-icon">🚫</span>
+                                <span class="action-name" :data-full-name="getActionName(item.line as ActionNode)">
+                                    {{ getActionName(item.line as ActionNode) }}
+                                </span>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- ── Dialogue line row ─────────────────────────────── -->
+                    <template v-else>
+                        <div class="line-header">
+                            <div class="speaker"
+                                :style="{ color: (item.line as DialogueLine).character?.color || '#94a3b8' }">
+                                {{ (item.line as DialogueLine).character?.name || 'Narrator' }}
+                            </div>
+
+                            <!-- Visibility toggle — only for named characters, not Narrator -->
+                            <VisibilityToggle v-if="(item.line as DialogueLine).character"
+                                :model-value="(item.line as DialogueLine).speaker_visible === false"
+                                @change="(hidden) => updateVisibility(item.index, hidden)" @click.stop />
+
+                            <div v-if="(item.line as DialogueLine).expression || resolveOutfit(item.line as DialogueLine)"
+                                class="expression">
+                                <span v-if="resolveOutfit(item.line as DialogueLine)" class="outfit-badge"
+                                    :title="`Outfit: ${resolveOutfit(item.line as DialogueLine)}`">
+                                    👕 {{ resolveOutfit(item.line as DialogueLine) }}
+                                </span>
+                                <span
+                                    v-if="resolveOutfit(item.line as DialogueLine) && (item.line as DialogueLine).expression"
+                                    class="expression-divider">|</span>
+                                <span v-if="(item.line as DialogueLine).expression" class="expression-emoji-group">
+                                    {{ getExpressionEmoji((item.line as DialogueLine).expression!) }}
+                                    <span class="expression-name">{{ (item.line as DialogueLine).expression }}</span>
+                                </span>
+                            </div>
+                            <!-- Position indicator button -->
+                            <button class="position-indicator" @click.stop="togglePositionSelector(item.index)"
+                                :class="{ active: activePositionLineIndex === item.index }"
+                                :title="getPositionTooltip((item.line as DialogueLine).image_position)">
+                                {{ getPositionIcon((item.line as DialogueLine).image_position) }}
+                            </button>
+                        </div>
+                        <div class="text">{{ (item.line as DialogueLine).text }}</div>
+                    </template>
+
+                    <!-- ── Shared actions (edit/delete work for both types) ── -->
+                    <div class="line-actions">
+                        <button class="icon-btn" @click.stop="handleEditLine(item.index)" title="Edit">
+                            ✏️
+                        </button>
+                        <button v-if="!isLockedLine(item.line, item.index)" class="icon-btn danger"
+                            @click.stop="handleDeleteLine(item.index)" title="Delete">
+                            🗑️
+                        </button>
+                        <span v-else class="icon-btn locked-hint" title="Required — can't be deleted">
+                            🔒
+                        </span>
+                    </div>
+
+                    <!-- Position Selector Popup (dialogue lines only) -->
+                    <div v-if="activePositionLineIndex === item.index && item.line.type !== 'menu' && item.line.type !== 'action'"
+                        class="position-selector-popup" @click.stop>
+                        <ImagePositionSelector :model-value="(item.line as DialogueLine).image_position"
+                            :character-name="(item.line as DialogueLine).character?.name"
+                            :character-color="(item.line as DialogueLine).character?.color"
+                            @update:model-value="(pos) => updateLinePosition(item.index, pos)"
+                            @change="(pos) => updateLinePosition(item.index, pos)" />
+                    </div>
                 </div>
-            </div>
+            </template>
         </div>
     </div>
 </template>
@@ -173,6 +229,12 @@ interface Emits {
     (e: 'update-line-position', payload: { index: number; position: ImagePosition | undefined }): void;
     (e: 'update-line-visibility', payload: { index: number; visible: boolean }): void;
     (e: 'reorder-lines', lines: SceneLine[]): void;
+    // ── New: raised by the hover insert-divider. No form data — every
+    // insert is a blank/default line at this position; the parent decides
+    // exactly what "blank" means for each type. ──
+    (e: 'insert-dialogue', payload: { index: number }): void;
+    (e: 'insert-menu', payload: { index: number }): void;
+    (e: 'insert-background', payload: { index: number }): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -207,6 +269,52 @@ watch(() => props.dialogueLines, (newLines) => {
 const displayLines = computed(() => {
     return hasReordered.value ? reorderedLines.value : props.dialogueLines;
 });
+
+// ── Flattened render list: a divider between every card (never above index
+// 0 — the locked initial-background line can't be pushed out of first
+// place) plus a trailing divider after the last card. When the scene has
+// no lines yet, that trailing divider is the only one shown, at index 0. ──
+type HistoryItem =
+    | { kind: 'divider'; index: number }
+    | { kind: 'line'; index: number; line: SceneLine };
+
+const historyItems = computed<HistoryItem[]>(() => {
+    const items: HistoryItem[] = [];
+    displayLines.value.forEach((line, index) => {
+        if (index > 0) {
+            items.push({ kind: 'divider', index });
+        }
+        items.push({ kind: 'line', index, line });
+    });
+    items.push({ kind: 'divider', index: displayLines.value.length });
+    return items;
+});
+
+// ── Insert divider state ──
+const activeDividerIndex = ref<number | null>(null);
+
+const toggleDivider = (index: number) => {
+    activeDividerIndex.value = activeDividerIndex.value === index ? null : index;
+};
+
+const closeDivider = () => {
+    activeDividerIndex.value = null;
+};
+
+const insertDialogueAt = (index: number) => {
+    emit('insert-dialogue', { index });
+    closeDivider();
+};
+
+const insertBackgroundAt = (index: number) => {
+    emit('insert-background', { index });
+    closeDivider();
+};
+
+const insertMenuAt = (index: number) => {
+    emit('insert-menu', { index });
+    closeDivider();
+};
 
 // Helper functions
 const getExpressionEmoji = (expression: string) => {
@@ -401,13 +509,21 @@ const saveReorderedLines = () => {
     hasReordered.value = false;
 };
 
-// Close position selector when clicking outside.
+// Close position selector / insert popover when clicking outside.
 const handleClickOutside = (event: MouseEvent) => {
-    if (activePositionLineIndex.value === null) return;
     const target = event.target as HTMLElement;
-    if (target.closest('.position-selector-popup')) return;
-    if (target.closest('.position-indicator')) return;
-    activePositionLineIndex.value = null;
+
+    if (activePositionLineIndex.value !== null) {
+        if (!target.closest('.position-selector-popup') && !target.closest('.position-indicator')) {
+            activePositionLineIndex.value = null;
+        }
+    }
+
+    if (activeDividerIndex.value !== null) {
+        if (!target.closest('.insert-popover') && !target.closest('.insert-trigger')) {
+            closeDivider();
+        }
+    }
 };
 
 // Lifecycle hooks
