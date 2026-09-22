@@ -2,15 +2,21 @@
 <template>
     <div class="dialogue-line" :class="{
         narrator: !line.character,
-        selected,
+        selected: isSelected,
         'has-position': !!line.image_position,
+        'is-locked': isLocked,
         'is-hidden': line.speaker_visible === false,
         'dragging': isDragging,
         'drag-over': isDragOver
-    }" :style="{ '--line-color': line.character?.color || '#475569' }" draggable="true" @click="emit('select', index)"
-        @dragstart="handleDragStart" @dragend="handleDragEnd" @dragover.prevent="handleDragOver"
-        @dragleave="handleDragLeave" @drop.prevent="handleDrop">
-        <div class="drag-handle" title="Drag to reorder">
+    }" :style="{ '--line-color': line.character?.color || '#475569' }" :draggable="!isLocked" @click="$emit('select')"
+        @dragstart="$emit('dragstart', $event)" @dragend="$emit('dragend')"
+        @dragover.prevent="$emit('dragover', $event)" @dragleave="$emit('dragleave')"
+        @drop.prevent="$emit('drop', $event)">
+        <!-- Drag Handle / Lock Indicator -->
+        <div v-if="isLocked" class="drag-handle lock-handle" title="Required — always first, can't be moved or deleted">
+            🔒
+        </div>
+        <div v-else class="drag-handle" title="Drag to reorder">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2">
                 <circle cx="9" cy="12" r="1" fill="currentColor" />
@@ -22,112 +28,116 @@
             </svg>
         </div>
 
-        <div class="line-content">
-            <div class="line-header">
-                <div class="speaker" :style="{ color: line.character?.color || '#94a3b8' }">
-                    {{ line.character?.name || 'Narrator' }}
-                    <span v-if="line.speaker_visible === false" class="hidden-badge">👻 Hidden</span>
-                </div>
-
-                <VisibilityToggle v-if="line.character" :model-value="line.speaker_visible === false"
-                    @change="(hidden) => emit('update-visibility', { index, visible: !hidden })" @click.stop />
-
-                <div v-if="line.expression || resolvedOutfit" class="expression">
-                    <span v-if="resolvedOutfit" class="outfit-badge" :title="`Outfit: ${resolvedOutfit}`">
-                        👕 {{ resolvedOutfit }}
-                    </span>
-                    <span v-if="resolvedOutfit && line.expression" class="expression-divider">|</span>
-                    <span v-if="line.expression" class="expression-emoji-group">
-                        {{ getExpressionEmoji(line.expression) }}
-                        <span class="expression-name">{{ line.expression }}</span>
-                    </span>
-                </div>
-
-                <button class="position-indicator" @click.stop="emit('toggle-position', index)"
-                    :class="{ active: activePositionIndex === index }" :title="getPositionTooltip(line.image_position)">
-                    {{ getPositionIcon(line.image_position) }}
-                </button>
+        <!-- Line Header -->
+        <div class="line-header">
+            <div class="speaker" :style="{ color: line.character?.color || '#94a3b8' }">
+                {{ line.character?.name || 'Narrator' }}
             </div>
 
-            <div class="text">{{ line.text }}</div>
+            <!-- Visibility Toggle -->
+            <VisibilityToggle v-if="line.character" :model-value="line.speaker_visible === false"
+                @change="(hidden) => $emit('update-visibility', hidden)" @click.stop />
+
+            <!-- Expression & Outfit Badge -->
+            <div v-if="line.expression || outfitName" class="expression">
+                <span v-if="outfitName" class="outfit-badge" :title="`Outfit: ${outfitName}`">
+                    👕 {{ outfitName }}
+                </span>
+                <span v-if="outfitName && line.expression" class="expression-divider">|</span>
+                <span v-if="line.expression" class="expression-emoji-group">
+                    {{ getExpressionEmoji(line.expression) }}
+                    <span class="expression-name">{{ line.expression }}</span>
+                </span>
+            </div>
+
+            <!-- Position Indicator Button -->
+            <button type="button" class="position-indicator" @click.stop="$emit('toggle-position')"
+                :class="{ active: isPositionActive }" :title="getPositionTooltip(line.image_position)">
+                {{ getPositionIcon(line.image_position) }}
+            </button>
         </div>
 
+        <!-- Dialogue Text -->
+        <div class="text">{{ line.text }}</div>
+
+        <!-- Line Actions -->
         <div class="line-actions">
-            <button class="icon-btn" @click.stop="emit('edit', index)" title="Edit">✏️</button>
-            <button class="icon-btn danger" @click.stop="emit('delete', index)" title="Delete">🗑️</button>
+            <button class="icon-btn" @click.stop="$emit('edit')" title="Edit">
+                ✏️
+            </button>
+            <button v-if="!isLocked" class="icon-btn danger" @click.stop="$emit('delete')" title="Delete">
+                🗑️
+            </button>
+            <span v-else class="icon-btn locked-hint" title="Required — can't be deleted">
+                🔒
+            </span>
         </div>
 
-        <div v-if="activePositionIndex === index" class="position-selector-popup" @click.stop>
+        <!-- Position Selector Popup -->
+        <div v-if="isPositionActive" class="position-selector-popup" @click.stop>
             <ImagePositionSelector :model-value="line.image_position" :character-name="line.character?.name"
-                :character-color="line.character?.color"
-                @update:model-value="(pos) => emit('update-position', { index, position: pos })"
-                @change="(pos) => emit('update-position', { index, position: pos })" />
+                :character-color="line.character?.color" @update:model-value="(pos) => $emit('update-position', pos)"
+                @change="(pos) => $emit('update-position', pos)" />
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
+import VisibilityToggle from '@/components/scene/VisibilityToggle.vue';
+import ImagePositionSelector, { type ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 import type { DialogueLine, Character } from '@/types/models';
-import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
-import VisibilityToggle from '../VisibilityToggle.vue';
-import ImagePositionSelector from '../ImagePositionSelector.vue';
 
 interface Props {
     line: DialogueLine;
     index: number;
-    selected: boolean;
-    activePositionIndex: number | null;
-    // Full character roster (not just the {id,name,color} snapshot on the line)
-    // so the outfit shown here is always the character's *current* expression→outfit
-    // mapping, rather than whatever was true when the line was authored.
     characters?: Character[];
+    isSelected?: boolean;
+    isLocked?: boolean;
+    isDragging?: boolean;
+    isDragOver?: boolean;
+    isPositionActive?: boolean;
 }
 
-const props = defineProps<Props>();
-
-// Derive the outfit from the character's live expression list rather than
-// trusting `line.outfit` (a snapshot taken when the line was created/edited).
-// This keeps the badge accurate if the character's outfits are later
-// reassigned in the Asset Library, and ties it directly to the character
-// record instead of stale per-line data.
-// Falls back to `line.outfit` only if the character/expression can no longer
-// be resolved (e.g. character removed, or a custom expression not in the
-// library) so we still show something rather than nothing.
-const resolvedOutfit = computed(() => {
-    if (!props.line.expression) return undefined;
-    const character = props.characters?.find(c => c.id === props.line.character?.id);
-    const matchedExpression = character?.expressions?.find(e => e.name === props.line.expression);
-    return matchedExpression?.outfit || props.line.outfit || undefined;
+const props = withDefaults(defineProps<Props>(), {
+    characters: () => [],
+    isSelected: false,
+    isLocked: false,
+    isDragging: false,
+    isDragOver: false,
+    isPositionActive: false
 });
 
-interface Emits {
-    (e: 'select', index: number): void;
-    (e: 'edit', index: number): void;
-    (e: 'delete', index: number): void;
-    (e: 'update-visibility', payload: { index: number; visible: boolean }): void;
-    (e: 'update-position', payload: { index: number; position: ImagePosition | undefined }): void;
-    (e: 'toggle-position', index: number): void;
-    (e: 'drag-start', payload: { index: number; type: string }): void;
-    (e: 'drag-end'): void;
-    (e: 'drag-over', index: number): void;
-    (e: 'drag-leave', index: number): void;
-    (e: 'drop', payload: { fromIndex: number; toIndex: number }): void;
-}
+defineEmits<{
+    (e: 'select'): void;
+    (e: 'edit'): void;
+    (e: 'delete'): void;
+    (e: 'update-visibility', hidden: boolean): void;
+    (e: 'toggle-position'): void;
+    (e: 'update-position', position: ImagePosition | undefined): void;
+    (e: 'dragstart', event: DragEvent): void;
+    (e: 'dragend'): void;
+    (e: 'dragover', event: DragEvent): void;
+    (e: 'dragleave'): void;
+    (e: 'drop', event: DragEvent): void;
+}>();
 
-const emit = defineEmits<Emits>();
-
-// Drag state
-const isDragging = ref(false);
-const isDragOver = ref(false);
-
-// Helper functions
-const getExpressionEmoji = (expression: string): string => {
+const getExpressionEmoji = (expression: string) => {
     const emojiMap: Record<string, string> = {
-        'happy': '😊', 'sad': '😢', 'angry': '😠', 'surprised': '😲',
-        'neutral': '😐', 'smile': '😄', 'concerned': '😟', 'serious': '😐',
-        'mysterious': '🕵️', 'determined': '💪', 'excited': '🤩', 'tired': '😴',
-        'confused': '😕', 'thinking': '🤔'
+        'happy': '😊',
+        'sad': '😢',
+        'angry': '😠',
+        'surprised': '😲',
+        'neutral': '😐',
+        'smile': '😄',
+        'concerned': '😟',
+        'serious': '😐',
+        'mysterious': '🕵️',
+        'determined': '💪',
+        'excited': '🤩',
+        'tired': '😴',
+        'confused': '😕',
+        'thinking': '🤔'
     };
     return emojiMap[expression] || '😀';
 };
@@ -151,63 +161,72 @@ const getPositionTooltip = (position: ImagePosition | undefined): string => {
     return label;
 };
 
-// Drag event handlers
-const handleDragStart = (event: DragEvent) => {
-    isDragging.value = true;
-    if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('text/plain', JSON.stringify({
-            index: props.index,
-            type: 'dialogue'
-        }));
-    }
-    emit('drag-start', { index: props.index, type: 'dialogue' });
-};
-
-const handleDragEnd = () => {
-    isDragging.value = false;
-    isDragOver.value = false;
-    emit('drag-end');
-};
-
-const handleDragOver = () => {
-    if (!isDragOver.value) {
-        isDragOver.value = true;
-        emit('drag-over', props.index);
-    }
-};
-
-const handleDragLeave = () => {
-    isDragOver.value = false;
-    emit('drag-leave', props.index);
-};
-
-const handleDrop = (event: DragEvent) => {
-    isDragOver.value = false;
-    try {
-        const data = JSON.parse(event.dataTransfer?.getData('text/plain') || '{}');
-        if (data.index !== undefined && data.index !== props.index) {
-            emit('drop', { fromIndex: data.index, toIndex: props.index });
-        }
-    } catch (e) {
-        console.error('Failed to parse drag data', e);
-    }
-};
+const outfitName = computed(() => {
+    if (!props.line.expression) return undefined;
+    const character = props.characters?.find(c => c.id === props.line.character?.id);
+    const matchedExpression = character?.expressions?.find(e => e.name === props.line.expression);
+    return matchedExpression?.outfit || props.line.outfit || undefined;
+});
 </script>
 
 <style scoped>
+/* Dialogue line styles */
 .dialogue-line {
     display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: 0.5rem;
     margin-bottom: 1rem;
-    padding: 0.75rem 1rem;
+    padding: 1rem;
+    padding-left: 2.5rem;
     border-radius: 8px;
     border: 1px solid transparent;
     transition: all 0.2s;
     cursor: pointer;
     position: relative;
     background: rgba(255, 255, 255, 0.02);
+}
+
+/* Drag handle */
+.drag-handle {
+    position: absolute;
+    left: 0.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #475569;
+    cursor: grab;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+    opacity: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dialogue-line:hover .drag-handle {
+    opacity: 1;
+}
+
+.drag-handle:hover {
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Drag states */
+.dialogue-line.dragging {
+    opacity: 0.5;
+    transform: scale(0.98);
+}
+
+.dialogue-line.drag-over {
+    border-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.08);
+    transform: translateY(4px);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
 }
 
 .dialogue-line.has-position {
@@ -228,75 +247,17 @@ const handleDrop = (event: DragEvent) => {
     border-left-color: #475569;
 }
 
-.dialogue-line.dragging {
-    opacity: 0.5;
-    transform: scale(0.95);
-}
-
-.dialogue-line.drag-over {
-    border-color: #38bdf8;
-    background: rgba(56, 189, 248, 0.1);
-    transform: translateY(4px);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
-}
-
-.dialogue-line.is-hidden {
-    opacity: 0.55;
-    border-left: 3px solid #f87171 !important;
-}
-
-.dialogue-line.is-hidden:hover {
-    opacity: 0.85;
-}
-
-.drag-handle {
-    flex-shrink: 0;
-    color: #475569;
-    cursor: grab;
-    padding: 0.25rem;
-    border-radius: 4px;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 2px;
-}
-
-.drag-handle:hover {
-    color: #94a3b8;
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.drag-handle:active {
-    cursor: grabbing;
-}
-
-.line-content {
-    flex: 1;
-    min-width: 0;
-}
-
 .line-header {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     min-width: 0;
-    flex-wrap: wrap;
 }
 
 .speaker {
     font-weight: bold;
     font-size: 1rem;
     flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.hidden-badge {
-    font-size: 0.7rem;
-    color: #f87171;
-    font-weight: normal;
 }
 
 .expression {
@@ -326,9 +287,6 @@ const handleDrop = (event: DragEvent) => {
     font-size: 0.75rem;
 }
 
-/* Let the shared .outfit-badge (Tailwind design-system class from tailwind.css)
-   keep its own sky-tinted color/background instead of inheriting .expression's
-   muted gray text color. */
 .expression :deep(.outfit-badge),
 .expression .outfit-badge {
     color: #38bdf8;
@@ -344,7 +302,6 @@ const handleDrop = (event: DragEvent) => {
     font-size: 0.9rem;
     border-radius: 4px;
     transition: all 0.2s;
-    flex-shrink: 0;
 }
 
 .position-indicator:hover {
@@ -367,19 +324,31 @@ const handleDrop = (event: DragEvent) => {
     animation: fadeIn 0.2s ease-out;
 }
 
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .text {
     color: #cbd5e1;
     line-height: 1.5;
     font-size: 1rem;
-    padding: 0.5rem 0 0 0;
+    padding: 0.5rem 0;
 }
 
 .line-actions {
     display: flex;
     gap: 0.5rem;
+    justify-content: flex-end;
     opacity: 0;
     transition: opacity 0.2s;
-    flex-shrink: 0;
 }
 
 .dialogue-line:hover .line-actions {
@@ -407,15 +376,23 @@ const handleDrop = (event: DragEvent) => {
     background: rgba(248, 113, 113, 0.1);
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
+.lock-handle {
+    cursor: default;
+    opacity: 0.6;
+    font-size: 0.85rem;
+}
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.locked-hint {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.dialogue-line.is-hidden {
+    opacity: 0.55;
+    border-left: 3px solid #f87171 !important;
+}
+
+.dialogue-line.is-hidden:hover {
+    opacity: 0.85;
 }
 </style>

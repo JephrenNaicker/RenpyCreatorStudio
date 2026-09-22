@@ -1,17 +1,16 @@
 <template>
     <div class="dialogue-editor" id="dialogue-editor">
-        <!-- Main container for side-by-side layout -->
         <div class="editor-layout" id="editor-layout">
-            <!-- Left panel: Dialogue History Component -->
+            <!-- Left panel: Dialogue History -->
             <DialogueHistory :dialogue-lines="dialogueLines" :selected-line-index="selectedLineIndex"
                 :is-dirty="isDirty" :characters="characters" @select-line="handleSelectLine" @edit-line="startEdit"
                 @delete-line="handleDeleteLine" @update-line-position="handleUpdateLinePosition"
                 @update-line-visibility="handleUpdateLineVisibility" @insert-dialogue="handleInsertDialogue"
                 @insert-menu="handleInsertMenu" @insert-background="handleInsertBackground" />
 
-            <!-- Right panel: Speaker Selection and Input -->
+            <!-- Right panel: Controls & Input -->
             <div class="input-panel" id="input-panel">
-                <!-- Speaker Selection Section (Hidden when editing Background Action Nodes) -->
+                <!-- 1. Speaker & Expression Section -->
                 <div v-if="mode !== 'action'" class="speaker-section" id="speaker-section">
                     <div class="section-header" id="speaker-section-header">
                         <h4 id="speaker-section-title">Speaker & Expression</h4>
@@ -25,7 +24,45 @@
                     </div>
                 </div>
 
-                <!-- Dialogue Input Section -->
+                <!-- 2. Voice Line Section (Only visible in Dialogue Mode) -->
+                <div v-if="mode === 'dialogue'" class="voice-section" id="voice-section">
+                    <div class="section-header flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-semibold text-sky-400">🎙️ Voice Line</h4>
+                        <span v-if="currentVoicePath" class="text-xs text-gray-400 truncate max-w-[200px]">
+                            {{ currentVoicePath }}
+                        </span>
+                    </div>
+
+                    <div class="voice-controls grid grid-cols-1 gap-2">
+                        <!-- Select from Character's Pre-recorded Voice Lines -->
+                        <div v-if="availableVoiceLines.length > 0" class="predefined-voices">
+                            <label class="text-xs text-gray-400 block mb-1">Character Voice Preset</label>
+                            <select v-model="currentVoicePath" class="voice-select">
+                                <option value="">-- No Voice Audio --</option>
+                                <option v-for="vl in availableVoiceLines" :key="vl.line_name" :value="vl.audio_path">
+                                    {{ vl.line_name }} ({{ vl.audio_path }})
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Manual Voice Audio Upload / Custom Input -->
+                        <div class="custom-voice-upload flex items-center gap-2">
+                            <input type="file" ref="voiceInputRef" accept="audio/*" class="hidden"
+                                @change="handleVoiceFileUpload" />
+                            <button type="button" class="btn secondary text-xs !py-1.5 flex-1"
+                                @click="triggerVoiceFileInput">
+                                📁 Upload Voice File
+                            </button>
+                            <button v-if="currentVoicePath" type="button"
+                                class="btn secondary text-xs !py-1.5 !px-3 text-red-400 border-red-900/40 hover:bg-red-950/30"
+                                @click="clearVoice">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Dialogue Input Section -->
                 <div v-if="mode === 'dialogue'" class="dialogue-input-section" id="dialogue-input-section">
                     <div class="section-header" id="dialogue-input-header">
                         <h4 id="dialogue-input-title">Dialogue Text</h4>
@@ -78,7 +115,6 @@
                     </div>
 
                     <div class="action-editor-content">
-                        <!-- Current Selected Background Preview -->
                         <div class="bg-preview-box mb-4">
                             <label class="text-xs text-gray-400 block mb-1">Selected Background</label>
                             <div
@@ -93,13 +129,12 @@
                             </div>
                         </div>
 
-                        <!-- Picker for Existing Background Assets -->
                         <div class="asset-picker mb-4">
                             <label class="text-xs text-gray-400 block mb-1">Choose from Project Library</label>
                             <div
                                 class="grid grid-cols-3 gap-2 max-h-36 overflow-y-auto p-1 bg-gray-900/50 rounded-lg border border-gray-800">
                                 <button type="button"
-                                    class="text-xs p-2 rounded border text-left truncate transition-colors flex flex-col items-center gap-1"
+                                    class="text-xs p-2 rounded border text-left transition-colors flex flex-col items-center gap-1"
                                     :class="!currentBgPath ? 'border-sky-500 bg-sky-500/10 text-white' : 'border-gray-700 text-gray-400 hover:border-gray-500'"
                                     @click="selectBackground('', 'None')">
                                     <span class="text-lg">🚫</span>
@@ -119,7 +154,6 @@
                             </div>
                         </div>
 
-                        <!-- Upload / Add New Asset -->
                         <div class="asset-upload mb-4">
                             <label class="text-xs text-gray-400 block mb-1">Or Upload New Asset</label>
                             <input type="file" ref="fileInputRef" accept="image/*" class="hidden"
@@ -150,7 +184,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch } from 'vue';
+import { ref, computed, nextTick, watch } from 'vue';
 import CastSelector from '@/components/scene/CastSelector.vue';
 import DialogueHistory from '@/components/scene/DialogueHistory.vue';
 import MenuChoiceEditor from '@/components/scene/MenuChoiceEditor.vue';
@@ -196,8 +230,11 @@ const currentSpeaker = ref('');
 const currentExpression = ref('');
 const currentText = ref('');
 const currentOutfit = ref('');
+const currentVoicePath = ref('');
+
 const textAreaRef = ref<HTMLTextAreaElement>();
 const fileInputRef = ref<HTMLInputElement>();
+const voiceInputRef = ref<HTMLInputElement>();
 
 // Background Action State
 const currentBgPath = ref('');
@@ -210,7 +247,34 @@ const editingIndex = ref<number | null>(null);
 const mode = ref<'dialogue' | 'menu' | 'action'>('dialogue');
 const editingMenuNode = ref<MenuNode | null>(null);
 
-// --- Helpers ---
+// --- Voice Helpers & Computeds ---
+const selectedCharacter = computed(() => {
+    return props.characters.find(c => c.id === currentSpeaker.value);
+});
+
+const availableVoiceLines = computed(() => {
+    return selectedCharacter.value?.voice_lines || [];
+});
+
+const triggerVoiceFileInput = () => {
+    voiceInputRef.value?.click();
+};
+
+const handleVoiceFileUpload = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    if (!file) return;
+
+    // Use standard object URL or local relative path representation
+    currentVoicePath.value = URL.createObjectURL(file);
+};
+
+const clearVoice = () => {
+    currentVoicePath.value = '';
+};
+
+// --- General Helpers ---
 const getBgThumb = (path?: string) => {
     if (!path) return '';
     if (path.startsWith('blob:') || path.startsWith('data:') || path.startsWith('http')) {
@@ -233,6 +297,7 @@ const resetForm = () => {
     currentText.value = '';
     currentExpression.value = '';
     currentOutfit.value = '';
+    currentVoicePath.value = '';
     currentBgPath.value = '';
     currentBgName.value = '';
     nextTick(() => {
@@ -266,7 +331,7 @@ const handleFileUpload = (event: Event) => {
     if (!input.files || input.files.length === 0) return;
 
     const file = input.files[0];
-    if (!file) return; // Guarantees TypeScript that 'file' is not undefined
+    if (!file) return;
 
     const assetUrl = URL.createObjectURL(file);
     const newAsset: BackgroundAsset = {
@@ -305,7 +370,7 @@ const updateBackgroundAction = () => {
 
 // --- Form & Line Handlers ---
 const handleEnterKey = (e: KeyboardEvent) => {
-    if (e.shiftKey) return; // Allow Shift+Enter for newlines
+    if (e.shiftKey) return;
     if (isEditing.value) {
         updateLine();
     } else {
@@ -315,6 +380,7 @@ const handleEnterKey = (e: KeyboardEvent) => {
 
 const handleSpeakerChange = (characterId: string) => {
     currentSpeaker.value = characterId;
+    currentVoicePath.value = ''; // Reset voice when changing speaker
     emit('speaker-change', characterId || null);
 };
 
@@ -347,13 +413,14 @@ const addLine = () => {
 
     const character = props.characters.find(c => c.id === currentSpeaker.value);
 
-    const lineData: Omit<DialogueLine, 'id' | 'order' | 'type'> = {
+    const lineData: Omit<DialogueLine, 'id' | 'order' | 'type'> & { voice_path?: string } = {
         character: character
             ? { id: character.id, name: character.name, color: character.color }
             : null,
         text: currentText.value,
         expression: currentExpression.value || undefined,
         outfit: currentOutfit.value || undefined,
+        voice_path: currentVoicePath.value || undefined,
         image_position: character ? {
             position: 'center',
             transform: { flip_x: false, zoom: 1 }
@@ -362,7 +429,7 @@ const addLine = () => {
     };
 
     const newLine = createDialogueLine(lineData, props.dialogueLines.length + 1);
-    emit('add-line', newLine);
+    emit('add-line', newLine as DialogueLine);
     resetForm();
 };
 
@@ -387,6 +454,7 @@ const updateLine = () => {
         text: currentText.value,
         expression: currentExpression.value || undefined,
         outfit: currentOutfit.value || undefined,
+        voice_path: currentVoicePath.value || undefined,
         order: dialogueLine.order,
         image_position: dialogueLine.image_position || (character ? {
             position: 'center',
@@ -500,6 +568,7 @@ watch(() => props.selectedLineIndex, (index) => {
         currentSpeaker.value = dialogueLine.character?.id || '';
         currentText.value = dialogueLine.text || '';
         currentExpression.value = dialogueLine.expression || '';
+        currentVoicePath.value = dialogueLine.voice_path || '';
         currentOutfit.value = resolveLineOutfit(dialogueLine);
         isEditing.value = true;
     }
@@ -524,24 +593,40 @@ watch(() => props.selectedLineIndex, (index) => {
     flex: 2;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1rem;
     min-width: 300px;
 }
 
 .speaker-section,
+.voice-section,
 .dialogue-input-section,
 .menu-input-section,
 .action-input-section {
     background: #020617;
     border: 1px solid #334155;
     border-radius: 12px;
-    padding: 1.5rem;
+    padding: 1.25rem;
     display: flex;
     flex-direction: column;
 }
 
-.speaker-section {
+.speaker-section,
+.voice-section {
     flex-shrink: 0;
+}
+
+.voice-section {
+    border-color: rgba(56, 189, 248, 0.25);
+}
+
+.voice-select {
+    width: 100%;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 0.5rem;
+    color: #f8fafc;
+    font-size: 0.85rem;
 }
 
 .dialogue-input-section,

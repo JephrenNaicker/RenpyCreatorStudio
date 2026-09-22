@@ -92,8 +92,9 @@ export interface DialogueLine {
     text: string;
     order: number;
     image_position?: ImagePosition;
-    expression?: string;  // Convenience for the speaking character
-    outfit?: string;      // Convenience for the speaking character
+    expression?: string;
+    outfit?: string;
+    voice_path?: string;
     speaker_visible?: boolean;  // false = character is hidden when this line plays (default: true)
     character_states?: CharacterState[];  // Additional character changes
 }
