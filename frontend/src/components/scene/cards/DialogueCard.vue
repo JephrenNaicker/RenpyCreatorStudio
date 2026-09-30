@@ -37,6 +37,17 @@
             <!-- Visibility Toggle -->
             <VisibilityToggle v-if="line.character" :model-value="line.speaker_visible === false"
                 @change="(hidden) => $emit('update-visibility', hidden)" @click.stop />
+            <!-- Voice Indicator (only when audio is attached) -->
+            <button v-if="line.voice_path" type="button"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border transition-colors flex-shrink-0"
+                :class="isPlayingVoice
+                    ? 'bg-sky-400/30 text-sky-300 border-sky-400'
+                    : 'bg-sky-400/10 text-sky-400 border-sky-400/30 hover:bg-sky-400/20'"
+                :title="`Voice: ${voiceFileName} — click to ${isPlayingVoice ? 'stop' : 'preview'}`"
+                @click.stop="toggleVoicePreview">
+                <span>{{ isPlayingVoice ? '⏹️' : '🔊' }}</span>
+                <span class="max-w-[100px] truncate">{{ voiceFileName }}</span>
+            </button>
 
             <!-- Expression & Outfit Badge -->
             <div v-if="line.expression || outfitName" class="expression">
@@ -83,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onUnmounted } from 'vue';
 import VisibilityToggle from '@/components/scene/VisibilityToggle.vue';
 import ImagePositionSelector, { type ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 import type { DialogueLine, Character } from '@/types/models';
@@ -167,6 +178,38 @@ const outfitName = computed(() => {
     const matchedExpression = character?.expressions?.find(e => e.name === props.line.expression);
     return matchedExpression?.outfit || props.line.outfit || undefined;
 });
+
+//Voice preview logic
+const voiceFileName = computed(() => {
+    const path = props.line.voice_path;
+    if (!path) return '';
+    // blob: URLs have no useful filename, so show a generic label
+    if (path.startsWith('blob:')) return 'Uploaded audio';
+    return path.split('/').pop() || path;
+});
+
+const isPlayingVoice = ref(false);
+let previewAudio: HTMLAudioElement | null = null;
+
+const stopVoicePreview = () => {
+    previewAudio?.pause();
+    previewAudio = null;
+    isPlayingVoice.value = false;
+};
+
+const toggleVoicePreview = () => {
+    if (!props.line.voice_path) return;
+    if (isPlayingVoice.value) return stopVoicePreview();
+
+    previewAudio = new Audio(props.line.voice_path);
+    previewAudio.onended = stopVoicePreview;
+    previewAudio.onerror = stopVoicePreview;
+    isPlayingVoice.value = true;
+    previewAudio.play().catch(stopVoicePreview);
+};
+
+onUnmounted(stopVoicePreview);
+
 </script>
 
 <style scoped>
