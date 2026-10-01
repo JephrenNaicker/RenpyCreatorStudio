@@ -6,12 +6,13 @@
                 :is-dirty="isDirty" :characters="characters" @select-line="handleSelectLine" @edit-line="startEdit"
                 @delete-line="handleDeleteLine" @update-line-position="handleUpdateLinePosition"
                 @update-line-visibility="handleUpdateLineVisibility" @insert-dialogue="handleInsertDialogue"
-                @insert-menu="handleInsertMenu" @insert-background="handleInsertBackground" />
+                @insert-menu="handleInsertMenu" @insert-background="handleInsertBackground"
+                @insert-music="handleInsertMusic" />
 
             <!-- Right panel: Controls & Input -->
             <div class="input-panel" id="input-panel">
                 <!-- 1. Speaker & Expression Section -->
-                <div v-if="mode !== 'action'" class="speaker-section" id="speaker-section">
+                <div v-if="mode !== 'action' && mode !== 'music'" class="speaker-section" id="speaker-section">
                     <div class="section-header" id="speaker-section-header">
                         <h4 id="speaker-section-title">Speaker & Expression</h4>
                     </div>
@@ -178,6 +179,75 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Music Action Editor Panel -->
+                <div v-else-if="mode === 'music'" class="music-input-section" id="music-input-section">
+                    <div class="section-header" id="music-input-header">
+                        <h4 id="music-input-title">Edit Music Action</h4>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-xs text-gray-400 block mb-1">What should happen?</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" class="text-sm px-3 py-2 rounded-lg border transition-colors"
+                                :class="currentMusicMode === 'play' ? 'border-violet-400 bg-violet-400/10 text-white' : 'border-gray-700 text-gray-400 hover:border-gray-500'"
+                                @click="currentMusicMode = 'play'">
+                                🎵 Play a track
+                            </button>
+                            <button type="button" class="text-sm px-3 py-2 rounded-lg border transition-colors"
+                                :class="currentMusicMode === 'stop' ? 'border-violet-400 bg-violet-400/10 text-white' : 'border-gray-700 text-gray-400 hover:border-gray-500'"
+                                @click="currentMusicMode = 'stop'">
+                                ⏹️ Stop music
+                            </button>
+                        </div>
+                    </div>
+
+                    <template v-if="currentMusicMode === 'play'">
+                        <div class="mb-4">
+                            <label class="text-xs text-gray-400 block mb-1">Choose from Project Library</label>
+                            <div
+                                class="flex flex-col gap-1.5 max-h-36 overflow-y-auto p-1 bg-gray-900/50 rounded-lg border border-gray-800">
+                                <p v-if="musicAssets.length === 0" class="text-xs text-gray-500 px-2 py-3 text-center">
+                                    No tracks yet. Upload one below.
+                                </p>
+                                <button v-for="track in musicAssets" :key="track.id" type="button"
+                                    class="text-xs px-3 py-2 rounded border text-left truncate transition-colors"
+                                    :class="currentMusicPath === track.path ? 'border-violet-400 bg-violet-400/10 text-white' : 'border-gray-700 text-gray-400 hover:border-gray-500'"
+                                    @click="selectMusic(track.path, track.name)">
+                                    🎵 {{ track.name }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="text-xs text-gray-400 block mb-1">Or Upload New Track</label>
+                            <input type="file" ref="musicInputRef" accept="audio/*" class="hidden"
+                                @change="handleMusicFileUpload" />
+                            <button type="button"
+                                class="btn secondary w-full !py-2 text-xs flex items-center justify-center gap-2"
+                                @click="triggerMusicFileInput">
+                                <span>📁</span> Upload Audio File
+                            </button>
+                        </div>
+                    </template>
+
+                    <div class="mb-4">
+                        <label class="text-xs text-gray-400 block mb-1" for="music-fade">
+                            {{ currentMusicMode === 'stop' ? 'Fade out' : 'Fade in' }} (seconds, 0 = instant)
+                        </label>
+                        <input id="music-fade" v-model.number="currentMusicFade" type="number" min="0" max="10"
+                            step="0.5" class="input w-32" />
+                    </div>
+
+                    <div class="input-actions mt-auto">
+                        <button class="btn primary" @click="updateMusicAction" id="update-music-btn">
+                            Update Action
+                        </button>
+                        <button class="btn secondary" @click="cancelEdit" id="cancel-music-btn">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -189,7 +259,7 @@ import CastSelector from '@/components/scene/CastSelector.vue';
 import DialogueHistory from '@/components/scene/DialogueHistory.vue';
 import MenuChoiceEditor from '@/components/scene/MenuChoiceEditor.vue';
 import { createDialogueLine, createMenuNode } from '@/services/dialogueService';
-import type { DialogueLine, MenuNode, ActionNode, Character, SceneLine, BackgroundAsset } from '@/types/models';
+import type { DialogueLine, MenuNode, ActionNode, Character, SceneLine, BackgroundAsset, MusicAsset } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
 interface Props {
@@ -200,6 +270,7 @@ interface Props {
     selectedSpeakerId?: string | null;
     isDirty?: boolean;
     sceneCharacterIds?: string[];
+    musicAssets?: MusicAsset[];
 }
 
 interface Emits {
@@ -214,13 +285,15 @@ interface Emits {
     (e: 'update-line-position', payload: { index: number; position: ImagePosition | undefined }): void;
     (e: 'update-line-visibility', payload: { index: number; visible: boolean }): void;
     (e: 'insert-line', payload: { index: number; line: SceneLine }): void;
+    (e: 'add-music-asset', asset: MusicAsset): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     backgroundAssets: () => [],
     selectedLineIndex: null,
     selectedSpeakerId: null,
-    sceneCharacterIds: undefined
+    sceneCharacterIds: undefined,
+    musicAssets: () => []
 });
 
 const emit = defineEmits<Emits>();
@@ -243,9 +316,17 @@ const currentBgName = ref('');
 const isEditing = ref(false);
 const editingIndex = ref<number | null>(null);
 
-// Mode: 'dialogue' | 'menu' | 'action'
-const mode = ref<'dialogue' | 'menu' | 'action'>('dialogue');
+// Mode: 'dialogue' | 'menu' | 'action' | 'music'
+const mode = ref<'dialogue' | 'menu' | 'action' | 'music'>('dialogue');
 const editingMenuNode = ref<MenuNode | null>(null);
+
+// Music Action State
+const currentMusicMode = ref<'play' | 'stop'>('play');
+const currentMusicPath = ref('');
+const currentMusicName = ref('');
+const currentMusicFade = ref<number>(0);
+const musicInputRef = ref<HTMLInputElement>();
+
 
 // --- Voice Helpers & Computeds ---
 const selectedCharacter = computed(() => {
@@ -300,6 +381,10 @@ const resetForm = () => {
     currentVoicePath.value = '';
     currentBgPath.value = '';
     currentBgName.value = '';
+    currentMusicMode.value = 'play';
+    currentMusicPath.value = '';
+    currentMusicName.value = '';
+    currentMusicFade.value = 0;
     nextTick(() => {
         if (mode.value === 'dialogue') {
             textAreaRef.value?.focus();
@@ -362,6 +447,47 @@ const updateBackgroundAction = () => {
         ...existing,
         background_path: currentBgPath.value || undefined,
         background_name: currentBgName.value || undefined,
+    };
+
+    emit('edit-line', { index: editingIndex.value, line: updatedNode });
+    cancelEdit();
+};
+
+// --- Music Action Handlers ---
+const selectMusic = (path: string, name: string) => {
+    currentMusicPath.value = path;
+    currentMusicName.value = name;
+};
+
+const triggerMusicFileInput = () => musicInputRef.value?.click();
+
+const handleMusicFileUpload = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const asset: MusicAsset = {
+        id: `music_${Date.now()}`,
+        name: file.name,
+        path: URL.createObjectURL(file)
+    };
+    emit('add-music-asset', asset);
+    selectMusic(asset.path, asset.name);
+    input.value = '';
+};
+
+const updateMusicAction = () => {
+    if (editingIndex.value === null) return;
+    const existing = props.dialogueLines[editingIndex.value] as ActionNode;
+    const isStop = currentMusicMode.value === 'stop';
+    const fade = Number(currentMusicFade.value) || 0;
+
+    const updatedNode: ActionNode = {
+        ...existing,
+        music_mode: currentMusicMode.value,
+        music_path: isStop ? undefined : (currentMusicPath.value || undefined),
+        music_name: isStop ? undefined : (currentMusicName.value || undefined),
+        music_fade: fade > 0 ? fade : undefined,
     };
 
     emit('edit-line', { index: editingIndex.value, line: updatedNode });
@@ -530,6 +656,17 @@ const handleInsertBackground = (payload: { index: number }) => {
     emit('insert-line', { index: payload.index, line: newNode });
 };
 
+const handleInsertMusic = (payload: { index: number }) => {
+    const newNode: ActionNode = {
+        id: `action_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        type: 'action',
+        order: payload.index + 1,
+        action_type: 'music_change',
+        music_mode: 'play',
+    };
+    emit('insert-line', { index: payload.index, line: newNode });
+};
+
 // --- Watchers ---
 watch(() => props.selectedSpeakerId, (newSpeakerId) => {
     if (!isEditing.value) {
@@ -553,6 +690,15 @@ watch(() => props.selectedLineIndex, (index) => {
     if (line.type === 'menu') {
         mode.value = 'menu';
         editingMenuNode.value = line as MenuNode;
+        isEditing.value = true;
+    } else if (line.type === 'action' && (line as ActionNode).action_type === 'music_change') {
+        const musicNode = line as ActionNode;
+        mode.value = 'music';
+        editingMenuNode.value = null;
+        currentMusicMode.value = musicNode.music_mode ?? 'play';
+        currentMusicPath.value = musicNode.music_path || '';
+        currentMusicName.value = musicNode.music_name || '';
+        currentMusicFade.value = musicNode.music_fade ?? 0;
         isEditing.value = true;
     } else if (line.type === 'action') {
         const actionNode = line as ActionNode;
@@ -601,7 +747,8 @@ watch(() => props.selectedLineIndex, (index) => {
 .voice-section,
 .dialogue-input-section,
 .menu-input-section,
-.action-input-section {
+.action-input-section,
+.music-input-section {
     background: #020617;
     border: 1px solid #334155;
     border-radius: 12px;
@@ -631,7 +778,8 @@ watch(() => props.selectedLineIndex, (index) => {
 
 .dialogue-input-section,
 .menu-input-section,
-.action-input-section {
+.action-input-section,
+.music-input-section {
     flex: 1;
 }
 
@@ -645,6 +793,14 @@ watch(() => props.selectedLineIndex, (index) => {
 
 #action-input-title {
     color: #2dd4bf;
+}
+
+.music-input-section {
+    border-color: rgba(167, 139, 250, 0.3);
+}
+
+#music-input-title {
+    color: #a78bfa;
 }
 
 .section-header h4 {

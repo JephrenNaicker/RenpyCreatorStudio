@@ -44,6 +44,8 @@ export interface Project {
     variables?: StoryVariable[];
     // Reusable background library — uploaded once, picked per-scene via Scene.background_image
     background_assets?: BackgroundAsset[];
+    // Reusable music library — uploaded once, picked from music_change action nodes
+    music_assets?: MusicAsset[];
 }
 
 // ─── Background asset (project-level, reusable across scenes) ────────────────
@@ -51,6 +53,13 @@ export interface BackgroundAsset {
     id: string;
     name: string;
     path: string;   // blob:/data:/http(s) path — same convention as Expression.image_path
+}
+
+// ─── Music asset (project-level, reusable across scenes) ─────────────────────
+export interface MusicAsset {
+    id: string;
+    name: string;
+    path: string;   // blob:/data:/http(s) path — same convention as BackgroundAsset.path
 }
 
 export interface DialogueLineCharacter {
@@ -116,7 +125,7 @@ export interface ActionNode {
     id: string;
     type: 'action';
     order: number;
-    action_type: 'background_change';
+    action_type: 'background_change' | 'music_change';
     // Snapshot fields (same convention as DialogueLine.character) so history
     // still reads correctly even if the underlying background asset is later
     // renamed or removed from the project library.
@@ -128,6 +137,13 @@ export interface ActionNode {
     // before anything else plays, so it can be edited (to pick a real starting
     // background) but never deleted or reordered away from index 0.
     is_initial?: boolean;
+
+    // ── Music fields (only used when action_type === 'music_change') ──
+    // No music node at all means "keep whatever is currently playing".
+    music_mode?: 'play' | 'stop';
+    music_path?: string;        // undefined while mode is 'play' = no track picked yet
+    music_name?: string;        // snapshot, so history survives library changes
+    music_fade?: number;        // seconds; undefined/0 = instant
 }
 
 export interface MenuChoice {

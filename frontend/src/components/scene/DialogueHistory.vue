@@ -32,7 +32,7 @@
                     <div v-if="activeDividerIndex === item.index" class="insert-popover
                             absolute left-1/2 -translate-x-1/2 top-full mt-2 z-20
                             bg-gray-900 border border-gray-700 rounded-xl shadow-xl p-2
-                            grid grid-cols-3 gap-2" @click.stop>
+                            grid grid-cols-4 gap-1.5 w-max" @click.stop>
                         <button type="button" class="btn-secondary btn-small flex flex-col items-center gap-1 !py-2"
                             @click="insertDialogueAt(item.index)" title="Insert a blank dialogue line">
                             <span class="text-base">💬</span>
@@ -48,6 +48,11 @@
                             <span class="text-base">🔀</span>
                             <span class="text-[11px]">Menu</span>
                         </button>
+                        <button type="button" class="btn-secondary btn-small flex flex-col items-center gap-1 !py-2"
+                            @click="insertMusicAt(item.index)" title="Insert a music change">
+                            <span class="text-base">🎵</span>
+                            <span class="text-[11px]">Music</span>
+                        </button>
                     </div>
                 </div>
 
@@ -55,6 +60,15 @@
                 <template v-else>
                     <MenuCard v-if="item.line.type === 'menu'" :line="asMenuNode(item.line)" :index="item.index"
                         :selected="selectedLineIndex === item.index" :is-locked="isLockedLine(item.line, item.index)"
+                        :is-dragging="dragState.draggingIndex === item.index"
+                        :is-drag-over="dragState.dragOverIndex === item.index" @select="handleSelectLine(item.index)"
+                        @edit="handleEditLine(item.index)" @delete="handleDeleteLine(item.index)"
+                        @dragstart="handleDragStart($event, item.index)" @dragend="handleDragEnd"
+                        @dragover="handleDragOver($event, item.index)" @dragleave="handleDragLeave(item.index)"
+                        @drop="handleDrop($event, item.index)" />
+
+                    <MusicCard v-else-if="isMusicNode(item.line)" :line="asActionNode(item.line)" :index="item.index"
+                        :selected="selectedLineIndex === item.index" :is-locked="false"
                         :is-dragging="dragState.draggingIndex === item.index"
                         :is-drag-over="dragState.dragOverIndex === item.index" @select="handleSelectLine(item.index)"
                         @edit="handleEditLine(item.index)" @delete="handleDeleteLine(item.index)"
@@ -96,6 +110,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import DialogueCard from '@/components/scene/cards/DialogueCard.vue';
 import MenuCard from '@/components/scene/cards/MenuCard.vue';
 import ActionCard from '@/components/scene/cards/ActionCard.vue';
+import MusicCard from '@/components/scene/cards/MusicCard.vue';
 import type { ActionNode, MenuNode, DialogueLine, SceneLine, Character } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
@@ -116,6 +131,7 @@ interface Emits {
     (e: 'insert-dialogue', payload: { index: number }): void;
     (e: 'insert-menu', payload: { index: number }): void;
     (e: 'insert-background', payload: { index: number }): void;
+    (e: 'insert-music', payload: { index: number }): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -129,6 +145,13 @@ const emit = defineEmits<Emits>();
 const asMenuNode = (line: SceneLine) => line as MenuNode;
 const asActionNode = (line: SceneLine) => line as ActionNode;
 const asDialogueLine = (line: SceneLine) => line as DialogueLine;
+const isMusicNode = (line: SceneLine) => line.type === 'action' && (line as ActionNode).action_type === 'music_change';
+
+
+const insertMusicAt = (index: number) => {
+    emit('insert-music', { index });
+    closeDivider();
+};
 
 // Position selector state
 const activePositionLineIndex = ref<number | null>(null);
