@@ -8,9 +8,8 @@
         'is-hidden': line.speaker_visible === false,
         'dragging': isDragging,
         'drag-over': isDragOver
-    }" :style="{ '--line-color': line.character?.color || '#475569' }" :draggable="!isLocked" @click="$emit('select')"
-        @dragstart="$emit('dragstart', $event)" @dragend="$emit('dragend')"
-        @dragover.prevent="$emit('dragover', $event)" @dragleave="$emit('dragleave')"
+    }" :draggable="!isLocked" @click="$emit('select')" @dragstart="$emit('dragstart', $event)"
+        @dragend="$emit('dragend')" @dragover.prevent="$emit('dragover', $event)" @dragleave="$emit('dragleave')"
         @drop.prevent="$emit('drop', $event)">
         <!-- Drag Handle / Lock Indicator -->
         <div v-if="isLocked" class="drag-handle lock-handle" title="Required — always first, can't be moved or deleted">
@@ -30,23 +29,20 @@
 
         <!-- Line Header -->
         <div class="line-header">
-            <div class="speaker" :style="{ color: line.character?.color || '#94a3b8' }">
+            <div class="speaker">
                 {{ line.character?.name || 'Narrator' }}
             </div>
 
             <!-- Visibility Toggle -->
             <VisibilityToggle v-if="line.character" :model-value="line.speaker_visible === false"
                 @change="(hidden) => $emit('update-visibility', hidden)" @click.stop />
+
             <!-- Voice Indicator (only when audio is attached) -->
-            <button v-if="line.voice_path" type="button"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border transition-colors flex-shrink-0"
-                :class="isPlayingVoice
-                    ? 'bg-sky-400/30 text-sky-300 border-sky-400'
-                    : 'bg-sky-400/10 text-sky-400 border-sky-400/30 hover:bg-sky-400/20'"
+            <button v-if="line.voice_path" type="button" class="voice-badge" :class="{ 'is-playing': isPlayingVoice }"
                 :title="`Voice: ${voiceFileName} — click to ${isPlayingVoice ? 'stop' : 'preview'}`"
                 @click.stop="toggleVoicePreview">
                 <span>{{ isPlayingVoice ? '⏹️' : '🔊' }}</span>
-                <span class="max-w-[100px] truncate">{{ voiceFileName }}</span>
+                <span class="voice-filename">{{ voiceFileName }}</span>
             </button>
 
             <!-- Expression & Outfit Badge -->
@@ -179,11 +175,10 @@ const outfitName = computed(() => {
     return matchedExpression?.outfit || props.line.outfit || undefined;
 });
 
-//Voice preview logic
+// Voice preview logic
 const voiceFileName = computed(() => {
     const path = props.line.voice_path;
     if (!path) return '';
-    // blob: URLs have no useful filename, so show a generic label
     if (path.startsWith('blob:')) return 'Uploaded audio';
     return path.split('/').pop() || path;
 });
@@ -210,6 +205,9 @@ const toggleVoicePreview = () => {
 
 onUnmounted(stopVoicePreview);
 
+// Dynamic reactive variables for Vue 3 v-bind() in CSS
+const lineColor = computed(() => props.line.character?.color || '#475569');
+const speakerColor = computed(() => props.line.character?.color || '#94a3b8');
 </script>
 
 <style scoped>
@@ -273,7 +271,7 @@ onUnmounted(stopVoicePreview);
 }
 
 .dialogue-line.has-position {
-    border-left: 3px solid var(--line-color, #38bdf8);
+    border-left: 3px solid v-bind(lineColor);
 }
 
 .dialogue-line:hover {
@@ -301,6 +299,40 @@ onUnmounted(stopVoicePreview);
     font-weight: bold;
     font-size: 1rem;
     flex-shrink: 0;
+    color: v-bind(speakerColor);
+}
+
+.voice-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    background: rgba(56, 189, 248, 0.1);
+    color: #38bdf8;
+    flex-shrink: 0;
+    transition: background-color 0.2s, border-color 0.2s;
+    cursor: pointer;
+}
+
+.voice-badge:hover {
+    background: rgba(56, 189, 248, 0.2);
+}
+
+.voice-badge.is-playing {
+    background: rgba(56, 189, 248, 0.3);
+    color: #7dd3fc;
+    border-color: #38bdf8;
+}
+
+.voice-filename {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .expression {
