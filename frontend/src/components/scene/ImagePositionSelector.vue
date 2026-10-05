@@ -1,106 +1,144 @@
 <!-- frontend/src/components/scene/ImagePositionSelector.vue -->
 <template>
-    <div class="pos-selector" :id="`position-selector-${componentId}`">
+    <div class="bg-slate-950 border border-slate-700 rounded-xl p-3 flex flex-col gap-2.5"
+        :id="`position-selector-${componentId}`">
 
         <!-- Character headshot strip -->
-        <div class="avatar-strip" :id="`avatar-strip-${componentId}`">
-            <div class="avatar" :style="{ background: avatarBg, borderColor: avatarBorder }"
-                :id="`avatar-${componentId}`">
+        <div class="flex items-center gap-2.5 p-2 bg-slate-900 border border-slate-800 rounded-lg"
+            :id="`avatar-strip-${componentId}`">
+            <div class="w-9.5 h-9.5 rounded-full border-[1.5px] flex items-center justify-center shrink-0 text-xs font-bold tracking-wider text-slate-200"
+                :style="{ background: avatarBg, borderColor: avatarBorder }" :id="`avatar-${componentId}`">
                 {{ avatarInitial }}
             </div>
-            <div class="avatar-info">
-                <span class="avatar-name">{{ props.characterName || 'Character' }}</span>
-                <span class="avatar-sub">Set stage position</span>
+            <div class="flex flex-col gap-0.5 flex-1 min-w-0">
+                <span class="text-xs font-semibold text-slate-200 truncate">{{ props.characterName || 'Character'
+                }}</span>
+                <span class="text-[11px] text-slate-500">Set stage position</span>
             </div>
             <!-- Mini stage indicator -->
-            <div class="mini-stage" :id="`mini-stage-${componentId}`">
-                <div class="mini-track">
-                    <div class="mini-zone"><span>L</span></div>
-                    <div class="mini-zone"><span>C</span></div>
-                    <div class="mini-zone"><span>R</span></div>
+            <div class="relative w-22 h-6.5 bg-[#060c17] border border-slate-800 rounded-md overflow-hidden shrink-0"
+                :id="`mini-stage-${componentId}`">
+                <div class="absolute inset-0 flex">
+                    <div class="flex-1 border-r border-dashed border-slate-400/10 flex items-center justify-center">
+                        <span class="text-[8px] text-slate-400/30 tracking-widest uppercase">L</span>
+                    </div>
+                    <div class="flex-1 border-r border-dashed border-slate-400/10 flex items-center justify-center">
+                        <span class="text-[8px] text-slate-400/30 tracking-widest uppercase">C</span>
+                    </div>
+                    <div class="flex-1 flex items-center justify-center">
+                        <span class="text-[8px] text-slate-400/30 tracking-widest uppercase">R</span>
+                    </div>
                 </div>
-                <div class="mini-marker" :style="miniMarkerStyle" :id="`mini-marker-${componentId}`">
+                <div class="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center text-[8px] font-bold transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] pointer-events-none"
+                    :style="miniMarkerStyle" :id="`mini-marker-${componentId}`">
                     {{ miniMarkerIcon }}
                 </div>
             </div>
         </div>
 
         <!-- Position buttons -->
-        <div class="pos-row" :id="`pos-row-${componentId}`">
-            <button class="pos-btn" :class="{ active: currentPosition === 'left' }" @click="setPosition('left')"
-                title="Left aligned" :id="`btn-left-${componentId}`">
+        <div class="grid grid-cols-[1fr_1fr_1fr_auto] gap-1.5" :id="`pos-row-${componentId}`">
+            <button
+                class="h-8.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-400 text-xs font-medium cursor-pointer flex items-center justify-center gap-1 transition-colors hover:bg-slate-800 hover:border-slate-600 hover:text-slate-300 outline-none relative overflow-hidden"
+                :class="{ 'bg-sky-400/10 border-sky-400 !text-sky-400 after:content-[\'\'] after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-sky-400 after:rounded-t': currentPosition === 'left' }"
+                @click="setPosition('left')" title="Left aligned" :id="`btn-left-${componentId}`">
                 ◀ Left
             </button>
-            <button class="pos-btn" :class="{ active: currentPosition === 'center' }" @click="setPosition('center')"
-                title="Center aligned" :id="`btn-center-${componentId}`">
+            <button
+                class="h-8.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-400 text-xs font-medium cursor-pointer flex items-center justify-center gap-1 transition-colors hover:bg-slate-800 hover:border-slate-600 hover:text-slate-300 outline-none relative overflow-hidden"
+                :class="{ 'bg-sky-400/10 border-sky-400 !text-sky-400 after:content-[\'\'] after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-sky-400 after:rounded-t': currentPosition === 'center' }"
+                @click="setPosition('center')" title="Center aligned" :id="`btn-center-${componentId}`">
                 ◆ Center
             </button>
-            <button class="pos-btn" :class="{ active: currentPosition === 'right' }" @click="setPosition('right')"
-                title="Right aligned" :id="`btn-right-${componentId}`">
+            <button
+                class="h-8.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-400 text-xs font-medium cursor-pointer flex items-center justify-center gap-1 transition-colors hover:bg-slate-800 hover:border-slate-600 hover:text-slate-300 outline-none relative overflow-hidden"
+                :class="{ 'bg-sky-400/10 border-sky-400 !text-sky-400 after:content-[\'\'] after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5 after:bg-sky-400 after:rounded-t': currentPosition === 'right' }"
+                @click="setPosition('right')" title="Right aligned" :id="`btn-right-${componentId}`">
                 Right ▶
             </button>
-            <button class="pos-btn adv-btn" :class="{ active: showAdvanced }" @click="toggleAdvanced"
+            <button
+                class="w-8.5 h-8.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-400 text-xs font-medium cursor-pointer flex items-center justify-center transition-colors hover:bg-slate-800 hover:border-slate-600 hover:text-slate-300 outline-none shrink-0"
+                :class="{ 'bg-sky-400/10 border-sky-400 !text-sky-400': showAdvanced }" @click="toggleAdvanced"
                 title="Transform options" :id="`btn-advanced-${componentId}`">
                 ⚙️
             </button>
         </div>
 
-        <!-- Flip chips — always visible -->
-        <div class="flip-row" :id="`flip-row-${componentId}`">
-            <button class="flip-chip" :class="{ active: localTransform.flip_x }" @click="toggleFlip('x')"
-                :id="`chip-flipx-${componentId}`">
-                <span class="chip-icon">↔️</span> Flip H
+        <!-- Flip chips -->
+        <div class="grid grid-cols-2 gap-1.5" :id="`flip-row-${componentId}`">
+            <button
+                class="h-8 bg-slate-900 border border-slate-700 rounded-lg text-slate-500 text-xs font-medium cursor-pointer flex items-center justify-center gap-1.5 transition-colors hover:bg-slate-800 hover:border-slate-600 hover:text-slate-400 outline-none select-none"
+                :class="{ 'bg-sky-400/10 border-sky-400/35 !text-sky-400': localTransform.flip_x }"
+                @click="toggleFlip('x')" :id="`chip-flipx-${componentId}`">
+                <span class="text-xs leading-none">↔️️</span> Flip H
             </button>
-            <button class="flip-chip" :class="{ active: localTransform.flip_y }" @click="toggleFlip('y')"
-                :id="`chip-flipy-${componentId}`">
-                <span class="chip-icon">↕️</span> Flip V
+            <button
+                class="h-8 bg-slate-900 border border-slate-700 rounded-lg text-slate-500 text-xs font-medium cursor-pointer flex items-center justify-center gap-1.5 transition-colors hover:bg-slate-800 hover:border-slate-600 hover:text-slate-400 outline-none select-none"
+                :class="{ 'bg-sky-400/10 border-sky-400/35 !text-sky-400': localTransform.flip_y }"
+                @click="toggleFlip('y')" :id="`chip-flipy-${componentId}`">
+                <span class="text-xs leading-none">↕️</span> Flip V
             </button>
         </div>
 
         <!-- Advanced panel -->
-        <div v-if="showAdvanced" class="adv-panel" :id="`adv-panel-${componentId}`">
+        <div v-if="showAdvanced" class="border-t border-slate-800 pt-2.5 flex flex-col gap-2.5"
+            :id="`adv-panel-${componentId}`">
             <!-- Zoom -->
-            <div class="slider-group" :id="`zoom-group-${componentId}`">
-                <div class="slider-header">
-                    <label :for="`zoom-slider-${componentId}`">Zoom</label>
-                    <span class="slider-val">{{ (localTransform.zoom || 1).toFixed(1) }}×</span>
+            <div class="flex flex-col gap-1" :id="`zoom-group-${componentId}`">
+                <div class="flex justify-between items-center">
+                    <label class="text-[11px] text-slate-500 tracking-widest uppercase cursor-pointer"
+                        :for="`zoom-slider-${componentId}`">Zoom</label>
+                    <span class="text-xs font-semibold text-sky-400 tabular-nums">{{ (localTransform.zoom ||
+                        1).toFixed(1) }}×</span>
                 </div>
                 <input type="range" v-model.number="localTransform.zoom" min="0.5" max="2.0" step="0.05"
-                    @input="updateTransform" :id="`zoom-slider-${componentId}`" />
+                    class="accent-sky-400 w-full h-1 bg-slate-800 rounded cursor-pointer" @input="updateTransform"
+                    :id="`zoom-slider-${componentId}`" />
             </div>
 
             <!-- Opacity -->
-            <div class="slider-group" :id="`alpha-group-${componentId}`">
-                <div class="slider-header">
-                    <label :for="`alpha-slider-${componentId}`">Opacity</label>
-                    <span class="slider-val">{{ Math.round((localTransform.alpha || 1) * 100) }}%</span>
+            <div class="flex flex-col gap-1" :id="`alpha-group-${componentId}`">
+                <div class="flex justify-between items-center">
+                    <label class="text-[11px] text-slate-500 tracking-widest uppercase cursor-pointer"
+                        :for="`alpha-slider-${componentId}`">Opacity</label>
+                    <span class="text-xs font-semibold text-sky-400 tabular-nums">{{ Math.round((localTransform.alpha ||
+                        1) * 100) }}%</span>
                 </div>
                 <input type="range" v-model.number="localTransform.alpha" min="0" max="1" step="0.01"
-                    @input="updateTransform" :id="`alpha-slider-${componentId}`" />
+                    class="accent-sky-400 w-full h-1 bg-slate-800 rounded cursor-pointer" @input="updateTransform"
+                    :id="`alpha-slider-${componentId}`" />
             </div>
 
             <!-- Custom XY (only for custom position) -->
-            <div v-if="currentPosition === 'custom'" class="slider-group" :id="`custom-position-${componentId}`">
-                <div class="slider-header">
-                    <label :for="`custom-x-${componentId}`">X Position</label>
-                    <span class="slider-val">{{ (localCustomX || 0.5).toFixed(2) }}</span>
+            <div v-if="currentPosition === 'custom'" class="flex flex-col gap-1" :id="`custom-position-${componentId}`">
+                <div class="flex justify-between items-center">
+                    <label class="text-[11px] text-slate-500 tracking-widest uppercase cursor-pointer"
+                        :for="`custom-x-${componentId}`">X Position</label>
+                    <span class="text-xs font-semibold text-sky-400 tabular-nums">{{ (localCustomX || 0.5).toFixed(2)
+                    }}</span>
                 </div>
                 <input type="range" v-model.number="localCustomX" min="0" max="1" step="0.01"
-                    @input="updateCustomPosition" :id="`custom-x-${componentId}`" />
-                <div class="slider-header" style="margin-top:8px">
-                    <label :for="`custom-y-${componentId}`">Y Position</label>
-                    <span class="slider-val">{{ (localCustomY || 0.5).toFixed(2) }}</span>
+                    class="accent-sky-400 w-full h-1 bg-slate-800 rounded cursor-pointer" @input="updateCustomPosition"
+                    :id="`custom-x-${componentId}`" />
+                <div class="flex justify-between items-center mt-2">
+                    <label class="text-[11px] text-slate-500 tracking-widest uppercase cursor-pointer"
+                        :for="`custom-y-${componentId}`">Y Position</label>
+                    <span class="text-xs font-semibold text-sky-400 tabular-nums">{{ (localCustomY || 0.5).toFixed(2)
+                    }}</span>
                 </div>
                 <input type="range" v-model.number="localCustomY" min="0" max="1" step="0.01"
-                    @input="updateCustomPosition" :id="`custom-y-${componentId}`" />
+                    class="accent-sky-400 w-full h-1 bg-slate-800 rounded cursor-pointer" @input="updateCustomPosition"
+                    :id="`custom-y-${componentId}`" />
             </div>
         </div>
 
         <!-- Status strip -->
-        <div class="status-strip" :id="`status-strip-${componentId}`">
-            <div class="s-dot" :style="{ background: props.characterColor || '#38bdf8' }"></div>
-            <p class="s-text">
-                Position: <span>{{ positionLabel }}</span>
+        <div class="flex items-center gap-1.5 px-2.5 py-1.5 bg-sky-400/5 border border-sky-400/15 rounded-md"
+            :id="`status-strip-${componentId}`">
+            <div class="w-1.5 h-1.5 rounded-full shrink-0" :style="{ background: props.characterColor || '#38bdf8' }">
+            </div>
+            <p class="text-[11px] text-slate-500 leading-normal">
+                Position: <span class="text-sky-400 font-medium">{{ positionLabel }}</span>
                 <template v-if="transformSummary"> · {{ transformSummary }}</template>
                 <template v-else> — no transforms</template>
             </p>
@@ -238,13 +276,10 @@ const updateCustomPosition = () => {
     }
 };
 
-// Kept for backward-compat (parent may call via getPositionLabel)
 const getPositionLabel = (): string => positionLabel.value;
-
 const getPositionIcon = (): string => miniMarkerIcon.value;
 
 const emitUpdate = () => {
-    // Center with all defaults = no position set
     if (
         currentPosition.value === 'center' &&
         localTransform.value.zoom === 1 &&
@@ -324,317 +359,3 @@ defineExpose({
         localTransform.value.alpha !== 1,
 });
 </script>
-
-<style scoped>
-/* ── Root ─────────────────────────────────────────────────────────────── */
-.pos-selector {
-    background: #020617;
-    border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-/* ── Avatar strip ─────────────────────────────────────────────────────── */
-.avatar-strip {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    background: #0f172a;
-    border: 1px solid #1e293b;
-    border-radius: 8px;
-}
-
-.avatar {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    border: 1.5px solid;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    color: #e2e8f0;
-}
-
-.avatar-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    flex: 1;
-    min-width: 0;
-}
-
-.avatar-name {
-    font-size: 12px;
-    font-weight: 600;
-    color: #e2e8f0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.avatar-sub {
-    font-size: 11px;
-    color: #475569;
-}
-
-/* ── Mini stage ───────────────────────────────────────────────────────── */
-.mini-stage {
-    position: relative;
-    width: 88px;
-    height: 26px;
-    background: #060c17;
-    border: 1px solid #1e293b;
-    border-radius: 6px;
-    overflow: hidden;
-    flex-shrink: 0;
-}
-
-.mini-track {
-    position: absolute;
-    inset: 0;
-    display: flex;
-}
-
-.mini-zone {
-    flex: 1;
-    border-right: 1px dashed rgba(148, 163, 184, 0.08);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.mini-zone:last-child {
-    border-right: none;
-}
-
-.mini-zone span {
-    font-size: 8px;
-    color: rgba(148, 163, 184, 0.2);
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-}
-
-.mini-marker {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 1.5px solid;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 8px;
-    font-weight: 700;
-    transition: left 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    pointer-events: none;
-}
-
-/* ── Position buttons ─────────────────────────────────────────────────── */
-.pos-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr auto;
-    gap: 6px;
-}
-
-.pos-btn {
-    height: 34px;
-    background: #0f172a;
-    border: 1px solid #334155;
-    border-radius: 8px;
-    color: #94a3b8;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-    font-family: inherit;
-    outline: none;
-    position: relative;
-    overflow: hidden;
-}
-
-.pos-btn:hover {
-    background: #1e293b;
-    border-color: #475569;
-    color: #cbd5e1;
-}
-
-.pos-btn.active {
-    background: rgba(56, 189, 248, 0.1);
-    border-color: #38bdf8;
-    color: #38bdf8;
-}
-
-.pos-btn.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 15%;
-    right: 15%;
-    height: 2px;
-    background: #38bdf8;
-    border-radius: 2px 2px 0 0;
-}
-
-.adv-btn {
-    width: 34px;
-    flex-shrink: 0;
-}
-
-/* ── Flip chips ───────────────────────────────────────────────────────── */
-.flip-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-}
-
-.flip-chip {
-    height: 32px;
-    background: #0f172a;
-    border: 1px solid #334155;
-    border-radius: 8px;
-    color: #64748b;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-    font-family: inherit;
-    outline: none;
-    user-select: none;
-}
-
-.flip-chip:hover {
-    background: #1e293b;
-    border-color: #475569;
-    color: #94a3b8;
-}
-
-.flip-chip.active {
-    background: rgba(56, 189, 248, 0.08);
-    border-color: rgba(56, 189, 248, 0.35);
-    color: #38bdf8;
-}
-
-.chip-icon {
-    font-size: 13px;
-    line-height: 1;
-}
-
-/* ── Advanced panel ───────────────────────────────────────────────────── */
-.adv-panel {
-    border-top: 1px solid #1e293b;
-    padding-top: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.slider-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.slider-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.slider-header label {
-    font-size: 11px;
-    color: #475569;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    cursor: pointer;
-}
-
-.slider-val {
-    font-size: 12px;
-    font-weight: 600;
-    color: #38bdf8;
-    font-variant-numeric: tabular-nums;
-}
-
-input[type="range"] {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 3px;
-    background: #1e293b;
-    border-radius: 2px;
-    outline: none;
-    cursor: pointer;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 13px;
-    height: 13px;
-    border-radius: 50%;
-    background: #38bdf8;
-    border: 2px solid #020617;
-    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
-    cursor: pointer;
-    transition: transform 0.12s;
-}
-
-input[type="range"]::-webkit-slider-thumb:hover {
-    transform: scale(1.25);
-}
-
-input[type="range"]::-moz-range-thumb {
-    width: 13px;
-    height: 13px;
-    border-radius: 50%;
-    background: #38bdf8;
-    border: 2px solid #020617;
-    cursor: pointer;
-}
-
-/* ── Status strip ─────────────────────────────────────────────────────── */
-.status-strip {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 6px 10px;
-    background: rgba(56, 189, 248, 0.04);
-    border: 1px solid rgba(56, 189, 248, 0.12);
-    border-radius: 7px;
-}
-
-.s-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.s-text {
-    font-size: 11px;
-    color: #64748b;
-    line-height: 1.4;
-}
-
-.s-text span {
-    color: #38bdf8;
-    font-weight: 500;
-}
-</style>

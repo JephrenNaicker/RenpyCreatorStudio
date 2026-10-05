@@ -1,21 +1,27 @@
 <!-- frontend/src/components/scene/cards/DialogueCard.vue -->
 <template>
-    <div class="dialogue-line" :class="{
-        narrator: !line.character,
-        selected: isSelected,
-        'has-position': !!line.image_position,
-        'is-locked': isLocked,
-        'is-hidden': line.speaker_visible === false,
-        'dragging': isDragging,
-        'drag-over': isDragOver
-    }" :draggable="!isLocked" @click="$emit('select')" @dragstart="$emit('dragstart', $event)"
-        @dragend="$emit('dragend')" @dragover.prevent="$emit('dragover', $event)" @dragleave="$emit('dragleave')"
+    <div class="group relative flex flex-col gap-2 mb-4 p-4 pl-10 rounded-lg border border-transparent bg-white/[0.02] cursor-pointer transition-all duration-200 hover:bg-white/[0.05] hover:border-sky-400/30"
+        :class="[
+            isSelected ? '!bg-sky-400/10 !border-sky-400' : '',
+            !line.character ? 'border-l-[3px] border-l-slate-600' : '',
+            line.image_position ? 'border-l-[3px]' : '',
+            isDragging ? 'opacity-50 scale-[0.98]' : '',
+            isDragOver ? '!border-sky-400 bg-sky-400/[0.08] translate-y-1 shadow-[0_4px_12px_rgba(56,189,248,0.15)]' : '',
+            line.speaker_visible === false ? 'opacity-[0.55] !border-l-[3px] !border-l-red-400 hover:opacity-[0.85]' : ''
+        ]" :style="line.image_position ? { borderLeftColor: lineColor } : {}" :draggable="!isLocked"
+        @click="$emit('select')" @dragstart="$emit('dragstart', $event)" @dragend="$emit('dragend')"
+        @dragover.prevent="$emit('dragover', $event)" @dragleave="$emit('dragleave')"
         @drop.prevent="$emit('drop', $event)">
+
         <!-- Drag Handle / Lock Indicator -->
-        <div v-if="isLocked" class="drag-handle lock-handle" title="Required — always first, can't be moved or deleted">
+        <div v-if="isLocked"
+            class="absolute left-1 top-1/2 -translate-y-1/2 p-1 rounded text-slate-600 flex items-center justify-center opacity-60 text-[0.85rem] cursor-default"
+            title="Required — always first, can't be moved or deleted">
             🔒
         </div>
-        <div v-else class="drag-handle" title="Drag to reorder">
+        <div v-else
+            class="absolute left-1 top-1/2 -translate-y-1/2 p-1 rounded text-slate-600 flex items-center justify-center opacity-0 transition-all duration-200 cursor-grab active:cursor-grabbing group-hover:opacity-100 hover:text-slate-400 hover:bg-white/5"
+            title="Drag to reorder">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2">
                 <circle cx="9" cy="12" r="1" fill="currentColor" />
@@ -28,8 +34,8 @@
         </div>
 
         <!-- Line Header -->
-        <div class="line-header">
-            <div class="speaker">
+        <div class="flex items-center gap-2 min-w-0">
+            <div class="font-bold text-base shrink-0" :style="{ color: speakerColor }">
                 {{ line.character?.name || 'Narrator' }}
             </div>
 
@@ -37,51 +43,62 @@
             <VisibilityToggle v-if="line.character" :model-value="line.speaker_visible === false"
                 @change="(hidden) => $emit('update-visibility', hidden)" @click.stop />
 
-            <!-- Voice Indicator (only when audio is attached) -->
-            <button v-if="line.voice_path" type="button" class="voice-badge" :class="{ 'is-playing': isPlayingVoice }"
+            <!-- Voice Indicator -->
+            <button v-if="line.voice_path" type="button"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border border-sky-400/30 bg-sky-400/10 text-sky-400 shrink-0 transition-colors duration-200 cursor-pointer hover:bg-sky-400/20"
+                :class="{ '!bg-sky-400/30 !text-sky-300 !border-sky-400': isPlayingVoice }"
                 :title="`Voice: ${voiceFileName} — click to ${isPlayingVoice ? 'stop' : 'preview'}`"
                 @click.stop="toggleVoicePreview">
                 <span>{{ isPlayingVoice ? '⏹️' : '🔊' }}</span>
-                <span class="voice-filename">{{ voiceFileName }}</span>
+                <span class="max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap">{{ voiceFileName }}</span>
             </button>
 
             <!-- Expression & Outfit Badge -->
-            <div v-if="line.expression || outfitName" class="expression">
-                <span v-if="outfitName" class="outfit-badge" :title="`Outfit: ${outfitName}`">
+            <div v-if="line.expression || outfitName"
+                class="flex items-center gap-2 text-[0.85rem] text-slate-400 ml-auto shrink-0 whitespace-nowrap">
+                <span v-if="outfitName" class="text-sky-400 whitespace-nowrap" :title="`Outfit: ${outfitName}`">
                     👕 {{ outfitName }}
                 </span>
-                <span v-if="outfitName && line.expression" class="expression-divider">|</span>
-                <span v-if="line.expression" class="expression-emoji-group">
+                <span v-if="outfitName && line.expression" class="text-slate-600 text-xs">|</span>
+                <span v-if="line.expression" class="inline-flex items-center gap-[0.35rem]">
                     {{ getExpressionEmoji(line.expression) }}
-                    <span class="expression-name">{{ line.expression }}</span>
+                    <span class="text-xs opacity-80">{{ line.expression }}</span>
                 </span>
             </div>
 
             <!-- Position Indicator Button -->
-            <button type="button" class="position-indicator" @click.stop="$emit('toggle-position')"
-                :class="{ active: isPositionActive }" :title="getPositionTooltip(line.image_position)">
+            <button type="button"
+                class="bg-transparent border-0 text-slate-400 cursor-pointer px-2 py-1 text-sm rounded transition-all duration-200 hover:text-sky-400 hover:bg-sky-400/10"
+                :class="{ '!text-sky-400 !bg-sky-400/20': isPositionActive }" @click.stop="$emit('toggle-position')"
+                :title="getPositionTooltip(line.image_position)">
                 {{ getPositionIcon(line.image_position) }}
             </button>
         </div>
 
         <!-- Dialogue Text -->
-        <div class="text">{{ line.text }}</div>
+        <div class="text-slate-300 leading-normal text-base py-2">{{ line.text }}</div>
 
         <!-- Line Actions -->
-        <div class="line-actions">
-            <button class="icon-btn" @click.stop="$emit('edit')" title="Edit">
+        <div class="flex gap-2 justify-end opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            <button
+                class="bg-transparent border-0 text-slate-400 cursor-pointer p-1 text-sm rounded transition-all duration-200 hover:text-slate-50 hover:bg-white/10"
+                @click.stop="$emit('edit')" title="Edit">
                 ✏️
             </button>
-            <button v-if="!isLocked" class="icon-btn danger" @click.stop="$emit('delete')" title="Delete">
+            <button v-if="!isLocked"
+                class="bg-transparent border-0 text-slate-400 cursor-pointer p-1 text-sm rounded transition-all duration-200 hover:text-red-400 hover:bg-red-400/10"
+                @click.stop="$emit('delete')" title="Delete">
                 🗑️
             </button>
-            <span v-else class="icon-btn locked-hint" title="Required — can't be deleted">
+            <span v-else class="bg-transparent border-0 text-slate-400 p-1 text-sm rounded opacity-50 cursor-default"
+                title="Required — can't be deleted">
                 🔒
             </span>
         </div>
 
         <!-- Position Selector Popup -->
-        <div v-if="isPositionActive" class="position-selector-popup" @click.stop>
+        <div v-if="isPositionActive" class="absolute top-full left-0 right-0 z-50 mt-2 animate-[fadeIn_0.2s_ease-out]"
+            @click.stop>
             <ImagePositionSelector :model-value="line.image_position" :character-name="line.character?.name"
                 :character-color="line.character?.color" @update:model-value="(pos) => $emit('update-position', pos)"
                 @change="(pos) => $emit('update-position', pos)" />
@@ -131,20 +148,10 @@ defineEmits<{
 
 const getExpressionEmoji = (expression: string) => {
     const emojiMap: Record<string, string> = {
-        'happy': '😊',
-        'sad': '😢',
-        'angry': '😠',
-        'surprised': '😲',
-        'neutral': '😐',
-        'smile': '😄',
-        'concerned': '😟',
-        'serious': '😐',
-        'mysterious': '🕵️',
-        'determined': '💪',
-        'excited': '🤩',
-        'tired': '😴',
-        'confused': '😕',
-        'thinking': '🤔'
+        'happy': '😊', 'sad': '😢', 'angry': '😠', 'surprised': '😲',
+        'neutral': '😐', 'smile': '😄', 'concerned': '😟', 'serious': '😐',
+        'mysterious': '🕵️', 'determined': '💪', 'excited': '🤩', 'tired': '😴',
+        'confused': '😕', 'thinking': '🤔'
     };
     return emojiMap[expression] || '😀';
 };
@@ -175,7 +182,6 @@ const outfitName = computed(() => {
     return matchedExpression?.outfit || props.line.outfit || undefined;
 });
 
-// Voice preview logic
 const voiceFileName = computed(() => {
     const path = props.line.voice_path;
     if (!path) return '';
@@ -205,269 +211,6 @@ const toggleVoicePreview = () => {
 
 onUnmounted(stopVoicePreview);
 
-// Dynamic reactive variables for Vue 3 v-bind() in CSS
 const lineColor = computed(() => props.line.character?.color || '#475569');
 const speakerColor = computed(() => props.line.character?.color || '#94a3b8');
 </script>
-
-<style scoped>
-/* Dialogue line styles */
-.dialogue-line {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    padding: 1rem;
-    padding-left: 2.5rem;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    transition: all 0.2s;
-    cursor: pointer;
-    position: relative;
-    background: rgba(255, 255, 255, 0.02);
-}
-
-/* Drag handle */
-.drag-handle {
-    position: absolute;
-    left: 0.25rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #475569;
-    cursor: grab;
-    padding: 0.25rem;
-    border-radius: 4px;
-    transition: all 0.2s;
-    opacity: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.dialogue-line:hover .drag-handle {
-    opacity: 1;
-}
-
-.drag-handle:hover {
-    color: #94a3b8;
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.drag-handle:active {
-    cursor: grabbing;
-}
-
-/* Drag states */
-.dialogue-line.dragging {
-    opacity: 0.5;
-    transform: scale(0.98);
-}
-
-.dialogue-line.drag-over {
-    border-color: #38bdf8;
-    background: rgba(56, 189, 248, 0.08);
-    transform: translateY(4px);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
-}
-
-.dialogue-line.has-position {
-    border-left: 3px solid v-bind(lineColor);
-}
-
-.dialogue-line:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(56, 189, 248, 0.3);
-}
-
-.dialogue-line.selected {
-    background: rgba(56, 189, 248, 0.1);
-    border-color: #38bdf8;
-}
-
-.dialogue-line.narrator {
-    border-left-color: #475569;
-}
-
-.line-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-width: 0;
-}
-
-.speaker {
-    font-weight: bold;
-    font-size: 1rem;
-    flex-shrink: 0;
-    color: v-bind(speakerColor);
-}
-
-.voice-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.125rem 0.5rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    background: rgba(56, 189, 248, 0.1);
-    color: #38bdf8;
-    flex-shrink: 0;
-    transition: background-color 0.2s, border-color 0.2s;
-    cursor: pointer;
-}
-
-.voice-badge:hover {
-    background: rgba(56, 189, 248, 0.2);
-}
-
-.voice-badge.is-playing {
-    background: rgba(56, 189, 248, 0.3);
-    color: #7dd3fc;
-    border-color: #38bdf8;
-}
-
-.voice-filename {
-    max-width: 100px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.expression {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    color: #94a3b8;
-    margin-left: auto;
-    flex-shrink: 0;
-    white-space: nowrap;
-}
-
-.expression-emoji-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-.expression-name {
-    font-size: 0.8rem;
-    opacity: 0.8;
-}
-
-.expression-divider {
-    color: #475569;
-    font-size: 0.75rem;
-}
-
-.expression :deep(.outfit-badge),
-.expression .outfit-badge {
-    color: #38bdf8;
-    white-space: nowrap;
-}
-
-.position-indicator {
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    cursor: pointer;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.9rem;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.position-indicator:hover {
-    color: #38bdf8;
-    background: rgba(56, 189, 248, 0.1);
-}
-
-.position-indicator.active {
-    color: #38bdf8;
-    background: rgba(56, 189, 248, 0.2);
-}
-
-.position-selector-popup {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    z-index: 50;
-    margin-top: 0.5rem;
-    animation: fadeIn 0.2s ease-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.text {
-    color: #cbd5e1;
-    line-height: 1.5;
-    font-size: 1rem;
-    padding: 0.5rem 0;
-}
-
-.line-actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.dialogue-line:hover .line-actions {
-    opacity: 1;
-}
-
-.icon-btn {
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    cursor: pointer;
-    padding: 0.25rem;
-    font-size: 0.9rem;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.icon-btn:hover {
-    color: #f8fafc;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.icon-btn.danger:hover {
-    color: #f87171;
-    background: rgba(248, 113, 113, 0.1);
-}
-
-.lock-handle {
-    cursor: default;
-    opacity: 0.6;
-    font-size: 0.85rem;
-}
-
-.locked-hint {
-    opacity: 0.5;
-    cursor: default;
-}
-
-.dialogue-line.is-hidden {
-    opacity: 0.55;
-    border-left: 3px solid #f87171 !important;
-}
-
-.dialogue-line.is-hidden:hover {
-    opacity: 0.85;
-}
-</style>

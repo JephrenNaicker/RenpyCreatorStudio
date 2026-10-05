@@ -1,23 +1,44 @@
 <!-- frontend/src/components/scene/cards/MenuCard.vue -->
 <template>
-    <div class="dialogue-line is-menu" :class="{ selected }" @click="emit('select', index)">
-        <div class="line-header">
-            <span class="menu-badge">🔀 Menu</span>
-            <span v-if="line.prompt" class="menu-prompt">"{{ line.prompt }}"</span>
-            <span class="menu-count">{{ line.choices.length }} choices</span>
+    <div class="group relative flex flex-col gap-3 mb-4 p-4 rounded-lg bg-purple-600/[0.08] border border-purple-600/25 border-l-4 border-l-purple-400 cursor-pointer transition-all duration-200 hover:bg-purple-600/[0.14] hover:border-purple-600/40"
+        :class="{
+            '!bg-purple-600/20 !border-purple-400 shadow-[0_0_12px_rgba(192,132,252,0.2)]': isSelected,
+            'opacity-50': isDragging,
+            'ring-2 ring-sky-400/60': isDragOver,
+            'cursor-grab': !isLocked,
+        }" :draggable="!isLocked" @click="emit('select', index)" @dragstart="emit('dragstart', $event)"
+        @dragend="emit('dragend', $event)" @dragover.prevent="emit('dragover', $event)"
+        @dragleave="emit('dragleave', $event)" @drop="emit('drop', $event)">
+
+        <div class="flex items-center gap-3 min-w-0">
+            <span
+                class="bg-purple-600/25 text-purple-200 text-[0.8rem] font-semibold px-2.5 py-1 rounded-md border border-purple-600/30">
+                🔀 Menu
+            </span>
+            <span v-if="line.prompt" class="text-purple-100 font-medium text-[0.95rem]">
+                "{{ line.prompt }}"
+            </span>
+            <span class="text-purple-500 text-[0.8rem] ml-auto">
+                {{ line.choices.length }} choices
+            </span>
         </div>
 
-        <div class="menu-choices-preview">
-            <span v-for="(choice, ci) in line.choices" :key="choice.id" class="choice-chip">
+        <div class="flex flex-wrap gap-2">
+            <span v-for="(choice, ci) in line.choices" :key="choice.id"
+                class="bg-slate-900/60 border border-purple-600/30 text-slate-300 text-[0.85rem] px-2.5 py-1 rounded-md inline-flex items-center gap-[0.35rem]">
                 {{ ci + 1 }}. {{ choice.text }}
-                <span v-if="choice.effects?.length" class="effect-dot"
+                <span v-if="choice.effects?.length" class="text-sky-400 text-[0.7rem]"
                     :title="`${choice.effects.length} effect(s)`">●</span>
             </span>
         </div>
 
-        <div class="line-actions">
-            <button class="icon-btn" @click.stop="emit('edit', index)" title="Edit">✏️</button>
-            <button class="icon-btn danger" @click.stop="emit('delete', index)" title="Delete">🗑️</button>
+        <div class="flex gap-2 justify-end opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            <button type="button"
+                class="bg-transparent border-0 text-slate-400 cursor-pointer p-1 text-sm rounded transition-all duration-200 hover:text-slate-50 hover:bg-white/10"
+                @click.stop="emit('edit', index)" title="Edit">✏️</button>
+            <button v-if="!isLocked" type="button"
+                class="bg-transparent border-0 text-slate-400 cursor-pointer p-1 text-sm rounded transition-all duration-200 hover:text-red-400 hover:bg-red-400/10"
+                @click.stop="emit('delete', index)" title="Delete">🗑️</button>
         </div>
     </div>
 </template>
@@ -28,129 +49,29 @@ import type { MenuNode } from '@/types/models';
 interface Props {
     line: MenuNode;
     index: number;
-    selected: boolean;
+    isSelected?: boolean;
+    isLocked?: boolean;
+    isDragging?: boolean;
+    isDragOver?: boolean;
 }
 
-const props = defineProps<Props>();
+withDefaults(defineProps<Props>(), {
+    isSelected: false,
+    isLocked: false,
+    isDragging: false,
+    isDragOver: false,
+});
 
 interface Emits {
     (e: 'select', index: number): void;
     (e: 'edit', index: number): void;
     (e: 'delete', index: number): void;
+    (e: 'dragstart', event: DragEvent): void;
+    (e: 'dragend', event: DragEvent): void;
+    (e: 'dragover', event: DragEvent): void;
+    (e: 'dragleave', event: DragEvent): void;
+    (e: 'drop', event: DragEvent): void;
 }
 
 const emit = defineEmits<Emits>();
 </script>
-
-<style scoped>
-.dialogue-line.is-menu {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-    padding: 1rem;
-    border-radius: 8px;
-    background: rgba(168, 85, 247, 0.08);
-    border: 1px solid rgba(168, 85, 247, 0.25);
-    border-left: 4px solid #c084fc;
-    transition: all 0.2s;
-    cursor: pointer;
-    position: relative;
-}
-
-.dialogue-line.is-menu:hover {
-    background: rgba(168, 85, 247, 0.14);
-    border-color: rgba(168, 85, 247, 0.4);
-}
-
-.dialogue-line.is-menu.selected {
-    background: rgba(168, 85, 247, 0.2);
-    border-color: #c084fc;
-    box-shadow: 0 0 12px rgba(192, 132, 252, 0.2);
-}
-
-.line-header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-width: 0;
-}
-
-.menu-badge {
-    background: rgba(168, 85, 247, 0.25);
-    color: #e9d5ff;
-    font-size: 0.8rem;
-    font-weight: 600;
-    padding: 0.25rem 0.6rem;
-    border-radius: 6px;
-    border: 1px solid rgba(168, 85, 247, 0.3);
-}
-
-.menu-prompt {
-    color: #f3e8ff;
-    font-weight: 500;
-    font-size: 0.95rem;
-}
-
-.menu-count {
-    color: #a855f7;
-    font-size: 0.8rem;
-    margin-left: auto;
-}
-
-.menu-choices-preview {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.choice-chip {
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(168, 85, 247, 0.3);
-    color: #cbd5e1;
-    font-size: 0.85rem;
-    padding: 0.3rem 0.6rem;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-.effect-dot {
-    color: #38bdf8;
-    font-size: 0.7rem;
-}
-
-.line-actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.dialogue-line:hover .line-actions {
-    opacity: 1;
-}
-
-.icon-btn {
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    cursor: pointer;
-    padding: 0.25rem;
-    font-size: 0.9rem;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.icon-btn:hover {
-    color: #f8fafc;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.icon-btn.danger:hover {
-    color: #f87171;
-    background: rgba(248, 113, 113, 0.1);
-}
-</style>

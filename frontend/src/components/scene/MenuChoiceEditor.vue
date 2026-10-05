@@ -1,67 +1,88 @@
 <!-- frontend/src/components/scene/MenuChoiceEditor.vue -->
 <template>
-    <div class="menu-choice-editor" id="menu-choice-editor">
+    <div class="flex flex-col gap-4 flex-1" id="menu-choice-editor">
 
         <!-- Optional prompt -->
-        <div class="field-group" id="prompt-group">
-            <label class="field-label" id="prompt-label">
-                Prompt <span class="field-optional">(optional)</span>
+        <div class="flex flex-col gap-1.5" id="prompt-group">
+            <label class="text-[0.78rem] text-slate-400 font-medium tracking-wide" id="prompt-label">
+                Prompt <span class="text-slate-500 font-normal text-[0.72rem]">(optional)</span>
             </label>
-            <input v-model="prompt" type="text" class="field-input" id="menu-prompt-input"
-                placeholder="e.g. How do you respond?" />
+            <input v-model="prompt" type="text"
+                class="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-slate-50 text-sm focus:outline-none focus:border-sky-400 transition-colors"
+                id="menu-prompt-input" placeholder="e.g. How do you respond?" />
         </div>
 
         <!-- Choices -->
-        <div class="choices-header" id="choices-header">
-            <span class="field-label">Choices</span>
-            <span class="choices-count" id="choices-count">{{ choices.length }} / 6</span>
+        <div class="flex justify-between items-center" id="choices-header">
+            <span class="text-[0.78rem] text-slate-400 font-medium tracking-wide">Choices</span>
+            <span class="text-[0.72rem] text-slate-500 bg-white/5 px-2 py-0.5 rounded-full" id="choices-count">
+                {{ choices.length }} / 6
+            </span>
         </div>
 
-        <div class="choices-list" id="choices-list">
-            <div v-for="(choice, idx) in choices" :key="choice.id" class="choice-row" :id="`choice-row-${idx}`">
-                <span class="choice-badge" :id="`choice-badge-${idx}`">{{ idx + 1 }}</span>
+        <div class="flex flex-col gap-2" id="choices-list">
+            <div v-for="(choice, idx) in choices" :key="choice.id" class="flex items-center gap-2"
+                :id="`choice-row-${idx}`">
+                <span
+                    class="w-5.5 h-5.5 rounded-full bg-sky-400/15 text-sky-400 text-[0.72rem] font-bold flex items-center justify-center shrink-0"
+                    :id="`choice-badge-${idx}`">
+                    {{ idx + 1 }}
+                </span>
 
-                <input v-model="choice.text" type="text" class="field-input choice-text-input"
+                <input v-model="choice.text" type="text"
+                    class="flex-1 bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-slate-50 text-sm focus:outline-none focus:border-sky-400 transition-colors"
                     :placeholder="`Choice ${idx + 1}…`" :id="`choice-text-${idx}`" />
 
-                <button class="cog-btn" :class="{ active: expandedIdx === idx }" @click="toggleAdvanced(idx)"
+                <button
+                    class="bg-transparent border-none text-base cursor-pointer p-1 rounded text-slate-500 hover:bg-sky-400/10 hover:text-sky-400 transition-all shrink-0"
+                    :class="{ 'bg-sky-400/10 !text-sky-400': expandedIdx === idx }" @click="toggleAdvanced(idx)"
                     title="Advanced options" :id="`choice-cog-${idx}`">
                     ⚙️
                 </button>
 
-                <button v-if="choices.length > 2" class="remove-choice-btn" @click="removeChoice(idx)"
-                    title="Remove choice" :id="`choice-remove-${idx}`">
+                <button v-if="choices.length > 2"
+                    class="bg-transparent border-none text-slate-500 cursor-pointer text-xs p-1 rounded hover:text-red-400 hover:bg-red-400/10 transition-all shrink-0"
+                    @click="removeChoice(idx)" title="Remove choice" :id="`choice-remove-${idx}`">
                     ✕
                 </button>
             </div>
 
             <!-- Advanced drawer for expanded choice -->
-            <div v-if="expandedIdx !== null && expandedChoice" class="advanced-panel"
+            <div v-if="expandedIdx !== null && expandedChoice"
+                class="bg-white/[0.02] border border-slate-800 rounded-lg p-4 flex flex-col gap-3.5 transition-all"
                 :id="`choice-advanced-${expandedIdx}`">
-                <div class="advanced-header">
-                    <span class="advanced-title">Advanced — Choice {{ expandedIdx + 1 }}</span>
-                    <span class="advanced-note">Stored, not active yet</span>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-slate-400 font-semibold">Advanced — Choice {{ expandedIdx + 1 }}</span>
+                    <span
+                        class="text-[0.68rem] text-slate-400 bg-sky-400/10 border border-sky-400/20 px-2 py-0.5 rounded-full">
+                        Stored, not active yet
+                    </span>
                 </div>
 
                 <!-- Effects -->
-                <div class="effects-section" id="effects-section">
-                    <div class="effects-header">
-                        <span class="effects-label">Point / Variable Effects</span>
-                        <button class="add-effect-btn" @click="addEffect(expandedIdx)"
-                            :disabled="(expandedChoice.effects?.length ?? 0) >= 5" id="add-effect-btn">
+                <div class="flex flex-col gap-2" id="effects-section">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-slate-500 font-medium">Point / Variable Effects</span>
+                        <button
+                            class="text-[0.72rem] px-2.5 py-1 bg-sky-400/10 border border-sky-400/20 text-sky-400 rounded cursor-pointer hover:bg-sky-400/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                            @click="addEffect(expandedIdx)" :disabled="(expandedChoice.effects?.length ?? 0) >= 5"
+                            id="add-effect-btn">
                             + Add Effect
                         </button>
                     </div>
 
-                    <div v-if="!expandedChoice.effects?.length" class="effects-empty" id="effects-empty">
+                    <div v-if="!expandedChoice.effects?.length" class="text-xs text-slate-500 italic py-2"
+                        id="effects-empty">
                         No effects yet — add one to track points or flags.
                     </div>
 
-                    <div v-for="(effect, eIdx) in expandedChoice.effects" :key="eIdx" class="effect-row"
+                    <div v-for="(effect, eIdx) in expandedChoice.effects" :key="eIdx" class="flex items-center gap-1.5"
                         :id="`effect-row-${eIdx}`">
-                        <div class="effect-input-wrapper" :class="{ 'has-error': isVariableInvalid(effect.variable) }">
+                        <div class="relative flex-[2]"
+                            :class="{ '[&>select]:border-red-500 [&>select]:bg-red-500/5': isVariableInvalid(effect.variable) }">
                             <select :value="effect.variable" @change="onEffectVariableChange(expandedIdx, eIdx, $event)"
-                                class="effect-select effect-var-select" :id="`effect-var-${eIdx}`">
+                                class="w-full flex-[2] font-mono text-xs bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-slate-400 cursor-pointer focus:outline-none focus:border-sky-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                                :id="`effect-var-${eIdx}`">
                                 <option value="" disabled>Select variable…</option>
                                 <option v-if="effect.variable && isVariableInvalid(effect.variable)"
                                     :value="effect.variable">
@@ -71,69 +92,82 @@
                                     {{ v.label || v.key }} ({{ v.type }})
                                 </option>
                             </select>
-                            <div v-if="isVariableInvalid(effect.variable)" class="variable-error">
+                            <div v-if="isVariableInvalid(effect.variable)"
+                                class="absolute -bottom-4 left-0 text-[0.6rem] text-red-500 whitespace-nowrap">
                                 ⚠️ Not in registry
                             </div>
                         </div>
 
-                        <!-- Operation selector - dynamically shows options based on variable type -->
-                        <select v-model="effect.operation" class="effect-select" :id="`effect-op-${eIdx}`"
-                            :disabled="!getVariableType(effect.variable)">
+                        <!-- Operation selector -->
+                        <select v-model="effect.operation"
+                            class="flex-[1.5] bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-slate-400 text-xs cursor-pointer focus:outline-none focus:border-sky-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                            :id="`effect-op-${eIdx}`" :disabled="!getVariableType(effect.variable)">
                             <option v-for="op in getAvailableOperations(effect.variable)" :key="op.value"
                                 :value="op.value">
                                 {{ op.label }}
                             </option>
                         </select>
 
-                        <!-- Value input - changes based on variable type -->
+                        <!-- Value input -->
                         <template v-if="getVariableType(effect.variable) === 'boolean'">
-                            <select v-model="effect.value" class="effect-select effect-boolean"
+                            <select v-model="effect.value"
+                                class="flex-1 max-w-[80px] bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-slate-400 text-xs cursor-pointer focus:outline-none focus:border-sky-400"
                                 :id="`effect-bool-${eIdx}`">
                                 <option :value="true">true</option>
                                 <option :value="false">false</option>
                             </select>
                         </template>
                         <template v-else-if="getVariableType(effect.variable) === 'string'">
-                            <input v-model="effect.value" type="text" class="effect-input effect-val effect-string"
+                            <input v-model="effect.value" type="text"
+                                class="max-w-[120px] bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-slate-50 text-xs focus:outline-none focus:border-sky-400 transition-colors"
                                 placeholder="value" :id="`effect-string-${eIdx}`" />
                         </template>
                         <template v-else-if="effect.operation !== 'toggle'">
-                            <input v-model.number="effect.value" type="number" class="effect-input effect-val"
+                            <input v-model.number="effect.value" type="number"
+                                class="flex-1 max-w-[72px] bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-slate-50 text-xs focus:outline-none focus:border-sky-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                                 placeholder="0" :id="`effect-val-${eIdx}`"
                                 :disabled="!getVariableType(effect.variable)" />
                         </template>
                         <template v-else>
-                            <span class="effect-toggle-hint" :id="`effect-toggle-hint-${eIdx}`">bool</span>
+                            <span class="flex-1 max-w-[72px] text-[0.72rem] text-slate-500 text-center italic"
+                                :id="`effect-toggle-hint-${eIdx}`">bool</span>
                         </template>
 
-                        <button class="remove-effect-btn" @click="removeEffect(expandedIdx, eIdx)"
-                            :id="`remove-effect-${eIdx}`">✕</button>
+                        <button
+                            class="bg-transparent border-none text-slate-600 hover:text-red-400 hover:bg-red-400/10 cursor-pointer text-xs p-1 rounded transition-all shrink-0"
+                            @click="removeEffect(expandedIdx, eIdx)" :id="`remove-effect-${eIdx}`">✕</button>
                     </div>
                 </div>
 
-                <!-- Condition — structured builder, same shape as Effects -->
-                <div class="field-group" id="condition-section">
-                    <div class="condition-header">
-                        <label class="field-label" id="condition-label">
-                            Show Condition <span class="field-optional">(future gating — not yet active)</span>
+                <!-- Condition — structured builder -->
+                <div class="flex flex-col gap-1.5" id="condition-section">
+                    <div class="flex justify-between items-center">
+                        <label class="text-[0.78rem] text-slate-400 font-medium tracking-wide" id="condition-label">
+                            Show Condition <span class="text-slate-500 font-normal text-[0.72rem]">(future gating — not
+                                yet
+                                active)</span>
                         </label>
-                        <button class="add-effect-btn" @click="addConditionPart(expandedIdx)"
+                        <button
+                            class="text-[0.72rem] px-2.5 py-1 bg-sky-400/10 border border-sky-400/20 text-sky-400 rounded cursor-pointer hover:bg-sky-400/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                            @click="addConditionPart(expandedIdx)"
                             :disabled="(expandedChoice._conditionParts?.length ?? 0) >= 5" id="add-condition-btn">
                             + Add Condition
                         </button>
                     </div>
 
-                    <div v-if="!expandedChoice._conditionParts?.length" class="effects-empty" id="condition-empty">
+                    <div v-if="!expandedChoice._conditionParts?.length" class="text-xs text-slate-500 italic py-2"
+                        id="condition-empty">
                         No conditions yet — this choice is always shown.
                     </div>
 
                     <template v-for="(part, pIdx) in expandedChoice._conditionParts" :key="pIdx">
-                        <div class="condition-part-row" :id="`condition-part-${pIdx}`">
-                            <div class="effect-input-wrapper"
-                                :class="{ 'has-error': isVariableInvalid(part.variable) }">
+                        <div class="flex items-center gap-1.5" :id="`condition-part-${pIdx}`">
+                            <div class="relative flex-[2]"
+                                :class="{ '[&>select]:border-red-500 [&>select]:bg-red-500/5': isVariableInvalid(part.variable) }">
                                 <select :value="part.variable"
                                     @change="onConditionVariableChange(expandedIdx, pIdx, $event)"
-                                    class="effect-select condition-var-select" :id="`condition-var-${pIdx}`">
+                                    class="w-full flex-[2] font-mono text-xs bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-slate-400 cursor-pointer focus:outline-none focus:border-sky-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                                    :id="`condition-var-${pIdx}`">
                                     <option value="" disabled>Select variable…</option>
                                     <option v-if="part.variable && isVariableInvalid(part.variable)"
                                         :value="part.variable">
@@ -143,12 +177,14 @@
                                         {{ v.label || v.key }} ({{ v.type }})
                                     </option>
                                 </select>
-                                <div v-if="isVariableInvalid(part.variable)" class="variable-error">
+                                <div v-if="isVariableInvalid(part.variable)"
+                                    class="absolute -bottom-4 left-0 text-[0.6rem] text-red-500 whitespace-nowrap">
                                     ⚠️ Not in registry
                                 </div>
                             </div>
 
-                            <select v-model="part.operator" class="effect-select condition-op-select"
+                            <select v-model="part.operator"
+                                class="flex-1 max-w-[90px] bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-slate-400 text-xs cursor-pointer focus:outline-none focus:border-sky-400 disabled:opacity-30 disabled:cursor-not-allowed"
                                 :disabled="!getVariableType(part.variable)" :id="`condition-op-${pIdx}`">
                                 <option v-for="op in getConditionOperators(part.variable)" :key="op.value"
                                     :value="op.value">
@@ -157,31 +193,39 @@
                             </select>
 
                             <select v-if="getVariableType(part.variable) === 'boolean'" v-model="part.value"
-                                class="effect-select effect-boolean" :id="`condition-val-${pIdx}`">
+                                class="flex-1 max-w-[80px] bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-slate-400 text-xs cursor-pointer focus:outline-none focus:border-sky-400"
+                                :id="`condition-val-${pIdx}`">
                                 <option :value="true">true</option>
                                 <option :value="false">false</option>
                             </select>
                             <input v-else-if="getVariableType(part.variable) === 'string'" v-model="part.value"
-                                type="text" class="effect-input effect-val effect-string" placeholder="value"
-                                :id="`condition-val-${pIdx}`" />
-                            <input v-else v-model.number="part.value" type="number" class="effect-input effect-val"
+                                type="text"
+                                class="max-w-[120px] bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-slate-50 text-xs focus:outline-none focus:border-sky-400 transition-colors"
+                                placeholder="value" :id="`condition-val-${pIdx}`" />
+                            <input v-else v-model.number="part.value" type="number"
+                                class="flex-1 max-w-[72px] bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-slate-50 text-xs focus:outline-none focus:border-sky-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                                 placeholder="0" :disabled="!getVariableType(part.variable)"
                                 :id="`condition-val-${pIdx}`" />
 
-                            <button class="remove-effect-btn" @click="removeConditionPart(expandedIdx, pIdx)"
+                            <button
+                                class="bg-transparent border-none text-slate-600 hover:text-red-400 hover:bg-red-400/10 cursor-pointer text-xs p-1 rounded transition-all shrink-0"
+                                @click="removeConditionPart(expandedIdx, pIdx)"
                                 :id="`remove-condition-${pIdx}`">✕</button>
                         </div>
 
-                        <div v-if="pIdx < (expandedChoice._conditionParts?.length ?? 0) - 1" class="logical-op-row">
-                            <select v-model="part.logicalOp" class="logical-op-select" :id="`condition-logic-${pIdx}`">
+                        <div v-if="pIdx < (expandedChoice._conditionParts?.length ?? 0) - 1"
+                            class="flex justify-center pl-6">
+                            <select v-model="part.logicalOp"
+                                class="bg-amber-500/10 border border-amber-500/25 text-amber-500 text-[0.68rem] font-bold tracking-wider rounded px-2 py-0.5 cursor-pointer outline-none"
+                                :id="`condition-logic-${pIdx}`">
                                 <option value="AND">AND</option>
                                 <option value="OR">OR</option>
                             </select>
                         </div>
                     </template>
 
-                    <div v-if="legacyConditionNotice" class="condition-hint">
-                        <span class="hint-text">
+                    <div v-if="legacyConditionNotice" class="mt-0.5">
+                        <span class="text-[0.7rem] text-slate-500">
                             💡 Existing free-text condition kept as-is: "{{ expandedChoice?.condition }}". Add a
                             condition above to replace it with structured rules.
                         </span>
@@ -189,34 +233,42 @@
                 </div>
 
                 <!-- Target scene -->
-                <div class="field-group" id="target-section">
-                    <label class="field-label" id="target-label">
-                        Target Scene ID <span class="field-optional">(optional — for future scene linking)</span>
+                <div class="flex flex-col gap-1.5" id="target-section">
+                    <label class="text-[0.78rem] text-slate-400 font-medium tracking-wide" id="target-label">
+                        Target Scene ID <span class="text-slate-500 font-normal text-[0.72rem]">(optional — for future
+                            scene
+                            linking)</span>
                     </label>
                     <input :value="expandedChoice.target_scene_id"
                         @input="updateExpandedField('target_scene_id', ($event.target as HTMLInputElement).value)"
-                        type="text" class="field-input" placeholder="e.g. scene_3"
-                        :id="`target-input-${expandedIdx}`" />
+                        type="text"
+                        class="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-slate-50 text-sm focus:outline-none focus:border-sky-400 transition-colors"
+                        placeholder="e.g. scene_3" :id="`target-input-${expandedIdx}`" />
                 </div>
             </div>
         </div>
 
-        <button v-if="choices.length < 6" class="add-choice-btn" @click="addChoice" id="add-choice-btn">
+        <button v-if="choices.length < 6"
+            class="self-start bg-transparent border border-dashed border-slate-700 text-slate-400 px-4 py-1.5 rounded-md cursor-pointer text-xs hover:border-sky-400 hover:text-sky-400 hover:bg-sky-400/5 transition-all"
+            @click="addChoice" id="add-choice-btn">
             + Add Choice
         </button>
 
         <!-- Validation summary -->
-        <div v-if="validationErrors.length > 0" class="validation-summary">
-            <p class="validation-error-text">⚠️ {{ validationErrors.join('; ') }}</p>
+        <div v-if="validationErrors.length > 0" class="bg-red-500/10 border border-red-500/20 rounded-md p-2">
+            <p class="text-red-400 text-xs m-0">⚠️ {{ validationErrors.join('; ') }}</p>
         </div>
 
         <!-- Actions -->
-        <div class="action-row" id="menu-actions">
-            <button class="btn primary" @click="submit" :disabled="!canSubmit || hasValidationErrors"
-                id="submit-menu-btn">
+        <div class="flex gap-3 flex-wrap mt-auto" id="menu-actions">
+            <button
+                class="flex-1 min-w-[120px] px-5 py-3 rounded-md cursor-pointer font-medium transition-all text-sm border-none bg-sky-400 text-slate-950 hover:opacity-90 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                @click="submit" :disabled="!canSubmit || hasValidationErrors" id="submit-menu-btn">
                 {{ isEditing ? '✓ Update Menu' : '+ Add Menu Node' }}
             </button>
-            <button class="btn secondary" @click="$emit('cancel')" id="cancel-menu-btn">
+            <button
+                class="flex-1 min-w-[120px] px-5 py-3 rounded-md cursor-pointer font-medium transition-all text-sm bg-slate-800 text-slate-200 border border-slate-700 hover:opacity-90 hover:-translate-y-0.5"
+                @click="$emit('cancel')" id="cancel-menu-btn">
                 Cancel
             </button>
         </div>
@@ -307,7 +359,6 @@ const getAvailableOperations = (key: string): EffectOperationOption[] => {
                 { value: 'set', label: '= set' },
             ];
         default:
-            // No variable selected yet — show the full set, disabled via the select itself
             return [
                 { value: 'add', label: '+ add' },
                 { value: 'subtract', label: '− subtract' },
@@ -348,7 +399,6 @@ const getConditionOperators = (key: string): ConditionOperatorOption[] => {
                 { value: '!=', label: '≠' },
             ];
         default:
-            // No variable selected yet — show the full comparison set, disabled via the select itself
             return [
                 { value: '>', label: '>' },
                 { value: '>=', label: '≥' },
@@ -361,22 +411,15 @@ const getConditionOperators = (key: string): ConditionOperatorOption[] => {
 };
 
 // ─── Variable Validation ──────────────────────────────────────────────
-// "Invalid" here means "references a key that isn't in the registry" —
-// covers both stale/typo'd legacy data and anything a rename cascade
-// (VariableManagerService) missed.
 
 const variableKeys = computed(() => new Set(props.variables.map(v => v.key)));
 
 const isVariableInvalid = (key: string): boolean => {
-    if (!key || !key.trim()) return false; // not yet selected — not an error, just incomplete
+    if (!key || !key.trim()) return false;
     return !variableKeys.value.has(key.trim());
 };
 
 // ─── Condition string <-> ConditionPart[] ──────────────────────────────
-// `condition` stays the canonical dormant/stored string (what a future
-// evaluator reads). `_conditionParts` is the structured editing view.
-// We serialize parts -> string on submit, and best-effort parse
-// string -> parts on load (for data that predates the structured builder).
 
 function formatConditionValue(type: StoryVariable['type'] | null, value: unknown): string {
     if (type === 'string') return `"${String(value ?? '').replace(/"/g, '\\"')}"`;
@@ -395,10 +438,6 @@ function serializeConditionParts(parts: ConditionPart[]): string {
         .join(' ');
 }
 
-// Only understands the exact format serializeConditionParts produces
-// (var OP value [AND|OR] var OP value ...). Anything else — hand-typed
-// conditions from before this feature existed — is left alone rather
-// than guessed at; legacyConditionNotice surfaces that to the editor.
 function parseConditionString(condition: string): ConditionPart[] {
     if (!condition || !condition.trim()) return [];
 
@@ -410,13 +449,13 @@ function parseConditionString(condition: string): ConditionPart[] {
         if (!expr) continue;
 
         const match = expr.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*(==|!=|>=|<=|>|<)\s*(.+)$/);
-        if (!match) return []; // unparseable — bail out, keep raw string as legacy fallback
+        if (!match) return [];
 
         const [, variableRaw, operatorRaw, rawValueRaw] = match;
         if (!variableRaw || !operatorRaw || rawValueRaw === undefined) return [];
 
         const variable = variableRaw;
-        const operator = operatorRaw as ConditionPart['operator']; // safe — regex only matches this exact union
+        const operator = operatorRaw as ConditionPart['operator'];
         const type = getVariableType(variable);
         const trimmedValue = rawValueRaw.trim();
         let value: string | number | boolean = trimmedValue;
@@ -527,9 +566,6 @@ function removeEffect(choiceIdx: number, effectIdx: number) {
     }
 }
 
-// Picking a variable from the dropdown resets operation/value to something
-// valid for that variable's type, so you never end up with e.g. "toggle"
-// selected against a number.
 function onEffectVariableChange(choiceIdx: number, effectIdx: number, event: Event) {
     const value = (event.target as HTMLSelectElement).value;
     const effect = choices.value[choiceIdx]?.effects?.[effectIdx];
@@ -587,9 +623,6 @@ function submit() {
         .filter(c => c.text.trim())
         .map(c => {
             const parts = (c._conditionParts ?? []).filter(p => p.variable && p.operator);
-            // Only overwrite the stored condition string when there are structured
-            // parts to serialize — otherwise leave any pre-existing legacy string
-            // (one that didn't parse back into parts) untouched rather than wiping it.
             const condition = parts.length > 0
                 ? serializeConditionParts(parts)
                 : (c.condition?.trim() || undefined);
@@ -663,433 +696,3 @@ watch(() => props.editingNode, (node) => {
 
 defineExpose({ reset });
 </script>
-
-<style scoped>
-.menu-choice-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    flex: 1;
-}
-
-/* Fields */
-.field-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-}
-
-.field-label {
-    font-size: 0.78rem;
-    color: #94a3b8;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-}
-
-.field-optional {
-    color: #475569;
-    font-weight: 400;
-    font-size: 0.72rem;
-}
-
-.field-input {
-    background: #0f172a;
-    border: 1px solid #334155;
-    border-radius: 6px;
-    padding: 0.5rem 0.75rem;
-    color: #f8fafc;
-    font-size: 0.875rem;
-    transition: border-color 0.2s;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.field-input:focus {
-    outline: none;
-    border-color: #38bdf8;
-}
-
-.choices-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.choices-count {
-    font-size: 0.72rem;
-    color: #64748b;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 0.15rem 0.5rem;
-    border-radius: 10px;
-}
-
-.choices-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.choice-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.choice-badge {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: rgba(56, 189, 248, 0.15);
-    color: #38bdf8;
-    font-size: 0.72rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.choice-text-input {
-    flex: 1;
-}
-
-.cog-btn {
-    background: transparent;
-    border: none;
-    font-size: 1rem;
-    cursor: pointer;
-    padding: 0.3rem;
-    border-radius: 4px;
-    color: #64748b;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-
-.cog-btn:hover,
-.cog-btn.active {
-    background: rgba(56, 189, 248, 0.1);
-    color: #38bdf8;
-}
-
-.remove-choice-btn {
-    background: transparent;
-    border: none;
-    color: #475569;
-    cursor: pointer;
-    font-size: 0.8rem;
-    padding: 0.3rem;
-    border-radius: 4px;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-
-.remove-choice-btn:hover {
-    color: #f87171;
-    background: rgba(248, 113, 113, 0.1);
-}
-
-/* Advanced panel */
-.advanced-panel {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid #1e293b;
-    border-radius: 8px;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.875rem;
-    animation: fadeSlideIn 0.15s ease-out;
-}
-
-@keyframes fadeSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-6px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.advanced-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.advanced-title {
-    font-size: 0.8rem;
-    color: #94a3b8;
-    font-weight: 600;
-}
-
-.advanced-note {
-    font-size: 0.68rem;
-    color: #334155;
-    background: rgba(56, 189, 248, 0.07);
-    border: 1px solid rgba(56, 189, 248, 0.15);
-    padding: 0.1rem 0.45rem;
-    border-radius: 10px;
-}
-
-/* Effects */
-.effects-section {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.effects-header,
-.condition-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.effects-label {
-    font-size: 0.75rem;
-    color: #64748b;
-    font-weight: 500;
-}
-
-.add-effect-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.6rem;
-    background: rgba(56, 189, 248, 0.1);
-    border: 1px solid rgba(56, 189, 248, 0.2);
-    color: #38bdf8;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.add-effect-btn:hover:not(:disabled) {
-    background: rgba(56, 189, 248, 0.2);
-}
-
-.add-effect-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-}
-
-.effects-empty {
-    font-size: 0.75rem;
-    color: #334155;
-    font-style: italic;
-    padding: 0.5rem 0;
-}
-
-.effect-row,
-.condition-part-row {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.effect-input {
-    background: #0f172a;
-    border: 1px solid #1e293b;
-    border-radius: 4px;
-    padding: 0.35rem 0.5rem;
-    color: #f8fafc;
-    font-size: 0.78rem;
-    transition: border-color 0.2s;
-    box-sizing: border-box;
-}
-
-.effect-input:focus {
-    outline: none;
-    border-color: #38bdf8;
-}
-
-.effect-val {
-    flex: 1;
-    max-width: 72px;
-}
-
-.effect-string {
-    max-width: 120px;
-}
-
-.effect-select {
-    flex: 1.5;
-    background: #0f172a;
-    border: 1px solid #1e293b;
-    border-radius: 4px;
-    padding: 0.35rem 0.4rem;
-    color: #94a3b8;
-    font-size: 0.75rem;
-    cursor: pointer;
-}
-
-.effect-select:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-}
-
-.effect-var-select,
-.condition-var-select {
-    flex: 2;
-    font-family: 'Courier New', monospace;
-    font-size: 0.75rem;
-}
-
-.condition-op-select {
-    flex: 1;
-    max-width: 90px;
-}
-
-.effect-boolean {
-    flex: 1;
-    max-width: 80px;
-}
-
-.effect-toggle-hint {
-    flex: 1;
-    max-width: 72px;
-    font-size: 0.72rem;
-    color: #475569;
-    text-align: center;
-    font-style: italic;
-}
-
-.remove-effect-btn {
-    background: transparent;
-    border: none;
-    color: #334155;
-    cursor: pointer;
-    font-size: 0.75rem;
-    padding: 0.2rem 0.35rem;
-    border-radius: 3px;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-
-.remove-effect-btn:hover {
-    color: #f87171;
-    background: rgba(248, 113, 113, 0.1);
-}
-
-/* Condition logical-op connector between rows */
-.logical-op-row {
-    display: flex;
-    justify-content: center;
-    padding-left: 1.5rem;
-}
-
-.logical-op-select {
-    background: rgba(245, 158, 11, 0.08);
-    border: 1px solid rgba(245, 158, 11, 0.25);
-    color: #f59e0b;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    border-radius: 4px;
-    padding: 0.1rem 0.5rem;
-    cursor: pointer;
-}
-
-.condition-hint {
-    margin-top: 0.15rem;
-}
-
-.hint-text {
-    font-size: 0.7rem;
-    color: #475569;
-}
-
-/* Add choice button */
-.add-choice-btn {
-    align-self: flex-start;
-    background: transparent;
-    border: 1px dashed #334155;
-    color: #64748b;
-    padding: 0.4rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    transition: all 0.2s;
-}
-
-.add-choice-btn:hover {
-    border-color: #38bdf8;
-    color: #38bdf8;
-    background: rgba(56, 189, 248, 0.05);
-}
-
-/* Actions */
-.action-row {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    margin-top: auto;
-}
-
-.btn {
-    padding: 0.75rem 1.25rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s;
-    border: none;
-    font-size: 0.9rem;
-    flex: 1;
-    min-width: 120px;
-}
-
-.btn.primary {
-    background: #38bdf8;
-    color: #020617;
-}
-
-.btn.primary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.btn.secondary {
-    background: #1e293b;
-    color: #e2e8f0;
-    border: 1px solid #334155;
-}
-
-.btn:hover:not(:disabled) {
-    opacity: 0.9;
-    transform: translateY(-1px);
-}
-
-/* Variable validation styles */
-.effect-input-wrapper {
-    position: relative;
-    flex: 2;
-}
-
-.effect-input-wrapper.has-error .effect-select {
-    border-color: #ef4444;
-    background: rgba(239, 68, 68, 0.05);
-}
-
-.variable-error {
-    position: absolute;
-    bottom: -1.2rem;
-    left: 0;
-    font-size: 0.6rem;
-    color: #ef4444;
-    white-space: nowrap;
-}
-
-/* Validation summary */
-.validation-summary {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    border-radius: 6px;
-    padding: 0.5rem 0.75rem;
-}
-
-.validation-error-text {
-    color: #ef4444;
-    font-size: 0.78rem;
-    margin: 0;
-}
-</style>

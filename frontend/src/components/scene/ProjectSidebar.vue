@@ -1,14 +1,21 @@
+<!-- frontend/src/components/sidebar/ProjectSidebar.vue -->
 <template>
-    <aside class="sidebar" :class="{ collapsed: isSidebarCollapsed }" id="project-sidebar">
+    <aside
+        class="relative bg-slate-950 border-r border-slate-700/80 overflow-y-auto h-full flex flex-col transition-[width] duration-300 ease-in-out shrink-0"
+        :class="isSidebarCollapsed ? 'w-12 min-w-[48px]' : 'w-[280px]'" id="project-sidebar">
+
         <!-- Sidebar Header -->
-        <div class="sidebar-header" id="sidebar-header">
-            <button class="collapse-btn" @click="toggleSidebar">
+        <div class="flex items-center border-b border-slate-700/80 bg-slate-950"
+            :class="isSidebarCollapsed ? 'justify-center py-4' : 'justify-start p-4'" id="sidebar-header">
+            <button
+                class="bg-slate-800 border border-slate-700 rounded-md text-slate-200 w-8 h-8 flex items-center justify-center cursor-pointer transition-all text-base shrink-0 hover:bg-sky-400 hover:border-sky-400 hover:text-white hover:scale-105"
+                @click="toggleSidebar" id="toggle-sidebar-btn">
                 <span v-if="isSidebarCollapsed">☰</span>
                 <span v-else>←</span>
             </button>
         </div>
 
-        <div v-if="!isSidebarCollapsed" class="sidebar-content">
+        <div v-if="!isSidebarCollapsed" class="flex-1 p-4 overflow-y-auto flex flex-col gap-6" id="sidebar-content">
             <!-- Character Roster -->
             <CharacterRoster :characters="characters" :all-characters="allCharacters"
                 :selected-character-id="selectedCharacterId"
@@ -25,18 +32,28 @@
         </div>
 
         <!-- Delete Confirmation Modal -->
-        <div v-if="showDeleteModal" class="modal-overlay" @click.self="cancelDelete">
-            <div class="modal-content">
-                <h4 class="text-lg font-bold mb-4">
+        <div v-if="showDeleteModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4"
+            @click.self="cancelDelete" id="delete-modal-overlay">
+            <div class="bg-slate-800 rounded-xl p-6 max-w-[400px] w-full border border-slate-700 shadow-2xl text-slate-200 flex flex-col gap-4"
+                id="delete-modal-card">
+                <h4 class="text-lg font-bold text-slate-50 m-0">
                     Delete Scene
                 </h4>
-                <p class="mb-6">
-                    Are you sure you want to delete "{{ sceneToDelete?.name || 'Untitled Scene' }}"? This action cannot
-                    be undone.
+                <p class="text-sm text-slate-300 leading-relaxed m-0">
+                    Are you sure you want to delete <span class="font-semibold text-slate-100">"{{ sceneToDelete?.name
+                        || 'Untitled Scene' }}"</span>? This action cannot be undone.
                 </p>
-                <div class="flex justify-end gap-3">
-                    <button class="btn-secondary" @click="cancelDelete">Cancel</button>
-                    <button class="btn-danger" @click="confirmDeleteScene">Delete</button>
+                <div class="flex justify-end gap-3 mt-2">
+                    <button
+                        class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-md transition-colors border-none cursor-pointer text-sm font-medium"
+                        @click="cancelDelete" id="cancel-delete-btn">
+                        Cancel
+                    </button>
+                    <button
+                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition-colors border-none cursor-pointer text-sm font-medium"
+                        @click="confirmDeleteScene" id="confirm-delete-btn">
+                        Delete
+                    </button>
                 </div>
             </div>
         </div>
@@ -115,123 +132,3 @@ defineExpose({
     openDeleteModal
 });
 </script>
-
-<style scoped>
-.sidebar {
-    position: relative;
-    background: #020617;
-    border-right: 1px solid #334155;
-    overflow-y: auto;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    transition: width 0.3s ease;
-    width: 280px;
-}
-
-.sidebar.collapsed {
-    width: 48px;
-    min-width: 48px;
-}
-
-.sidebar-header {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 1rem;
-    border-bottom: 1px solid #334155;
-    background: #020617;
-}
-
-.collapse-btn {
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 6px;
-    color: #e2e8f0;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 1.1rem;
-    flex-shrink: 0;
-}
-
-.collapse-btn:hover {
-    background: #38bdf8;
-    border-color: #38bdf8;
-    color: white;
-    transform: scale(1.05);
-}
-
-.sidebar-content {
-    flex: 1;
-    padding: 1rem;
-    overflow-y: auto;
-}
-
-.collapsed .sidebar-content {
-    display: none;
-}
-
-.collapsed .sidebar-header {
-    justify-content: center;
-    padding: 1rem 0;
-}
-
-.collapsed .collapse-btn {
-    margin: 0;
-}
-
-/* Modal styles */
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-
-.modal-content {
-    background: #1e293b;
-    border-radius: 12px;
-    padding: 1.5rem;
-    max-width: 400px;
-    width: 90%;
-    border: 1px solid #334155;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-    color: #e2e8f0;
-}
-
-.btn-secondary {
-    background: #334155;
-    border: none;
-    color: #e2e8f0;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.btn-secondary:hover {
-    background: #475569;
-}
-
-.btn-danger {
-    background: #dc2626;
-    border: none;
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.btn-danger:hover {
-    background: #b91c1c;
-}
-</style>

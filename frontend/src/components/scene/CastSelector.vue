@@ -1,13 +1,16 @@
+<!-- frontend/src/components/scene/CastSelector.vue -->
 <template>
-    <div class="cast-selector" id="cast-selector">
+    <div class="flex flex-col gap-2.5" id="cast-selector">
         <!-- Row 1: Speaker + Outfit side by side -->
-        <div class="selector-row" id="selector-row-primary">
+        <div class="flex gap-2 items-end" id="selector-row-primary">
             <!-- Speaker DDL -->
-            <div class="field-group speaker-group" id="select-group">
-                <label v-if="label" class="field-label" :id="`${label.toLowerCase()}-label`">{{ label }}</label>
+            <div class="flex flex-col gap-1 flex-[3] min-w-0" id="select-group">
+                <label v-if="label" class="text-[0.72rem] font-semibold text-slate-500 tracking-wider uppercase"
+                    :id="`${label.toLowerCase()}-label`">{{ label }}</label>
                 <select :value="modelValue"
-                    @input="$emit('update:modelValue', ($event.target as HTMLSelectElement).value)" class="field-select"
-                    :class="{ narrator: !selectedCharacter }" id="character-select"
+                    @input="$emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
+                    class="bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.8 text-slate-200 cursor-pointer text-sm transition-colors duration-150 w-full box-border appearance-auto hover:border-slate-700 hover:bg-slate-900/80 focus:outline-none focus:border-sky-400 focus:bg-slate-900/80 focus:ring-2 focus:ring-sky-400/12"
+                    :class="{ 'text-slate-500 italic border-slate-800': !selectedCharacter }" id="character-select"
                     :data-test-selected="selectedCharacter?.id || 'narrator'">
                     <option value="" id="option-narrator">— Narrator —</option>
                     <option v-for="character in availableCharacters" :key="character.id" :value="character.id"
@@ -19,10 +22,13 @@
             </div>
 
             <!-- Outfit DDL (always shown when character selected, hidden when narrator) -->
-            <div v-if="showOutfit && selectedCharacter" class="field-group outfit-group" id="outfit-select-container">
-                <label class="field-label" id="outfit-label">Outfit</label>
-                <select v-model="selectedOutfit" @change="handleOutfitChange" class="field-select" id="outfit-select"
-                    :data-test-character-id="selectedCharacter.id">
+            <div v-if="showOutfit && selectedCharacter" class="flex flex-col gap-1 flex-[2] min-w-0"
+                id="outfit-select-container">
+                <label class="text-[0.72rem] font-semibold text-slate-500 tracking-wider uppercase"
+                    id="outfit-label">Outfit</label>
+                <select v-model="selectedOutfit" @change="handleOutfitChange"
+                    class="bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.8 text-slate-200 cursor-pointer text-sm transition-colors duration-150 w-full box-border appearance-auto hover:border-slate-700 hover:bg-slate-900/80 focus:outline-none focus:border-sky-400 focus:bg-slate-900/80 focus:ring-2 focus:ring-sky-400/12"
+                    id="outfit-select" :data-test-character-id="selectedCharacter.id">
                     <option v-for="outfit in sortedOutfits" :key="outfit.name" :value="outfit.name"
                         :id="`outfit-option-${outfit.name.toLowerCase().replace(/\s+/g, '-')}`"
                         :data-outfit-name="outfit.name">
@@ -32,38 +38,47 @@
             </div>
 
             <!-- Spacer when no character (keeps layout stable) -->
-            <div v-if="!selectedCharacter" class="field-group outfit-group narrator-placeholder" aria-hidden="true">
+            <div v-if="!selectedCharacter" class="flex flex-col gap-1 flex-[2] min-w-0 invisible" aria-hidden="true">
             </div>
         </div>
 
         <!-- Row 2: Expression inline pill row -->
-        <div v-if="showExpression && selectedCharacter && sortedExpressions.length > 0" class="expression-row"
+        <div v-if="showExpression && selectedCharacter && sortedExpressions.length > 0" class="flex flex-col gap-1.5"
             id="expression-select-container">
-            <label class="field-label" id="expression-label">Expression</label>
-            <div class="expression-pills" id="expression-pills">
-                <button v-for="expr in sortedExpressions" :key="expr.name" class="expr-pill"
-                    :class="{ active: selectedExpression === expr.name }" @click="selectExpression(expr.name)"
+            <label class="text-[0.72rem] font-semibold text-slate-500 tracking-wider uppercase"
+                id="expression-label">Expression</label>
+            <div class="flex flex-wrap gap-1.5" id="expression-pills">
+                <button v-for="expr in sortedExpressions" :key="expr.name"
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-slate-800 bg-slate-900 text-slate-400 text-[0.78rem] cursor-pointer transition-all duration-150 ease-in-out whitespace-nowrap leading-none hover:border-slate-700 hover:bg-slate-800 hover:text-slate-300"
+                    :class="{ '!border-sky-400 !bg-sky-400/12 !text-sky-300': selectedExpression === expr.name }"
+                    @click="selectExpression(expr.name)"
                     :id="`expr-pill-${expr.name.toLowerCase().replace(/\s+/g, '-')}`" :title="expr.name" type="button">
-                    <span class="expr-emoji">{{ getExpressionEmoji(expr.name) }}</span>
-                    <span class="expr-name">{{ expr.name }}</span>
+                    <span class="text-sm leading-none">{{ getExpressionEmoji(expr.name) }}</span>
+                    <span class="text-[0.75rem] font-medium">{{ expr.name }}</span>
                 </button>
             </div>
         </div>
 
         <!-- Character info strip -->
-        <div v-if="selectedCharacter" class="character-strip" id="character-info"
-            :data-character-id="selectedCharacter.id">
-            <span class="char-dot" :style="{ backgroundColor: selectedCharacter.color }"
-                id="character-color-preview"></span>
-            <span class="char-name" id="character-name-display">{{ selectedCharacter.name }}</span>
-            <span v-if="selectedCharacter.nickname" class="char-nick" id="character-nickname-display">
+        <div v-if="selectedCharacter"
+            class="flex items-center gap-1.5 px-2 py-1 bg-white/[0.03] border border-slate-800 rounded-md text-xs flex-wrap"
+            id="character-info" :data-character-id="selectedCharacter.id">
+            <span class="w-2 h-2 rounded-full border border-white/15 shrink-0"
+                :style="{ backgroundColor: selectedCharacter.color }" id="character-color-preview"></span>
+            <span class="font-semibold text-slate-100 whitespace-nowrap overflow-hidden text-ellipsis"
+                id="character-name-display">{{ selectedCharacter.name }}</span>
+            <span v-if="selectedCharacter.nickname" class="text-slate-500 text-[0.75rem] italic whitespace-nowrap"
+                id="character-nickname-display">
                 "{{ selectedCharacter.nickname }}"
             </span>
-            <span v-if="selectedOutfit" class="char-badge" id="outfit-badge" :data-outfit="selectedOutfit">
+            <span v-if="selectedOutfit"
+                class="bg-sky-400/10 text-sky-400 px-1.5 py-0.5 rounded text-[0.7rem] whitespace-nowrap border border-sky-400/20"
+                id="outfit-badge" :data-outfit="selectedOutfit">
                 {{ selectedOutfit }}
             </span>
-            <span v-if="selectedExpression" class="char-badge expr-badge" id="expression-badge"
-                :data-expression="selectedExpression">
+            <span v-if="selectedExpression"
+                class="bg-violet-400/10 text-violet-300 px-1.5 py-0.5 rounded text-[0.7rem] whitespace-nowrap border border-violet-400/20"
+                id="expression-badge" :data-expression="selectedExpression">
                 {{ getExpressionEmoji(selectedExpression) }} {{ selectedExpression }}
             </span>
         </div>
@@ -81,7 +96,6 @@ interface Props {
     showExpression?: boolean;
     showOutfit?: boolean;
     sceneCharacterIds?: string[];
-    // NEW: External control for outfit and expression
     externalOutfit?: string;
     externalExpression?: string;
 }
@@ -106,10 +120,8 @@ const emit = defineEmits<Emits>();
 const selectedOutfit = ref('');
 const selectedExpression = ref('');
 
-// Track if we're in the middle of an external update to prevent loops
 let isExternalUpdate = false;
 
-// Only show characters assigned to the current scene
 const availableCharacters = computed(() => {
     if (!props.sceneCharacterIds || props.sceneCharacterIds.length === 0) {
         return props.characters;
@@ -121,7 +133,6 @@ const selectedCharacter = computed(() =>
     props.characters.find(c => c.id === props.modelValue)
 );
 
-// Outfits sorted alphabetically, filtering out null/empty names
 const sortedOutfits = computed(() => {
     if (!selectedCharacter.value) return [];
     return (selectedCharacter.value.outfits || [])
@@ -129,7 +140,6 @@ const sortedOutfits = computed(() => {
         .sort((a, b) => a.name.localeCompare(b.name));
 });
 
-// Expressions for the selected outfit, sorted alphabetically
 const sortedExpressions = computed((): Expression[] => {
     if (!selectedCharacter.value || !selectedOutfit.value) return [];
     return (selectedCharacter.value.expressions || [])
@@ -137,7 +147,6 @@ const sortedExpressions = computed((): Expression[] => {
         .sort((a, b) => a.name.localeCompare(b.name));
 });
 
-// Auto-select the default/first outfit when character changes
 const autoSelectOutfit = (preferredOutfit?: string) => {
     const outfits = sortedOutfits.value;
     if (!outfits.length) {
@@ -146,11 +155,9 @@ const autoSelectOutfit = (preferredOutfit?: string) => {
         return;
     }
 
-    // If a preferred outfit is provided and exists, use it
     if (preferredOutfit && outfits.some(o => o.name === preferredOutfit)) {
         selectedOutfit.value = preferredOutfit;
     } else {
-        // Prefer the outfit with default_image flag, else first alphabetically
         const defaultOutfit = outfits.find(o => o.default_image) ?? outfits[0];
         selectedOutfit.value = defaultOutfit!.name;
     }
@@ -160,7 +167,6 @@ const autoSelectOutfit = (preferredOutfit?: string) => {
     }
 };
 
-// Auto-select default expression for the current outfit
 const autoSelectExpression = (preferredExpression?: string) => {
     const expressions = sortedExpressions.value;
     if (!expressions.length) {
@@ -171,11 +177,9 @@ const autoSelectExpression = (preferredExpression?: string) => {
         return;
     }
 
-    // If a preferred expression is provided and exists, use it
     if (preferredExpression && expressions.some(e => e.name === preferredExpression)) {
         selectedExpression.value = preferredExpression;
     } else {
-        // Prefer expression with default_image, else first alphabetically
         const defaultExpr = (expressions as any[]).find(e => e.default_image) ?? expressions[0];
         selectedExpression.value = defaultExpr!.name;
     }
@@ -188,7 +192,6 @@ const autoSelectExpression = (preferredExpression?: string) => {
 const handleOutfitChange = () => {
     selectedExpression.value = '';
     emit('outfit-change', selectedOutfit.value);
-    // Auto-select default expression for new outfit
     autoSelectExpression();
 };
 
@@ -197,16 +200,13 @@ const selectExpression = (name: string) => {
     emit('expression-change', name);
 };
 
-// ─── Watch for external changes to speaker ──────────────────────────────
 watch(() => props.modelValue, (newSpeakerId) => {
     isExternalUpdate = true;
     selectedOutfit.value = '';
     selectedExpression.value = '';
 
     if (newSpeakerId) {
-        // Use nextTick to ensure computed properties have updated
         setTimeout(() => {
-            // Pass the external outfit/expression if they exist
             autoSelectOutfit(props.externalOutfit || undefined);
             setTimeout(() => {
                 autoSelectExpression(props.externalExpression || undefined);
@@ -222,14 +222,12 @@ watch(() => props.modelValue, (newSpeakerId) => {
     }, 100);
 }, { immediate: true });
 
-// ─── Watch for external outfit changes ──────────────────────────────────
 watch(() => props.externalOutfit, (newOutfit) => {
     if (isExternalUpdate) return;
     if (newOutfit && newOutfit !== selectedOutfit.value) {
         isExternalUpdate = true;
         selectedOutfit.value = newOutfit;
         emit('outfit-change', newOutfit);
-        // Re-evaluate expressions for the new outfit
         setTimeout(() => {
             autoSelectExpression(props.externalExpression || undefined);
         }, 0);
@@ -239,7 +237,6 @@ watch(() => props.externalOutfit, (newOutfit) => {
     }
 });
 
-// ─── Watch for external expression changes ──────────────────────────────
 watch(() => props.externalExpression, (newExpression) => {
     if (isExternalUpdate) return;
     if (newExpression && newExpression !== selectedExpression.value) {
@@ -252,22 +249,16 @@ watch(() => props.externalExpression, (newExpression) => {
     }
 });
 
-// ─── Watch internal outfit changes ──────────────────────────────────────
 watch(() => selectedOutfit.value, () => {
     if (!isExternalUpdate) {
         autoSelectExpression(props.externalExpression || undefined);
     }
 });
 
-// ─── Watch for character changes from parent ────────────────────────────
-// This catches when DialogueEditor updates currentSpeaker from a selected line
 watch(() => props.modelValue, (newSpeakerId, oldSpeakerId) => {
-    // If the speaker changed and we have a selected character, make sure
-    // outfit and expression are properly set
     if (newSpeakerId && newSpeakerId !== oldSpeakerId) {
         const character = props.characters.find(c => c.id === newSpeakerId);
         if (character) {
-            // The autoSelectOutfit/Expression will handle this via the other watch
         }
     }
 });
@@ -291,7 +282,6 @@ defineExpose({
     sortedExpressions,
     sortedOutfits,
     getExpressionEmoji,
-    // Allow parent to set outfit/expression programmatically
     setOutfit: (outfit: string) => {
         selectedOutfit.value = outfit;
         autoSelectExpression();
@@ -301,182 +291,3 @@ defineExpose({
     }
 });
 </script>
-
-<style scoped>
-.cast-selector {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-}
-
-/* ── Row 1: Speaker + Outfit ─────────────────────── */
-.selector-row {
-    display: flex;
-    gap: 0.5rem;
-    align-items: flex-end;
-}
-
-.field-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-}
-
-.speaker-group {
-    flex: 3;
-    min-width: 0;
-}
-
-.outfit-group {
-    flex: 2;
-    min-width: 0;
-}
-
-.narrator-placeholder {
-    /* keeps row height stable when no character is selected */
-    visibility: hidden;
-}
-
-.field-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: #64748b;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-
-.field-select {
-    background: #0f172a;
-    border: 1px solid #1e293b;
-    border-radius: 6px;
-    padding: 0.45rem 0.65rem;
-    color: #e2e8f0;
-    cursor: pointer;
-    font-size: 0.875rem;
-    transition: border-color 0.15s, background 0.15s;
-    width: 100%;
-    box-sizing: border-box;
-    appearance: auto;
-}
-
-.field-select.narrator {
-    color: #64748b;
-    font-style: italic;
-    border-color: #1e293b;
-}
-
-.field-select:hover {
-    border-color: #334155;
-    background: #111827;
-}
-
-.field-select:focus {
-    outline: none;
-    border-color: #38bdf8;
-    background: #111827;
-    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.12);
-}
-
-/* ── Row 2: Expression pills ─────────────────────── */
-.expression-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-}
-
-.expression-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-}
-
-.expr-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.55rem;
-    border-radius: 20px;
-    border: 1px solid #1e293b;
-    background: #0f172a;
-    color: #94a3b8;
-    font-size: 0.78rem;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-    line-height: 1;
-}
-
-.expr-pill:hover {
-    border-color: #334155;
-    background: #1e293b;
-    color: #cbd5e1;
-}
-
-.expr-pill.active {
-    border-color: #38bdf8;
-    background: rgba(56, 189, 248, 0.12);
-    color: #7dd3fc;
-}
-
-.expr-emoji {
-    font-size: 0.9rem;
-    line-height: 1;
-}
-
-.expr-name {
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-/* ── Character info strip ────────────────────────── */
-.character-strip {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.3rem 0.5rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid #1e293b;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    flex-wrap: wrap;
-}
-
-.char-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    flex-shrink: 0;
-}
-
-.char-name {
-    font-weight: 600;
-    color: #f1f5f9;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.char-nick {
-    color: #64748b;
-    font-size: 0.75rem;
-    font-style: italic;
-    white-space: nowrap;
-}
-
-.char-badge {
-    background: rgba(56, 189, 248, 0.1);
-    color: #38bdf8;
-    padding: 0.1rem 0.4rem;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    white-space: nowrap;
-    border: 1px solid rgba(56, 189, 248, 0.2);
-}
-
-.expr-badge {
-    background: rgba(167, 139, 250, 0.1);
-    color: #a78bfa;
-    border-color: rgba(167, 139, 250, 0.2);
-}
-</style>
