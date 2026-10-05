@@ -1,17 +1,22 @@
 <!-- frontend/src/components/scene/DialogueHistory.vue -->
 <template>
-    <div class="dialogue-history-container">
-        <div class="dialogue-history-header">
-            <h4>Dialogue History<span v-if="isDirty" class="dirty-indicator" title="Unsaved changes"> *</span></h4>
-            <div class="header-actions">
-                <span class="line-count">{{ dialogueLines.length }} lines</span>
-                <button v-if="hasReordered" class="icon-btn save-order-btn" @click="saveReorderedLines"
-                    title="Save new order">
+    <div class="flex-[3] flex flex-col bg-slate-950 border border-slate-700 rounded-xl overflow-hidden min-w-[300px]">
+        <div class="flex justify-between items-center px-6 py-4 bg-white/[0.03] border-b border-slate-700 shrink-0">
+            <h4 class="text-slate-50 text-base font-semibold m-0">
+                Dialogue History<span v-if="isDirty" class="text-sky-400 font-bold" title="Unsaved changes"> *</span>
+            </h4>
+            <div class="flex items-center gap-3">
+                <span class="text-slate-400 text-xs bg-sky-400/10 px-3 py-1 rounded-full">{{ dialogueLines.length }}
+                    lines</span>
+                <button v-if="hasReordered"
+                    class="text-sky-400 bg-sky-400/10 hover:bg-sky-400/20 px-3 py-1 rounded-full text-xs transition-all duration-200 hover:scale-105 border-0 cursor-pointer"
+                    @click="saveReorderedLines" title="Save new order">
                     💾 Save Order
                 </button>
             </div>
         </div>
-        <div class="dialogue-history">
+        <div
+            class="flex-1 overflow-y-auto p-4 relative [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-slate-900 [&::-webkit-scrollbar-track]:rounded [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded hover:[&::-webkit-scrollbar-thumb]:bg-slate-600">
             <template v-for="item in historyItems"
                 :key="item.kind === 'divider' ? `divider-${item.index}` : (item.line.id || `line-${item.index}`)">
 
@@ -22,8 +27,8 @@
                     </div>
 
                     <button type="button"
-                        class="insert-trigger absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-800 border border-gray-600 text-gray-400 text-sm leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-sky-400 hover:text-gray-900 hover:border-sky-400 transition-all duration-150 z-10"
-                        :class="{ 'opacity-100 bg-sky-400 text-gray-900 border-sky-400': activeDividerIndex === item.index }"
+                        class="insert-trigger absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-900 border border-slate-700 text-slate-400 text-sm leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-sky-400 hover:text-slate-950 hover:border-sky-400 transition-all duration-150 z-10"
+                        :class="{ 'opacity-100 bg-sky-400 text-slate-950 border-sky-400': activeDividerIndex === item.index }"
                         @click.stop="toggleDivider(item.index)"
                         :aria-label="`Insert new line at position ${item.index + 1}`" title="Insert here">
                         +
@@ -31,24 +36,28 @@
 
                     <div v-if="activeDividerIndex === item.index" class="insert-popover
                             absolute left-1/2 -translate-x-1/2 top-full mt-2 z-20
-                            bg-gray-900 border border-gray-700 rounded-xl shadow-xl p-2
+                            bg-slate-900 border border-slate-700 rounded-xl shadow-xl p-2
                             grid grid-cols-4 gap-1.5 w-max" @click.stop>
-                        <button type="button" class="btn-secondary btn-small flex flex-col items-center gap-1 !py-2"
+                        <button type="button"
+                            class="flex flex-col items-center gap-1 py-2 px-3 text-xs bg-slate-800 text-slate-200 border border-slate-700 rounded-md hover:bg-slate-700 transition-colors cursor-pointer"
                             @click="insertDialogueAt(item.index)" title="Insert a blank dialogue line">
                             <span class="text-base">💬</span>
                             <span class="text-[11px]">Dialogue</span>
                         </button>
-                        <button type="button" class="btn-secondary btn-small flex flex-col items-center gap-1 !py-2"
+                        <button type="button"
+                            class="flex flex-col items-center gap-1 py-2 px-3 text-xs bg-slate-800 text-slate-200 border border-slate-700 rounded-md hover:bg-slate-700 transition-colors cursor-pointer"
                             @click="insertBackgroundAt(item.index)" title="Insert a background change">
                             <span class="text-base">🖼️</span>
                             <span class="text-[11px]">Background</span>
                         </button>
-                        <button type="button" class="btn-secondary btn-small flex flex-col items-center gap-1 !py-2"
+                        <button type="button"
+                            class="flex flex-col items-center gap-1 py-2 px-3 text-xs bg-slate-800 text-slate-200 border border-slate-700 rounded-md hover:bg-slate-700 transition-colors cursor-pointer"
                             @click="insertMenuAt(item.index)" title="Insert a menu choice">
                             <span class="text-base">🔀</span>
                             <span class="text-[11px]">Menu</span>
                         </button>
-                        <button type="button" class="btn-secondary btn-small flex flex-col items-center gap-1 !py-2"
+                        <button type="button"
+                            class="flex flex-col items-center gap-1 py-2 px-3 text-xs bg-slate-800 text-slate-200 border border-slate-700 rounded-md hover:bg-slate-700 transition-colors cursor-pointer"
                             @click="insertMusicAt(item.index)" title="Insert a music change">
                             <span class="text-base">🎵</span>
                             <span class="text-[11px]">Music</span>
@@ -56,7 +65,7 @@
                     </div>
                 </div>
 
-                <!-- Card Component Delegation with Type Casting -->
+                <!-- Card Component Delegation -->
                 <template v-else>
                     <MenuCard v-if="item.line.type === 'menu'" :line="asMenuNode(item.line)" :index="item.index"
                         :selected="selectedLineIndex === item.index" :is-locked="isLockedLine(item.line, item.index)"
@@ -141,29 +150,24 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>();
 
-// Type assertions for template narrowing
 const asMenuNode = (line: SceneLine) => line as MenuNode;
 const asActionNode = (line: SceneLine) => line as ActionNode;
 const asDialogueLine = (line: SceneLine) => line as DialogueLine;
 const isMusicNode = (line: SceneLine) => line.type === 'action' && (line as ActionNode).action_type === 'music_change';
-
 
 const insertMusicAt = (index: number) => {
     emit('insert-music', { index });
     closeDivider();
 };
 
-// Position selector state
 const activePositionLineIndex = ref<number | null>(null);
 
-// Drag state
 const dragState = ref({
     draggingIndex: null as number | null,
     dragOverIndex: null as number | null,
     fromIndex: null as number | null
 });
 
-// Reorder state
 const hasReordered = ref(false);
 const reorderedLines = ref<SceneLine[]>([...props.dialogueLines]);
 
@@ -193,7 +197,6 @@ const historyItems = computed<HistoryItem[]>(() => {
     return items;
 });
 
-// Insert divider state
 const activeDividerIndex = ref<number | null>(null);
 
 const toggleDivider = (index: number) => {
@@ -223,7 +226,6 @@ const isLockedLine = (line: SceneLine | undefined, index: number): boolean => {
     return !!line && index === 0 && line.type === 'action' && !!(line as ActionNode).is_initial;
 };
 
-// Event handlers
 const handleSelectLine = (index: number) => {
     emit('select-line', index);
 };
@@ -249,7 +251,6 @@ const updateLinePosition = (index: number, position: ImagePosition | undefined) 
     emit('update-line-position', { index, position });
 };
 
-// Drag event handlers
 const handleDragStart = (event: DragEvent, index: number) => {
     if (isLockedLine(displayLines.value[index], index)) {
         event.preventDefault();
@@ -354,93 +355,3 @@ onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside);
 });
 </script>
-
-<style scoped>
-.dirty-indicator {
-    color: #38bdf8;
-    font-weight: bold;
-}
-
-.dialogue-history-container {
-    flex: 3;
-    display: flex;
-    flex-direction: column;
-    background: #020617;
-    border: 1px solid #334155;
-    border-radius: 12px;
-    overflow: hidden;
-    min-width: 300px;
-}
-
-.dialogue-history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    background: rgba(255, 255, 255, 0.03);
-    border-bottom: 1px solid #334155;
-    flex-shrink: 0;
-}
-
-.dialogue-history-header h4 {
-    color: #f8fafc;
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.line-count {
-    color: #94a3b8;
-    font-size: 0.85rem;
-    background: rgba(56, 189, 248, 0.1);
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-}
-
-.save-order-btn {
-    color: #38bdf8;
-    background: rgba(56, 189, 248, 0.1);
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.85rem;
-    transition: all 0.2s;
-    border: none;
-    cursor: pointer;
-}
-
-.save-order-btn:hover {
-    background: rgba(56, 189, 248, 0.2);
-    transform: scale(1.05);
-}
-
-.dialogue-history {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1rem;
-    position: relative;
-}
-
-.dialogue-history::-webkit-scrollbar {
-    width: 6px;
-}
-
-.dialogue-history::-webkit-scrollbar-track {
-    background: #0f172a;
-    border-radius: 3px;
-}
-
-.dialogue-history::-webkit-scrollbar-thumb {
-    background: #334155;
-    border-radius: 3px;
-}
-
-.dialogue-history::-webkit-scrollbar-thumb:hover {
-    background: #475569;
-}
-</style>
