@@ -1,8 +1,8 @@
 <!-- frontend/src/components/scene/cards/MenuCard.vue -->
 <template>
-    <div class="group relative flex flex-col gap-3 mb-4 p-4 rounded-lg bg-purple-600/[0.08] border border-purple-600/25 border-l-4 border-l-purple-400 cursor-pointer transition-all duration-200 hover:bg-purple-600/[0.14] hover:border-purple-600/40"
+    <div class="group relative flex flex-col gap-3 mb-4 p-4 rounded-lg bg-amber-500/[0.08] border border-amber-500/25 border-l-4 border-l-amber-400 cursor-pointer transition-all duration-200 hover:bg-amber-500/[0.14] hover:border-amber-500/40"
         :class="{
-            '!bg-purple-600/20 !border-purple-400 shadow-[0_0_12px_rgba(192,132,252,0.2)]': isSelected,
+            '!bg-amber-500/20 !border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.2)]': isSelected,
             'opacity-50': isDragging,
             'ring-2 ring-sky-400/60': isDragOver,
             'cursor-grab': !isLocked,
@@ -12,20 +12,20 @@
 
         <div class="flex items-center gap-3 min-w-0">
             <span
-                class="bg-purple-600/25 text-purple-200 text-[0.8rem] font-semibold px-2.5 py-1 rounded-md border border-purple-600/30">
+                class="bg-amber-500/25 text-amber-200 text-[0.8rem] font-semibold px-2.5 py-1 rounded-md border border-amber-500/30">
                 🔀 Menu
             </span>
-            <span v-if="line.prompt" class="text-purple-100 font-medium text-[0.95rem]">
+            <span v-if="line.prompt" class="text-amber-100 font-medium text-[0.95rem]">
                 "{{ line.prompt }}"
             </span>
-            <span class="text-purple-500 text-[0.8rem] ml-auto">
+            <span class="text-amber-400 text-[0.8rem] ml-auto">
                 {{ line.choices.length }} choices
             </span>
         </div>
 
         <div class="flex flex-wrap gap-2">
             <span v-for="(choice, ci) in line.choices" :key="choice.id"
-                class="bg-slate-900/60 border border-purple-600/30 text-slate-300 text-[0.85rem] px-2.5 py-1 rounded-md inline-flex items-center gap-[0.35rem]">
+                class="bg-slate-900/60 border border-amber-500/30 text-slate-300 text-[0.85rem] px-2.5 py-1 rounded-md inline-flex items-center gap-[0.35rem]">
                 {{ ci + 1 }}. {{ choice.text }}
                 <span v-if="choice.effects?.length" class="text-sky-400 text-[0.7rem]"
                     :title="`${choice.effects.length} effect(s)`">●</span>
