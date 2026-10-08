@@ -41,7 +41,7 @@
         </div>
 
         <!-- Body: play with a track -->
-        <div v-else-if="line.music_path"
+        <div v-else-if="activeMusicPath"
             class="flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2">
             <button type="button"
                 class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
@@ -94,9 +94,16 @@ const emit = defineEmits<Emits>();
 
 const isStop = computed(() => props.line.music_mode === 'stop');
 
+// Dynamically resolves path whether stored as music_path, audio_path, or path
+const activeMusicPath = computed(() => {
+    const rawLine = props.line as Record<string, any>;
+    return props.line.music_path || rawLine.audio_path || rawLine.path || '';
+});
+
 const trackName = computed(() => {
     if (props.line.music_name) return props.line.music_name;
-    const path = props.line.music_path ?? '';
+    const path = activeMusicPath.value;
+    if (!path) return '';
     if (path.startsWith('blob:')) return 'Uploaded track';
     return path.split('/').pop() || path;
 });
@@ -107,21 +114,23 @@ const fadeLabel = computed(() => {
     return `${isStop.value ? 'Fade out' : 'Fade in'} ${fade}s`;
 });
 
-// --- Preview playback (same approach as the voice icon on DialogueCard) ---
+// --- Preview playback ---
 const isPlaying = ref(false);
 let previewAudio: HTMLAudioElement | null = null;
 
 const stopPreview = () => {
-    previewAudio?.pause();
-    previewAudio = null;
+    if (previewAudio) {
+        previewAudio.pause();
+        previewAudio = null;
+    }
     isPlaying.value = false;
 };
 
 const togglePreview = () => {
-    if (!props.line.music_path) return;
+    if (!activeMusicPath.value) return;
     if (isPlaying.value) return stopPreview();
 
-    previewAudio = new Audio(props.line.music_path);
+    previewAudio = new Audio(activeMusicPath.value);
     previewAudio.onended = stopPreview;
     previewAudio.onerror = stopPreview;
     isPlaying.value = true;

@@ -67,6 +67,8 @@
 
                 <!-- Card Component Delegation -->
                 <template v-else>
+
+                    <!-- Menu ard -->
                     <MenuCard v-if="item.line.type === 'menu'" :line="asMenuNode(item.line)" :index="item.index"
                         :selected="selectedLineIndex === item.index" :is-locked="isLockedLine(item.line, item.index)"
                         :is-dragging="dragState.draggingIndex === item.index"
@@ -76,6 +78,7 @@
                         @dragover="handleDragOver($event, item.index)" @dragleave="handleDragLeave(item.index)"
                         @drop="handleDrop($event, item.index)" />
 
+                    <!-- Music Card -->
                     <MusicCard v-else-if="isMusicNode(item.line)" :line="asActionNode(item.line)" :index="item.index"
                         :selected="selectedLineIndex === item.index" :is-locked="false"
                         :is-dragging="dragState.draggingIndex === item.index"
@@ -85,6 +88,8 @@
                         @dragover="handleDragOver($event, item.index)" @dragleave="handleDragLeave(item.index)"
                         @drop="handleDrop($event, item.index)" />
 
+
+                    <!-- Action Card -->
                     <ActionCard v-else-if="item.line.type === 'action'" :line="asActionNode(item.line)"
                         :index="item.index" :selected="selectedLineIndex === item.index"
                         :is-locked="isLockedLine(item.line, item.index)"

@@ -203,7 +203,9 @@
                 <div v-else-if="mode === 'music'"
                     class="bg-slate-950 border border-violet-400/30 rounded-xl p-5 flex flex-col flex-1">
                     <div class="mb-2">
-                        <h4 class="text-violet-400 font-semibold text-base m-0">Edit Music Action</h4>
+                        <h4 class="text-violet-400 font-semibold text-base m-0">
+                            {{ isEditing ? 'Edit Music Action' : 'New Music Action' }}
+                        </h4>
                     </div>
 
                     <div class="mb-4">
@@ -225,14 +227,38 @@
                     </div>
 
                     <template v-if="currentMusicMode === 'play'">
+                        <!-- Selected track -->
+                        <div class="mb-4">
+                            <label class="text-xs text-slate-400 block mb-1">Selected Track</label>
+                            <div class="flex items-center gap-3 rounded-lg bg-slate-900 px-3 py-2 border"
+                                :class="currentMusicPath ? 'border-violet-400/40' : 'border-dashed border-slate-700'">
+                                <button v-if="currentMusicPath" type="button"
+                                    class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-violet-400/15 text-violet-300 hover:bg-violet-400/25 transition-colors cursor-pointer"
+                                    @click="togglePreview">
+                                    <span class="text-sm">{{ isPreviewing ? '⏹️' : '▶️' }}</span>
+                                </button>
+                                <div class="min-w-0 flex-1">
+                                    <p v-if="currentMusicPath" class="text-sm text-slate-100 truncate">{{
+                                        selectedTrackLabel }}</p>
+                                    <p v-else class="text-sm text-slate-500">No track selected</p>
+                                </div>
+                                <button v-if="currentMusicPath" type="button"
+                                    class="py-1 px-2 rounded-md text-xs text-red-400 border border-red-900/40 hover:bg-red-950/30 transition-colors cursor-pointer"
+                                    @click="clearMusic">
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="mb-4">
                             <label class="text-xs text-slate-400 block mb-1">Choose from Project Library</label>
                             <div
                                 class="flex flex-col gap-1.5 max-h-36 overflow-y-auto p-1 bg-slate-900/50 rounded-lg border border-slate-800">
-                                <p v-if="musicAssets.length === 0" class="text-xs text-slate-500 px-2 py-3 text-center">
+                                <p v-if="libraryTracks.length === 0"
+                                    class="text-xs text-slate-500 px-2 py-3 text-center">
                                     No tracks yet. Upload one below.
                                 </p>
-                                <button v-for="track in musicAssets" :key="track.id" type="button"
+                                <button v-for="track in libraryTracks" :key="track.id" type="button"
                                     class="text-xs px-3 py-2 rounded border text-left truncate transition-colors cursor-pointer"
                                     :class="currentMusicPath === track.path ? 'border-violet-400 bg-violet-400/10 text-white' : 'border-slate-700 text-slate-400 hover:border-slate-500'"
                                     @click="selectMusic(track.path, track.name)">
@@ -240,7 +266,6 @@
                                 </button>
                             </div>
                         </div>
-
                         <div class="mb-4">
                             <label class="text-xs text-slate-400 block mb-1">Or Upload New Track</label>
                             <input type="file" ref="musicInputRef" accept="audio/*" class="hidden"
@@ -263,9 +288,14 @@
                     </div>
 
                     <div class="flex gap-3 flex-wrap mt-auto">
-                        <button
+                        <button v-if="!isEditing"
                             class="flex-1 min-w-[120px] py-3 px-5 rounded-md font-medium text-sm bg-sky-400 text-slate-950 hover:opacity-90 hover:-translate-y-0.5 transition-all duration-200 border-0 cursor-pointer"
-                            @click="updateMusicAction">
+                            @click="addOrUpdateMusicAction">
+                            Add Music Action
+                        </button>
+                        <button v-else
+                            class="flex-1 min-w-[120px] py-3 px-5 rounded-md font-medium text-sm bg-sky-400 text-slate-950 hover:opacity-90 hover:-translate-y-0.5 transition-all duration-200 border-0 cursor-pointer"
+                            @click="addOrUpdateMusicAction">
                             Update Action
                         </button>
                         <button
@@ -281,7 +311,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from 'vue';
+import { ref, computed, nextTick, watch, onUnmounted } from 'vue';
 import CastSelector from '@/components/scene/CastSelector.vue';
 import DialogueHistory from '@/components/scene/DialogueHistory.vue';
 import MenuChoiceEditor from '@/components/scene/MenuChoiceEditor.vue';
@@ -350,6 +380,52 @@ const currentMusicName = ref('');
 const currentMusicFade = ref<number>(0);
 const musicInputRef = ref<HTMLInputElement>();
 
+const fileNameFromPath = (path: string) =>
+    path.startsWith('blob:') ? 'Uploaded track' : (path.split('/').pop() || path);
+
+// Library + the currently selected track, even if it isn't in the project library
+// (e.g. a blob: upload the parent hasn't stored, or a track from a loaded scene)
+const libraryTracks = computed<MusicAsset[]>(() => {
+    const path = currentMusicPath.value;
+    if (!path || props.musicAssets.some(t => t.path === path)) return props.musicAssets;
+    return [
+        ...props.musicAssets,
+        { id: `current_${path}`, name: currentMusicName.value || fileNameFromPath(path), path }
+    ];
+});
+
+const selectedTrackLabel = computed(() =>
+    currentMusicName.value || fileNameFromPath(currentMusicPath.value)
+);
+
+// Preview playback in the editor panel
+const isPreviewing = ref(false);
+let previewAudio: HTMLAudioElement | null = null;
+
+const stopPreview = () => {
+    previewAudio?.pause();
+    previewAudio = null;
+    isPreviewing.value = false;
+};
+
+const togglePreview = () => {
+    if (!currentMusicPath.value) return;
+    if (isPreviewing.value) return stopPreview();
+    previewAudio = new Audio(currentMusicPath.value);
+    previewAudio.onended = stopPreview;
+    previewAudio.onerror = stopPreview;
+    isPreviewing.value = true;
+    previewAudio.play().catch(stopPreview);
+};
+
+const clearMusic = () => {
+    stopPreview();
+    currentMusicPath.value = '';
+    currentMusicName.value = '';
+};
+
+onUnmounted(stopPreview);
+
 const selectedCharacter = computed(() => {
     return props.characters.find(c => c.id === currentSpeaker.value);
 });
@@ -412,6 +488,7 @@ const resetForm = () => {
 };
 
 const cancelEdit = () => {
+    stopPreview();
     isEditing.value = false;
     editingIndex.value = null;
     mode.value = 'dialogue';
@@ -472,6 +549,7 @@ const updateBackgroundAction = () => {
 };
 
 const selectMusic = (path: string, name: string) => {
+    stopPreview();
     currentMusicPath.value = path;
     currentMusicName.value = name;
 };
@@ -493,21 +571,35 @@ const handleMusicFileUpload = (event: Event) => {
     input.value = '';
 };
 
-const updateMusicAction = () => {
-    if (editingIndex.value === null) return;
-    const existing = props.dialogueLines[editingIndex.value] as ActionNode;
+const addOrUpdateMusicAction = () => {
     const isStop = currentMusicMode.value === 'stop';
     const fade = Number(currentMusicFade.value) || 0;
 
-    const updatedNode: ActionNode = {
-        ...existing,
-        music_mode: currentMusicMode.value,
-        music_path: isStop ? undefined : (currentMusicPath.value || undefined),
-        music_name: isStop ? undefined : (currentMusicName.value || undefined),
-        music_fade: fade > 0 ? fade : undefined,
-    };
+    if (isEditing.value && editingIndex.value !== null) {
+        // Updating existing node
+        const existing = props.dialogueLines[editingIndex.value] as ActionNode;
+        const updatedNode: ActionNode = {
+            ...existing,
+            type: 'action',
+            action_type: 'music_change',
+            music_mode: currentMusicMode.value,
+            music_path: isStop ? undefined : (currentMusicPath.value || undefined),
+            music_name: isStop ? undefined : (currentMusicName.value || undefined),
+            music_fade: fade > 0 ? fade : undefined,
+        };
+        emit('edit-line', { index: editingIndex.value, line: updatedNode });
+    } else {
+        // Adding brand new music action
+        emit('add-background-action', {
+            type: 'action',
+            action_type: 'music_change',
+            music_mode: currentMusicMode.value,
+            music_path: isStop ? undefined : (currentMusicPath.value || undefined),
+            music_name: isStop ? undefined : (currentMusicName.value || undefined),
+            music_fade: fade > 0 ? fade : undefined,
+        });
+    }
 
-    emit('edit-line', { index: editingIndex.value, line: updatedNode });
     cancelEdit();
 };
 
@@ -688,6 +780,7 @@ watch(() => props.selectedSpeakerId, (newSpeakerId) => {
 }, { immediate: true });
 
 watch(() => props.selectedLineIndex, (index) => {
+    stopPreview();
     if (index === null || index === undefined || index < 0 || index >= props.dialogueLines.length) {
         if (isEditing.value) {
             cancelEdit();
