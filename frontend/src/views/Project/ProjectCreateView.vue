@@ -1,39 +1,60 @@
 <template>
-    <div class="create-page" id="project-create-page">
+    <div class="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-4 pt-10 pb-16 max-sm:px-3 max-sm:pt-6 max-sm:pb-12"
+        id="project-create-page">
 
-        <!-- Background grid atmosphere -->
-        <div class="bg-grid" aria-hidden="true" id="bg-grid" />
+        <!-- Background atmosphere: faded grid + two soft glows -->
+        <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(rgba(165,180,252,0.28)_1.5px,transparent_1.5px)] bg-[size:26px_26px] [mask-image:radial-gradient(ellipse_at_top,black,transparent_80%)]"
+            aria-hidden="true" id="bg-grid" />
+        <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[640px] h-[420px] rounded-full bg-sky-400/20 blur-3xl pointer-events-none"
+            aria-hidden="true" />
+        <div class="absolute top-40 -right-24 w-[380px] h-[380px] rounded-full bg-violet-500/25 blur-3xl pointer-events-none"
+            aria-hidden="true" />
+        <div class="absolute bottom-0 -left-24 w-[360px] h-[360px] rounded-full bg-fuchsia-500/15 blur-3xl pointer-events-none"
+            aria-hidden="true" />
 
-        <div class="create-container" id="create-container">
+        <div class="relative max-w-[680px] mx-auto flex flex-col gap-7" id="create-container">
 
             <!-- Header -->
-            <div class="create-header" id="create-header">
-                <button class="back-btn" @click="router.back()" id="back-button">
-                    ← Back
+            <div class="flex items-start gap-4" id="create-header">
+                <button type="button"
+                    class="group mt-1.5 flex items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-700 bg-slate-900/60 px-3.5 py-1.5 text-xs text-slate-400 transition-all hover:border-slate-400 hover:text-white"
+                    @click="router.back()" id="back-button">
+                    <span class="transition-transform group-hover:-translate-x-0.5">←</span>
+                    Back
                 </button>
-                <div class="header-text" id="header-text">
-                    <h1 class="create-title" id="create-title">New Project</h1>
-                    <p class="create-subtitle" id="create-subtitle">Set the stage for your visual novel</p>
+                <div class="flex-1" id="header-text">
+                    <h1 class="mb-1 bg-gradient-to-r from-sky-200 via-violet-300 to-fuchsia-300 bg-clip-text text-[1.9rem] font-bold tracking-tight text-transparent max-sm:text-2xl"
+                        id="create-title">New Project</h1>
+                    <p class="text-[0.9rem] text-slate-400" id="create-subtitle">Set the stage for your visual novel
+                    </p>
                 </div>
             </div>
 
             <!-- Form card -->
-            <form @submit.prevent="createProject" class="create-card" id="create-project-form">
+            <form @submit.prevent="createProject"
+                class="relative overflow-hidden rounded-2xl border border-slate-700 bg-slate-800/50 shadow-2xl shadow-indigo-950/60 ring-1 ring-white/5 backdrop-blur"
+                id="create-project-form">
+
+                <!-- Accent line along the top edge of the card -->
+                <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/70 to-transparent"
+                    aria-hidden="true" />
 
                 <!-- Step 1: Identity -->
-                <div class="form-section" id="form-section-identity">
-                    <div class="section-label" id="section-label-identity">
-                        <span class="section-number" id="section-number-identity">01</span>
-                        <span class="section-title" id="section-title-identity">Identity</span>
+                <div :class="formSection" id="form-section-identity">
+                    <div class="flex items-center gap-3" id="section-label-identity">
+                        <span :class="badgeSky" id="section-number-identity">01</span>
+                        <span :class="sectionTitle" id="section-title-identity">Identity</span>
                     </div>
 
-                    <div class="form-group" id="form-group-name">
-                        <label class="input-label" id="name-label">
-                            Project Name <span class="required" id="required-star">*</span>
+                    <div :class="formGroup" id="form-group-name">
+                        <label :class="labelClass" for="project-name-input" id="name-label">
+                            Project Name <span class="text-sky-400" id="required-star">*</span>
                         </label>
-                        <input v-model="project.name" class="input" placeholder="e.g. Mystic Academy, Crimson Horizons…"
-                            required maxlength="80" id="project-name-input" />
-                        <span class="char-counter" :class="{ 'character-counter-warning': project.name.length > 60 }"
+                        <input v-model="project.name" :class="inputClass"
+                            placeholder="e.g. Mystic Academy, Crimson Horizons…" required maxlength="80"
+                            id="project-name-input" />
+                        <span class="-mt-0.5 text-right text-[0.72rem] transition-colors"
+                            :class="project.name.length > 60 ? 'text-amber-400' : 'text-slate-400'"
                             id="name-char-counter">
                             {{ project.name.length }}/80
                         </span>
@@ -41,112 +62,133 @@
                 </div>
 
                 <!-- Divider -->
-                <div class="section-divider" id="divider-1" />
+                <div :class="divider" id="divider-1" />
 
                 <!-- Step 2: Story -->
-                <div class="form-section" id="form-section-story">
-                    <div class="section-label" id="section-label-story">
-                        <span class="section-number" id="section-number-story">02</span>
-                        <span class="section-title" id="section-title-story">Story</span>
+                <div :class="formSection" id="form-section-story">
+                    <div class="flex items-center gap-3" id="section-label-story">
+                        <span :class="badgeViolet" id="section-number-story">02</span>
+                        <span :class="sectionTitle" id="section-title-story">Story</span>
                     </div>
 
-                    <div class="form-group" id="form-group-plot">
-                        <label class="input-label" id="plot-label">Main Plot / Context</label>
-                        <textarea v-model="project.main_plot" class="input plot-textarea" rows="4"
+                    <div :class="formGroup" id="form-group-plot">
+                        <label :class="labelClass" for="main-plot-textarea" id="plot-label">Main Plot / Context</label>
+                        <textarea v-model="project.main_plot"
+                            :class="[inputClass, 'resize-y min-h-[100px] leading-relaxed']" rows="4"
                             placeholder="Short overview of the story world, theme, or premise…" maxlength="500"
                             id="main-plot-textarea" />
-                        <span class="char-counter"
-                            :class="{ 'character-counter-warning': project.main_plot.length > 400 }"
+                        <span class="-mt-0.5 text-right text-[0.72rem] transition-colors"
+                            :class="project.main_plot.length > 400 ? 'text-amber-400' : 'text-slate-400'"
                             id="plot-char-counter">
                             {{ project.main_plot.length }}/500
                         </span>
                     </div>
 
-                    <div class="form-group" id="form-group-main-character">
-                        <label class="input-label" id="main-character-label">
+                    <div :class="formGroup" id="form-group-main-character">
+                        <label :class="labelClass" id="main-character-label">
                             Main Character
-                            <span class="text-gray-500 font-normal" id="optional-badge">(optional)</span>
+                            <span class="font-normal text-slate-400" id="optional-badge">(optional)</span>
                         </label>
 
-                        <!-- Trigger button -->
-                        <button type="button" class="char-picker-trigger" @click="showCharPicker = !showCharPicker"
-                            id="char-picker-trigger">
+                        <!-- Trigger button (.char-picker-trigger is a marker class used by handleClickOutside) -->
+                        <button type="button"
+                            class="char-picker-trigger flex w-full items-center gap-2.5 rounded-lg border bg-slate-900/60 px-3.5 py-2.5 text-left text-[0.9rem] text-slate-100 transition-all hover:border-slate-500"
+                            :class="showCharPicker ? 'border-sky-400 ring-4 ring-sky-400/10' : 'border-slate-700'"
+                            @click="showCharPicker = !showCharPicker" id="char-picker-trigger">
                             <template v-if="selectedCharacter">
-                                <span class="cast-dot" :style="{ background: selectedCharacter.color }"
+                                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-white/20"
+                                    :style="{ background: selectedCharacter.color, boxShadow: `0 0 8px ${selectedCharacter.color}88` }"
                                     id="selected-character-dot" />
-                                <span class="picker-name" id="selected-character-name">{{
+                                <span class="text-slate-100" id="selected-character-name">{{
                                     selectedCharacter.name }}</span>
-                                <span v-if="selectedCharacter.nickname" class="picker-nick"
-                                    id="selected-character-nickname">"{{
-                                        selectedCharacter.nickname }}"</span>
+                                <span v-if="selectedCharacter.nickname" class="text-xs italic text-slate-400"
+                                    id="selected-character-nickname">"{{ selectedCharacter.nickname }}"</span>
                             </template>
-                            <span v-else class="text-gray-500" id="no-character-selected">None — decide
+                            <span v-else class="text-slate-400" id="no-character-selected">None — decide
                                 later</span>
-                            <span class="ml-auto text-gray-500 text-xs" id="picker-toggle-icon">{{
+                            <span class="ml-auto text-xs text-slate-400" id="picker-toggle-icon">{{
                                 showCharPicker ? '▲' : '▼' }}</span>
                         </button>
 
-                        <!-- Picker popover -->
-                        <div v-if="showCharPicker" class="char-picker" id="char-picker-popover">
-                            <input v-model="characterSearch" class="picker-search" placeholder="Search characters..."
-                                @click.stop id="char-search-input" />
-                            <div class="picker-list" id="char-picker-list">
+                        <!-- Picker popover (.char-picker is a marker class used by handleClickOutside) -->
+                        <div v-if="showCharPicker"
+                            class="char-picker mt-1 overflow-hidden rounded-xl border border-slate-600 bg-slate-800 shadow-xl shadow-black/40"
+                            id="char-picker-popover">
+                            <input v-model="characterSearch"
+                                class="w-full border-0 border-b border-slate-700 bg-slate-900 px-3 py-2.5 text-[0.85rem] text-slate-50 placeholder:text-slate-500 focus:outline-none"
+                                placeholder="Search characters..." @click.stop id="char-search-input" />
+                            <div class="max-h-[180px] overflow-y-auto py-1" id="char-picker-list">
                                 <!-- None option -->
-                                <label class="picker-row" id="char-option-none">
+                                <label :class="[pickerRow, project.main_character_id === '' ? 'bg-sky-400/10' : '']"
+                                    id="char-option-none">
                                     <input type="radio" v-model="project.main_character_id" value=""
-                                        class="picker-checkbox" id="char-radio-none" />
-                                    <span class="picker-name text-gray-500" id="char-name-none">None</span>
+                                        class="shrink-0 accent-sky-400" id="char-radio-none" />
+                                    <span class="flex-1 text-[0.85rem] text-slate-400" id="char-name-none">None</span>
                                 </label>
-                                <label v-for="char in filteredCharacters" :key="char.id" class="picker-row"
+                                <label v-for="char in filteredCharacters" :key="char.id"
+                                    :class="[pickerRow, project.main_character_id === char.id ? 'bg-sky-400/10' : '']"
                                     :id="`char-option-${char.id}`" :data-character-id="char.id">
                                     <input type="radio" v-model="project.main_character_id" :value="char.id"
-                                        class="picker-checkbox" :id="`char-radio-${char.id}`" />
-                                    <span class="cast-dot" :style="{ background: char.color }"
-                                        :id="`char-dot-${char.id}`" />
-                                    <span class="picker-name" :id="`char-name-${char.id}`">{{ char.name
-                                        }}</span>
-                                    <span v-if="char.nickname" class="picker-nick" :id="`char-nickname-${char.id}`">"{{
-                                        char.nickname
-                                        }}"</span>
+                                        class="shrink-0 accent-sky-400" :id="`char-radio-${char.id}`" />
+                                    <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-white/20"
+                                        :style="{ background: char.color }" :id="`char-dot-${char.id}`" />
+                                    <span class="flex-1 text-[0.85rem] text-slate-200" :id="`char-name-${char.id}`">{{
+                                        char.name }}</span>
+                                    <span v-if="char.nickname" class="text-xs italic text-slate-400"
+                                        :id="`char-nickname-${char.id}`">"{{
+                                            char.nickname }}"</span>
                                 </label>
-                                <p v-if="filteredCharacters.length === 0" class="picker-empty" id="char-picker-empty">No
-                                    characters
-                                    found</p>
+                                <p v-if="filteredCharacters.length === 0"
+                                    class="p-3 text-center text-[0.8rem] text-slate-400" id="char-picker-empty">No
+                                    characters found</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Divider -->
-                <div class="section-divider" id="divider-2" />
+                <div :class="divider" id="divider-2" />
 
                 <!-- Step 3: Tags -->
-                <div class="form-section" id="form-section-tags">
-                    <div class="section-label" id="section-label-tags">
-                        <span class="section-number" id="section-number-tags">03</span>
-                        <span class="section-title" id="section-title-tags">Tags</span>
-                        <span class="tag-count" id="tag-count">{{ project.tags.length }}/5</span>
+                <div :class="formSection" id="form-section-tags">
+                    <div class="flex items-center gap-3" id="section-label-tags">
+                        <span :class="badgeFuchsia" id="section-number-tags">03</span>
+                        <span :class="sectionTitle" id="section-title-tags">Tags</span>
+                        <span class="ml-auto rounded-full border px-2.5 py-0.5 text-xs tabular-nums transition-colors"
+                            :class="project.tags.length >= 5
+                                ? 'border-amber-400/30 bg-amber-400/10 text-amber-400'
+                                : 'border-slate-600 bg-slate-900/60 text-slate-300'" id="tag-count">{{
+                                    project.tags.length }}/5</span>
                     </div>
 
-                    <div class="form-group" id="form-group-tags">
-                        <div class="tag-input-row" id="tag-input-row">
-                            <input v-model="tagInput" class="input tag-input" placeholder="fantasy, romance, sci-fi…"
-                                :disabled="project.tags.length >= 5" @keydown.enter.prevent="addTag" id="tag-input" />
-                            <button type="button" class="add-tag-btn" @click="addTag"
-                                :disabled="project.tags.length >= 5 || !tagInput.trim()" id="add-tag-button">
+                    <div :class="formGroup" id="form-group-tags">
+                        <div class="flex gap-2" id="tag-input-row">
+                            <input v-model="tagInput" :class="[inputClass, 'flex-1']"
+                                placeholder="fantasy, romance, sci-fi…" :disabled="project.tags.length >= 5"
+                                @keydown.enter.prevent="addTag" id="tag-input" />
+                            <button type="button"
+                                class="shrink-0 whitespace-nowrap rounded-lg border border-slate-600 bg-slate-800 px-5 text-[0.85rem] font-medium text-slate-300 transition-all enabled:hover:border-sky-400 enabled:hover:text-sky-400 disabled:cursor-not-allowed disabled:opacity-30"
+                                @click="addTag" :disabled="project.tags.length >= 5 || !tagInput.trim()"
+                                id="add-tag-button">
                                 Add
                             </button>
                         </div>
 
                         <!-- Tag chips -->
-                        <Transition name="fade">
-                            <div v-if="project.tags.length > 0" class="tag-row" id="tags-container">
-                                <TransitionGroup name="tag">
-                                    <span v-for="(tag, index) in project.tags" :key="tag" class="tag-chip"
+                        <Transition enter-active-class="transition-opacity duration-200"
+                            leave-active-class="transition-opacity duration-200" enter-from-class="opacity-0"
+                            leave-to-class="opacity-0">
+                            <div v-if="project.tags.length > 0" class="mt-1 flex flex-wrap gap-2" id="tags-container">
+                                <TransitionGroup enter-active-class="transition-all duration-200 ease-out"
+                                    leave-active-class="transition-all duration-150 ease-in"
+                                    enter-from-class="opacity-0 scale-75" leave-to-class="opacity-0 scale-75">
+                                    <span v-for="(tag, index) in project.tags" :key="tag"
+                                        :class="['inline-flex items-center gap-1.5 rounded-full border py-1 pl-3 pr-2 text-xs font-medium', tagTints[index % tagTints.length]]"
                                         :id="`tag-chip-${index}`" :data-tag-value="tag">
                                         # {{ tag }}
-                                        <button type="button" class="tag-remove" @click="removeTag(index)"
-                                            title="Remove tag" :id="`remove-tag-${index}`">
+                                        <button type="button"
+                                            class="flex h-4 w-4 items-center justify-center rounded-full text-[0.6rem] leading-none opacity-60 transition-all hover:bg-white/15 hover:opacity-100"
+                                            @click="removeTag(index)" title="Remove tag" :id="`remove-tag-${index}`">
                                             ✕
                                         </button>
                                     </span>
@@ -154,20 +196,36 @@
                             </div>
                         </Transition>
 
-                        <p v-if="project.tags.length === 0" class="input-hint" id="tags-hint">
+                        <p v-if="project.tags.length === 0" class="mt-0.5 text-[0.78rem] text-slate-400" id="tags-hint">
                             Add up to 5 genre tags to help organise your projects
                         </p>
                     </div>
                 </div>
 
+                <!-- Error message -->
+                <div v-if="error" class="px-8 pb-5 max-sm:px-5" id="form-error">
+                    <p class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-[0.85rem] text-red-400"
+                        role="alert">
+                        {{ error }}
+                    </p>
+                </div>
+
                 <!-- Actions -->
-                <div class="form-actions" id="form-actions">
-                    <button type="button" class="cancel-btn" @click="router.back()" id="cancel-button">
+                <div class="flex items-center justify-end gap-3 border-t border-slate-700 bg-slate-900/40 px-8 pt-5 pb-7 max-sm:px-5 max-sm:pt-4 max-sm:pb-5"
+                    id="form-actions">
+                    <button type="button"
+                        class="rounded-lg border border-slate-700 px-5 py-2.5 text-sm text-slate-400 transition-all hover:border-slate-400 hover:text-slate-200"
+                        @click="router.back()" id="cancel-button">
                         Cancel
                     </button>
-                    <button type="submit" class="submit-btn" :disabled="!project.name.trim()" id="submit-button">
-                        <span class="submit-icon" id="submit-icon">✦</span>
-                        Create Project
+                    <button type="submit"
+                        class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-sky-400 via-violet-400 to-fuchsia-400 px-6 py-2.5 text-sm font-semibold tracking-[0.01em] text-slate-900 shadow-lg shadow-violet-500/25 transition-all enabled:hover:-translate-y-px enabled:hover:shadow-fuchsia-400/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+                        :disabled="!project.name.trim() || isLoading" id="submit-button">
+                        <span v-if="isLoading"
+                            class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-950/30 border-t-slate-950"
+                            aria-hidden="true" />
+                        <span v-else class="text-[0.7rem] opacity-80" id="submit-icon">✦</span>
+                        {{ isLoading ? 'Creating…' : 'Create Project' }}
                     </button>
                 </div>
 
@@ -184,6 +242,32 @@ import { getCharacters } from '@/services/characterService';
 import { createProject as createProjectService } from '@/services/projectService';
 
 const router = useRouter();
+
+// --- Shared Tailwind class strings (full literals so Tailwind's scanner picks them up) ---
+// Local names on purpose: the global `.input`, `.input-label`, `.form-group` etc. in tailwind.css have different styling.
+const formSection = 'flex flex-col gap-5 px-8 py-7 max-sm:px-5 max-sm:py-5';
+const formGroup = 'flex flex-col gap-1.5';
+const divider = 'h-px bg-gradient-to-r from-transparent via-slate-600/60 to-transparent';
+const badgeBase =
+    'flex h-7 w-7 items-center justify-center rounded-full border text-[0.7rem] font-bold tabular-nums tracking-wider';
+const badgeSky = `${badgeBase} border-sky-400/40 bg-sky-400/15 text-sky-300`;
+const badgeViolet = `${badgeBase} border-violet-400/40 bg-violet-400/15 text-violet-300`;
+const badgeFuchsia = `${badgeBase} border-fuchsia-400/40 bg-fuchsia-400/15 text-fuchsia-300`;
+
+// Tag chips cycle through three soft neon tints
+const tagTints = [
+    'border-sky-400/30 bg-sky-400/10 text-sky-200',
+    'border-violet-400/30 bg-violet-400/10 text-violet-200',
+    'border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-200',
+];
+const sectionTitle = 'text-xs font-semibold uppercase tracking-[0.08em] text-slate-300';
+const labelClass = 'text-sm font-medium text-slate-300';
+const inputClass =
+    'w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3.5 py-2.5 text-[0.9rem] text-slate-100 ' +
+    'placeholder:text-slate-500 transition-all hover:border-slate-500 ' +
+    'focus:outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-400/10 ' +
+    'disabled:cursor-not-allowed disabled:opacity-40';
+const pickerRow = 'flex cursor-pointer items-center gap-2.5 px-3 py-2 transition-colors hover:bg-white/5';
 
 // Reactive state
 const showCharPicker = ref(false);
@@ -355,6 +439,7 @@ const resetForm = () => {
 };
 
 // Close picker when clicking outside (for better UX)
+// Relies on the .char-picker / .char-picker-trigger marker classes in the template.
 const handleClickOutside = (event: MouseEvent) => {
     const target = event.target as HTMLElement;
     if (showCharPicker.value && !target.closest('.char-picker') && !target.closest('.char-picker-trigger')) {
@@ -389,538 +474,3 @@ if (import.meta.env.DEV) {
     };
 }
 </script>
-
-<style scoped>
-/* ── Page shell ── */
-.create-page {
-    min-height: 100vh;
-    background: #020617;
-    padding: 2.5rem 1rem 4rem;
-    position: relative;
-    overflow: hidden;
-}
-
-.bg-grid {
-    position: absolute;
-    inset: 0;
-    background-image:
-        linear-gradient(to right, rgba(51, 65, 85, 0.15) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(51, 65, 85, 0.15) 1px, transparent 1px);
-    background-size: 32px 32px;
-    pointer-events: none;
-}
-
-/* Soft radial glow behind the card */
-.create-page::before {
-    content: '';
-    position: absolute;
-    top: -10%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 600px;
-    height: 400px;
-    background: radial-gradient(ellipse, rgba(56, 189, 248, 0.06) 0%, transparent 70%);
-    pointer-events: none;
-}
-
-/* ── Container ── */
-.create-container {
-    position: relative;
-    max-width: 680px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1.75rem;
-}
-
-/* ── Header ── */
-.create-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-}
-
-.back-btn {
-    background: transparent;
-    border: 1px solid #1e293b;
-    color: #64748b;
-    padding: 0.4rem 0.85rem;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-    margin-top: 0.35rem;
-}
-
-.back-btn:hover {
-    border-color: #334155;
-    color: #94a3b8;
-}
-
-.header-text {
-    flex: 1;
-}
-
-.create-title {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: #f8fafc;
-    margin: 0 0 0.25rem;
-    letter-spacing: -0.02em;
-}
-
-.create-subtitle {
-    color: #475569;
-    font-size: 0.9rem;
-    margin: 0;
-}
-
-/* ── Card ── */
-.create-card {
-    background: #0a1628;
-    border: 1px solid #1e293b;
-    border-radius: 16px;
-    padding: 0;
-    overflow: hidden;
-    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.04), 0 24px 48px rgba(0, 0, 0, 0.4);
-}
-
-/* ── Form sections ── */
-.form-section {
-    padding: 1.75rem 2rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-}
-
-.section-divider {
-    height: 1px;
-    background: linear-gradient(to right, transparent, #1e293b 20%, #1e293b 80%, transparent);
-}
-
-.section-label {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.section-number {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: #38bdf8;
-    letter-spacing: 0.1em;
-    font-variant-numeric: tabular-nums;
-    opacity: 0.7;
-}
-
-.section-title {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-.tag-count {
-    margin-left: auto;
-    font-size: 0.75rem;
-    color: #334155;
-}
-
-/* ── Form groups ── */
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.input-label {
-    font-size: 0.85rem;
-    color: #94a3b8;
-    font-weight: 500;
-}
-
-.required {
-    color: #38bdf8;
-}
-
-.optional {
-    color: #475569;
-    font-size: 0.8rem;
-    font-weight: 400;
-}
-
-.input {
-    background: #060f1e;
-    border: 1px solid #1e293b;
-    border-radius: 8px;
-    padding: 0.65rem 0.9rem;
-    color: #f1f5f9;
-    font-size: 0.9rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.input:focus {
-    outline: none;
-    border-color: #38bdf8;
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08);
-}
-
-.input::placeholder {
-    color: #334155;
-}
-
-.input:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-.plot-textarea {
-    resize: vertical;
-    min-height: 100px;
-    line-height: 1.6;
-}
-
-.char-counter {
-    font-size: 0.72rem;
-    color: #334155;
-    text-align: right;
-    margin-top: -0.1rem;
-}
-
-.character-counter-warning {
-    color: #fbbf24;
-}
-
-/* ── Select ── */
-.select-wrapper {
-    position: relative;
-}
-
-.select-input {
-    appearance: none;
-    cursor: pointer;
-    padding-right: 2.5rem;
-}
-
-.select-arrow {
-    position: absolute;
-    right: 0.85rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #475569;
-    pointer-events: none;
-    font-size: 0.8rem;
-}
-
-.select-input option {
-    background: #0f172a;
-    color: #f1f5f9;
-}
-
-/* ── Tags ── */
-.tag-input-row {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.tag-input {
-    flex: 1;
-}
-
-.add-tag-btn {
-    background: #0f172a;
-    border: 1px solid #1e293b;
-    color: #94a3b8;
-    padding: 0 1rem;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-
-.add-tag-btn:hover:not(:disabled) {
-    border-color: #38bdf8;
-    color: #38bdf8;
-}
-
-.add-tag-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-}
-
-.tag-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.25rem;
-}
-
-.tag-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    background: rgba(56, 189, 248, 0.08);
-    border: 1px solid rgba(56, 189, 248, 0.2);
-    color: #7dd3fc;
-    padding: 0.25rem 0.6rem 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 500;
-}
-
-.tag-remove {
-    background: transparent;
-    border: none;
-    color: #38bdf8;
-    cursor: pointer;
-    font-size: 0.65rem;
-    opacity: 0.5;
-    padding: 0;
-    line-height: 1;
-    transition: opacity 0.15s;
-}
-
-.tag-remove:hover {
-    opacity: 1;
-}
-
-.input-hint {
-    font-size: 0.78rem;
-    color: #334155;
-    margin: 0.1rem 0 0;
-}
-
-/* ── Actions ── */
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1.25rem 2rem 1.75rem;
-    border-top: 1px solid #0f172a;
-    background: rgba(0, 0, 0, 0.2);
-}
-
-.cancel-btn {
-    background: transparent;
-    border: 1px solid #1e293b;
-    color: #475569;
-    padding: 0.6rem 1.25rem;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.cancel-btn:hover {
-    border-color: #334155;
-    color: #64748b;
-}
-
-.submit-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: #38bdf8;
-    color: #020617;
-    border: none;
-    padding: 0.65rem 1.5rem;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    letter-spacing: 0.01em;
-}
-
-.submit-btn:hover:not(:disabled) {
-    background: #7dd3fc;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
-}
-
-.submit-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.submit-icon {
-    font-size: 0.7rem;
-    opacity: 0.8;
-}
-
-/* ── Character Picker ── */
-.char-picker-trigger {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: #060f1e;
-    border: 1px solid #1e293b;
-    border-radius: 8px;
-    padding: 0.65rem 0.9rem;
-    color: #f1f5f9;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: border-color 0.2s;
-    text-align: left;
-}
-
-.char-picker-trigger:hover {
-    border-color: #334155;
-}
-
-.char-picker {
-    margin-top: 0.35rem;
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.picker-search {
-    width: 100%;
-    background: #0f172a;
-    border: none;
-    border-bottom: 1px solid #334155;
-    padding: 0.5rem 0.75rem;
-    color: #f8fafc;
-    font-size: 0.85rem;
-    outline: none;
-    box-sizing: border-box;
-}
-
-.picker-search::placeholder {
-    color: #475569;
-}
-
-.picker-list {
-    max-height: 180px;
-    overflow-y: auto;
-    padding: 0.25rem 0;
-}
-
-.picker-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.75rem;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.picker-row:hover {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.picker-checkbox {
-    accent-color: #38bdf8;
-    flex-shrink: 0;
-}
-
-.cast-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    flex-shrink: 0;
-    display: inline-block;
-}
-
-.picker-name {
-    color: #e2e8f0;
-    font-size: 0.85rem;
-    flex: 1;
-}
-
-.picker-nick {
-    color: #64748b;
-    font-size: 0.75rem;
-    font-style: italic;
-}
-
-.picker-empty {
-    color: #475569;
-    font-size: 0.8rem;
-    text-align: center;
-    padding: 0.75rem;
-}
-
-/* Error state */
-.error-message {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    color: #f87171;
-    font-size: 0.85rem;
-    margin-top: 1rem;
-}
-
-/* Loading state */
-.loading-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 16px;
-    z-index: 10;
-}
-
-/* ── Transitions ── */
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.2s;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
-}
-
-.tag-enter-active {
-    transition: all 0.2s ease;
-}
-
-.tag-leave-active {
-    transition: all 0.15s ease;
-}
-
-.tag-enter-from {
-    opacity: 0;
-    transform: scale(0.85);
-}
-
-.tag-leave-to {
-    opacity: 0;
-    transform: scale(0.85);
-}
-
-/* ── Responsive ── */
-@media (max-width: 640px) {
-    .create-page {
-        padding: 1.5rem 0.75rem 3rem;
-    }
-
-    .form-section {
-        padding: 1.25rem 1.25rem;
-    }
-
-    .form-actions {
-        padding: 1rem 1.25rem 1.25rem;
-    }
-
-    .create-title {
-        font-size: 1.4rem;
-    }
-}
-</style>

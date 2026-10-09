@@ -1,5 +1,16 @@
 <template>
     <div id="project-list-view" class="max-w-[1100px] mx-auto px-4">
+        <!-- Page background: fixed behind everything, so it never changes the page layout/container -->
+        <div class="fixed inset-0 -z-10 pointer-events-none bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900"
+            aria-hidden="true">
+            <div
+                class="absolute inset-0 bg-[radial-gradient(rgba(165,180,252,0.28)_1.5px,transparent_1.5px)] bg-[size:26px_26px] [mask-image:radial-gradient(ellipse_at_top,black,transparent_80%)]" />
+            <div
+                class="absolute -top-32 left-1/2 h-[420px] w-[640px] -translate-x-1/2 rounded-full bg-sky-400/20 blur-3xl" />
+            <div class="absolute top-40 -right-24 h-[380px] w-[380px] rounded-full bg-violet-500/25 blur-3xl" />
+            <div class="absolute bottom-0 -left-24 h-[360px] w-[360px] rounded-full bg-fuchsia-500/15 blur-3xl" />
+        </div>
+
         <div id="page-header" class="flex justify-between items-center mb-8">
             <h1 id="page-title" class="text-3xl font-bold text-white">Projects</h1>
 
@@ -215,44 +226,3 @@ if (import.meta.env.DEV) {
     };
 }
 </script>
-
-<!-- Minimal custom CSS - mostly using Tailwind utilities -->
-<style scoped>
-/* Smooth transitions for card hover */
-#project-grid>div {
-    transition: transform 0.2s ease, border-color 0.2s ease;
-}
-
-/* Loading state (if needed) */
-.loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(56, 189, 248, 0.2);
-    border-top-color: #38bdf8;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* Menu dropdown animation */
-#menu-dropdown-* {
-    animation: fadeIn 0.15s ease-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-8px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-</style>

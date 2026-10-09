@@ -1,105 +1,148 @@
 <template>
-    <div id="project-edit-page" class="create-page">
+    <div id="project-edit-page"
+        class="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-4 pt-10 pb-16 max-sm:px-3 max-sm:pt-6 max-sm:pb-12">
 
-        <div class="bg-grid" aria-hidden="true" />
+        <!-- Background atmosphere: polka dots + soft neon glows -->
+        <!-- Staggered dots, fading in from the top-right corner -->
+        <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(rgba(165,180,252,0.3)_1.5px,transparent_1.5px),radial-gradient(rgba(165,180,252,0.3)_1.5px,transparent_1.5px)] bg-[size:30px_30px] bg-[position:0_0,15px_15px] [mask-image:radial-gradient(ellipse_at_top_right,black,transparent_65%)]"
+            aria-hidden="true" />
+        <!-- Second, violet-tinted dot cluster in the bottom-left -->
+        <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(rgba(196,181,253,0.28)_2px,transparent_2px)] bg-[size:36px_36px] [mask-image:radial-gradient(ellipse_at_bottom_left,black,transparent_55%)]"
+            aria-hidden="true" />
+        <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[640px] h-[420px] rounded-full bg-sky-400/20 blur-3xl pointer-events-none"
+            aria-hidden="true" />
+        <div class="absolute top-40 -right-24 w-[380px] h-[380px] rounded-full bg-violet-500/25 blur-3xl pointer-events-none"
+            aria-hidden="true" />
+        <div class="absolute bottom-0 -left-24 w-[360px] h-[360px] rounded-full bg-fuchsia-500/15 blur-3xl pointer-events-none"
+            aria-hidden="true" />
 
-        <div id="edit-container" class="create-container">
+        <div id="edit-container" class="relative max-w-[680px] mx-auto flex flex-col gap-7">
 
             <!-- Header -->
-            <div id="edit-header" class="create-header">
-                <button id="back-to-project-btn" class="back-btn" @click="router.push(`/projects/${route.params.id}`)">
-                    ← Back to Project
+            <div id="edit-header" class="flex items-start gap-4">
+                <button id="back-to-project-btn" type="button"
+                    class="group mt-1.5 flex items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-700 bg-slate-800/60 px-3.5 py-1.5 text-xs text-slate-400 transition-all hover:border-slate-400 hover:text-white"
+                    @click="router.push(`/projects/${route.params.id}`)">
+                    <span class="transition-transform group-hover:-translate-x-0.5">←</span>
+                    Back to Project
                 </button>
-                <div id="header-text" class="header-text">
-                    <h1 id="edit-title" class="create-title">Edit Project</h1>
-                    <p id="project-subtitle" class="create-subtitle">{{ project.name || 'Loading…' }}</p>
+                <div id="header-text" class="flex-1">
+                    <h1 id="edit-title"
+                        class="mb-1 bg-gradient-to-r from-sky-200 via-violet-300 to-fuchsia-300 bg-clip-text text-[1.9rem] font-bold tracking-tight text-transparent max-sm:text-2xl">
+                        Edit Project</h1>
+                    <p id="project-subtitle" class="flex flex-wrap items-center gap-2 text-[0.9rem] text-slate-400">
+                        {{ project.name || 'Loading…' }}
+                        <span v-if="isDirty" id="unsaved-indicator"
+                            class="rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-0.5 text-xs text-amber-400">
+                            Unsaved changes
+                        </span>
+                    </p>
                 </div>
             </div>
 
             <!-- Form card -->
-            <form id="edit-project-form" @submit.prevent="saveProject" class="create-card">
+            <form id="edit-project-form" @submit.prevent="saveProject"
+                class="relative overflow-hidden rounded-2xl border border-slate-700 bg-slate-800/50 shadow-2xl shadow-indigo-950/60 ring-1 ring-white/5 backdrop-blur">
+
+                <!-- Accent line along the top edge of the card -->
+                <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/70 to-transparent"
+                    aria-hidden="true" />
 
                 <!-- 01 Identity -->
-                <div id="identity-section" class="form-section">
-                    <div id="identity-label" class="section-label">
-                        <span id="identity-number" class="section-number">01</span>
-                        <span id="identity-title" class="section-title">Identity</span>
+                <div id="identity-section" :class="formSection">
+                    <div id="identity-label" class="flex items-center gap-3">
+                        <span id="identity-number" :class="badgeSky">01</span>
+                        <span id="identity-title" :class="sectionTitle">Identity</span>
                     </div>
 
-                    <div id="name-group" class="form-group">
-                        <label id="name-label" class="input-label">
-                            Project Name <span id="name-required" class="required">*</span>
+                    <div id="name-group" :class="formGroup">
+                        <label id="name-label" for="project-name-input" :class="labelClass">
+                            Project Name <span id="name-required" class="text-sky-400">*</span>
                         </label>
-                        <input id="project-name-input" v-model="project.name" class="input"
+                        <input id="project-name-input" v-model="project.name" :class="inputClass"
                             placeholder="e.g. Mystic Academy…" required maxlength="80" />
-                        <span id="name-char-counter" class="char-counter"
-                            :class="{ 'character-counter-warning': project.name.length > 60 }">
+                        <span id="name-char-counter" class="-mt-0.5 text-right text-[0.72rem] transition-colors"
+                            :class="project.name.length > 60 ? 'text-amber-400' : 'text-slate-400'">
                             {{ project.name.length }}/80
                         </span>
                     </div>
                 </div>
 
-                <div id="divider-1" class="section-divider" />
+                <div id="divider-1" :class="divider" />
 
                 <!-- 02 Story -->
-                <div id="story-section" class="form-section">
-                    <div id="story-label" class="section-label">
-                        <span id="story-number" class="section-number">02</span>
-                        <span id="story-title" class="section-title">Story</span>
+                <div id="story-section" :class="formSection">
+                    <div id="story-label" class="flex items-center gap-3">
+                        <span id="story-number" :class="badgeViolet">02</span>
+                        <span id="story-title" :class="sectionTitle">Story</span>
                     </div>
 
-                    <div id="plot-group" class="form-group">
-                        <label id="plot-label" class="input-label">Main Plot / Context</label>
-                        <textarea id="main-plot-textarea" v-model="project.main_plot" class="input plot-textarea"
-                            rows="4" placeholder="Short overview of the story world, theme, or premise…"
-                            maxlength="500" />
-                        <span id="plot-char-counter" class="char-counter"
-                            :class="{ 'character-counter-warning': project.main_plot.length > 400 }">
+                    <div id="plot-group" :class="formGroup">
+                        <label id="plot-label" for="main-plot-textarea" :class="labelClass">Main Plot / Context</label>
+                        <textarea id="main-plot-textarea" v-model="project.main_plot"
+                            :class="[inputClass, 'resize-y min-h-[100px] leading-relaxed']" rows="4"
+                            placeholder="Short overview of the story world, theme, or premise…" maxlength="500" />
+                        <span id="plot-char-counter" class="-mt-0.5 text-right text-[0.72rem] transition-colors"
+                            :class="project.main_plot.length > 400 ? 'text-amber-400' : 'text-slate-400'">
                             {{ project.main_plot.length }}/500
                         </span>
                     </div>
 
-                    <div id="main-character-group" class="form-group">
-                        <label id="main-character-label" class="input-label">
+                    <div id="main-character-group" :class="formGroup">
+                        <label id="main-character-label" :class="labelClass">
                             Main Character
-                            <span id="optional-badge" class="optional">(optional)</span>
+                            <span id="optional-badge" class="font-normal text-slate-400">(optional)</span>
                         </label>
 
-                        <button id="char-picker-trigger" type="button" class="char-picker-trigger"
+                        <!-- Trigger (outside-click detection uses #char-picker-trigger / #char-picker-popover) -->
+                        <button id="char-picker-trigger" type="button"
+                            class="flex w-full items-center gap-2.5 rounded-lg border bg-slate-900/60 px-3.5 py-2.5 text-left text-[0.9rem] text-slate-100 transition-all hover:border-slate-500"
+                            :class="showCharPicker ? 'border-sky-400 ring-4 ring-sky-400/10' : 'border-slate-700'"
                             @click="showCharPicker = !showCharPicker">
                             <template v-if="selectedCharacter">
-                                <span id="selected-char-dot" class="cast-dot"
-                                    :style="{ background: selectedCharacter.color }" />
-                                <span id="selected-char-name" class="picker-name">{{ selectedCharacter.name }}</span>
-                                <span v-if="selectedCharacter.nickname" id="selected-char-nickname" class="picker-nick">
+                                <span id="selected-char-dot"
+                                    class="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-white/20"
+                                    :style="{ background: selectedCharacter.color, boxShadow: `0 0 8px ${selectedCharacter.color}88` }" />
+                                <span id="selected-char-name" class="text-slate-100">{{ selectedCharacter.name
+                                    }}</span>
+                                <span v-if="selectedCharacter.nickname" id="selected-char-nickname"
+                                    class="text-xs italic text-slate-400">
                                     "{{ selectedCharacter.nickname }}"
                                 </span>
                             </template>
-                            <span v-else id="no-char-selected" class="text-gray-500">None — decide later</span>
-                            <span id="picker-toggle-icon" class="ml-auto text-gray-500 text-xs">{{ showCharPicker ? '▲'
-                                : '▼' }}</span>
+                            <span v-else id="no-char-selected" class="text-slate-400">None — decide later</span>
+                            <span id="picker-toggle-icon" class="ml-auto text-xs text-slate-400">{{ showCharPicker ?
+                                '▲' : '▼' }}</span>
                         </button>
 
-                        <div v-if="showCharPicker" id="char-picker-popover" class="char-picker">
-                            <input id="char-search-input" v-model="characterSearch" class="picker-search"
+                        <div v-if="showCharPicker" id="char-picker-popover"
+                            class="mt-1 overflow-hidden rounded-xl border border-slate-600 bg-slate-800 shadow-xl shadow-black/40">
+                            <input id="char-search-input" v-model="characterSearch"
+                                class="w-full border-0 border-b border-slate-700 bg-slate-900 px-3 py-2.5 text-[0.85rem] text-slate-50 placeholder:text-slate-500 focus:outline-none"
                                 placeholder="Search characters..." @click.stop />
-                            <div id="char-picker-list" class="picker-list">
-                                <label id="char-option-none" class="picker-row">
+                            <div id="char-picker-list" class="max-h-[180px] overflow-y-auto py-1">
+                                <label id="char-option-none"
+                                    :class="[pickerRow, project.main_character_id === '' ? 'bg-sky-400/10' : '']">
                                     <input id="char-radio-none" type="radio" v-model="project.main_character_id"
-                                        value="" class="picker-checkbox" />
-                                    <span id="char-name-none" class="picker-name text-gray-500">None</span>
+                                        value="" class="shrink-0 accent-sky-400" />
+                                    <span id="char-name-none" class="flex-1 text-[0.85rem] text-slate-400">None</span>
                                 </label>
                                 <label v-for="char in filteredCharacters" :key="char.id" :id="`char-option-${char.id}`"
-                                    class="picker-row">
+                                    :class="[pickerRow, project.main_character_id === char.id ? 'bg-sky-400/10' : '']">
                                     <input :id="`char-radio-${char.id}`" type="radio"
-                                        v-model="project.main_character_id" :value="char.id" class="picker-checkbox" />
-                                    <span :id="`char-dot-${char.id}`" class="cast-dot"
+                                        v-model="project.main_character_id" :value="char.id"
+                                        class="shrink-0 accent-sky-400" />
+                                    <span :id="`char-dot-${char.id}`"
+                                        class="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-white/20"
                                         :style="{ background: char.color }" />
-                                    <span :id="`char-name-${char.id}`" class="picker-name">{{ char.name }}</span>
-                                    <span v-if="char.nickname" :id="`char-nickname-${char.id}`" class="picker-nick">"{{
-                                        char.nickname }}"</span>
+                                    <span :id="`char-name-${char.id}`" class="flex-1 text-[0.85rem] text-slate-200">{{
+                                        char.name }}</span>
+                                    <span v-if="char.nickname" :id="`char-nickname-${char.id}`"
+                                        class="text-xs italic text-slate-400">"{{
+                                            char.nickname }}"</span>
                                 </label>
-                                <p v-if="filteredCharacters.length === 0" id="char-picker-empty" class="picker-empty">
+                                <p v-if="filteredCharacters.length === 0" id="char-picker-empty"
+                                    class="p-3 text-center text-[0.8rem] text-slate-400">
                                     No characters found
                                 </p>
                             </div>
@@ -107,35 +150,46 @@
                     </div>
                 </div>
 
-                <div id="divider-2" class="section-divider" />
+                <div id="divider-2" :class="divider" />
 
                 <!-- 03 Tags -->
-                <div id="tags-section" class="form-section">
-                    <div id="tags-label" class="section-label">
-                        <span id="tags-number" class="section-number">03</span>
-                        <span id="tags-title" class="section-title">Tags</span>
-                        <span id="tags-count" class="tag-count">{{ project.tags.length }}/5</span>
+                <div id="tags-section" :class="formSection">
+                    <div id="tags-label" class="flex items-center gap-3">
+                        <span id="tags-number" :class="badgeFuchsia">03</span>
+                        <span id="tags-title" :class="sectionTitle">Tags</span>
+                        <span id="tags-count"
+                            class="ml-auto rounded-full border px-2.5 py-0.5 text-xs tabular-nums transition-colors"
+                            :class="project.tags.length >= 5
+                                ? 'border-amber-400/30 bg-amber-400/10 text-amber-400'
+                                : 'border-slate-600 bg-slate-900/60 text-slate-300'">{{ project.tags.length
+                                }}/5</span>
                     </div>
 
-                    <div id="tags-group" class="form-group">
-                        <div id="tag-input-row" class="tag-input-row">
-                            <input id="tag-input" v-model="tagInput" class="input tag-input"
+                    <div id="tags-group" :class="formGroup">
+                        <div id="tag-input-row" class="flex gap-2">
+                            <input id="tag-input" v-model="tagInput" :class="[inputClass, 'flex-1']"
                                 placeholder="fantasy, romance, sci-fi…" :disabled="project.tags.length >= 5"
                                 @keydown.enter.prevent="addTag" />
-                            <button id="add-tag-btn" type="button" class="add-tag-btn" @click="addTag"
-                                :disabled="project.tags.length >= 5 || !tagInput.trim()">
+                            <button id="add-tag-btn" type="button"
+                                class="shrink-0 whitespace-nowrap rounded-lg border border-slate-600 bg-slate-800 px-5 text-[0.85rem] font-medium text-slate-300 transition-all enabled:hover:border-sky-400 enabled:hover:text-sky-400 disabled:cursor-not-allowed disabled:opacity-30"
+                                @click="addTag" :disabled="project.tags.length >= 5 || !tagInput.trim()">
                                 Add
                             </button>
                         </div>
 
-                        <Transition name="fade">
-                            <div v-if="project.tags.length > 0" id="tags-container" class="tag-row">
-                                <TransitionGroup name="tag">
+                        <Transition enter-active-class="transition-opacity duration-200"
+                            leave-active-class="transition-opacity duration-200" enter-from-class="opacity-0"
+                            leave-to-class="opacity-0">
+                            <div v-if="project.tags.length > 0" id="tags-container" class="mt-1 flex flex-wrap gap-2">
+                                <TransitionGroup enter-active-class="transition-all duration-200 ease-out"
+                                    leave-active-class="transition-all duration-150 ease-in"
+                                    enter-from-class="opacity-0 scale-75" leave-to-class="opacity-0 scale-75">
                                     <span v-for="(tag, index) in project.tags" :key="tag" :id="`tag-chip-${index}`"
-                                        class="tag-chip">
+                                        :class="['inline-flex items-center gap-1.5 rounded-full border py-1 pl-3 pr-2 text-xs font-medium', tagTints[index % tagTints.length]]">
                                         # {{ tag }}
-                                        <button :id="`remove-tag-${index}`" type="button" class="tag-remove"
-                                            @click="removeTag(index)">
+                                        <button :id="`remove-tag-${index}`" type="button"
+                                            class="flex h-4 w-4 items-center justify-center rounded-full text-[0.6rem] leading-none opacity-60 transition-all hover:bg-white/15 hover:opacity-100"
+                                            @click="removeTag(index)" title="Remove tag">
                                             ✕
                                         </button>
                                     </span>
@@ -143,20 +197,32 @@
                             </div>
                         </Transition>
 
-                        <p v-if="project.tags.length === 0" id="tags-hint" class="input-hint">
+                        <p v-if="project.tags.length === 0" id="tags-hint" class="mt-0.5 text-[0.78rem] text-slate-400">
                             Add up to 5 genre tags to help organise your projects
                         </p>
                     </div>
                 </div>
 
+                <!-- Error message -->
+                <div v-if="error" id="form-error" class="px-8 pb-5 max-sm:px-5">
+                    <p role="alert"
+                        class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-[0.85rem] text-red-400">
+                        {{ error }}
+                    </p>
+                </div>
+
                 <!-- Actions -->
-                <div id="form-actions" class="form-actions">
-                    <button id="cancel-edit-btn" type="button" class="cancel-btn"
+                <div id="form-actions"
+                    class="flex items-center justify-end gap-3 border-t border-slate-700 bg-slate-900/40 px-8 pt-5 pb-7 max-sm:px-5 max-sm:pt-4 max-sm:pb-5">
+                    <button id="cancel-edit-btn" type="button"
+                        class="rounded-lg border border-slate-700 px-5 py-2.5 text-sm text-slate-400 transition-all hover:border-slate-400 hover:text-slate-200"
                         @click="router.push(`/projects/${route.params.id}`)">
                         Cancel
                     </button>
-                    <button id="save-project-btn" type="submit" class="submit-btn" :disabled="!project.name.trim()">
-                        <span id="submit-icon" class="submit-icon">✦</span>
+                    <button id="save-project-btn" type="submit"
+                        class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-sky-400 via-violet-400 to-fuchsia-400 px-6 py-2.5 text-sm font-semibold tracking-[0.01em] text-slate-900 shadow-lg shadow-violet-500/25 transition-all enabled:hover:-translate-y-px enabled:hover:shadow-fuchsia-400/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+                        :disabled="!project.name.trim()">
+                        <span id="submit-icon" class="text-[0.7rem] opacity-80">✦</span>
                         Save Changes
                     </button>
                 </div>
@@ -175,6 +241,30 @@ import { getCharacters } from '@/services/characterService';
 
 const route = useRoute();
 const router = useRouter();
+
+// --- Shared Tailwind class strings (full literals so Tailwind's scanner picks them up) ---
+const formSection = 'flex flex-col gap-5 px-8 py-7 max-sm:px-5 max-sm:py-5';
+const formGroup = 'flex flex-col gap-1.5';
+const divider = 'h-px bg-gradient-to-r from-transparent via-slate-600/60 to-transparent';
+const sectionTitle = 'text-xs font-semibold uppercase tracking-[0.08em] text-slate-300';
+const labelClass = 'text-sm font-medium text-slate-300';
+const inputClass =
+    'w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3.5 py-2.5 text-[0.9rem] text-slate-100 ' +
+    'placeholder:text-slate-500 transition-all hover:border-slate-500 ' +
+    'focus:outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-400/10 ' +
+    'disabled:cursor-not-allowed disabled:opacity-40';
+const pickerRow = 'flex cursor-pointer items-center gap-2.5 px-3 py-2 transition-colors hover:bg-white/5';
+const badgeBase =
+    'flex h-7 w-7 items-center justify-center rounded-full border text-[0.7rem] font-bold tabular-nums tracking-wider';
+const badgeSky = `${badgeBase} border-sky-400/40 bg-sky-400/15 text-sky-300`;
+const badgeViolet = `${badgeBase} border-violet-400/40 bg-violet-400/15 text-violet-300`;
+const badgeFuchsia = `${badgeBase} border-fuchsia-400/40 bg-fuchsia-400/15 text-fuchsia-300`;
+// Tag chips cycle through three soft neon tints
+const tagTints = [
+    'border-sky-400/30 bg-sky-400/10 text-sky-200',
+    'border-violet-400/30 bg-violet-400/10 text-violet-200',
+    'border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-200',
+];
 
 // State
 const showCharPicker = ref(false);
@@ -376,483 +466,3 @@ if (import.meta.env.DEV) {
     };
 }
 </script>
-
-<style scoped>
-/* Your existing styles remain exactly the same */
-.create-page {
-    min-height: 100vh;
-    background: #020617;
-    padding: 2.5rem 1rem 4rem;
-    position: relative;
-    overflow: hidden;
-}
-
-.bg-grid {
-    position: absolute;
-    inset: 0;
-    background-image:
-        linear-gradient(to right, rgba(51, 65, 85, 0.15) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(51, 65, 85, 0.15) 1px, transparent 1px);
-    background-size: 32px 32px;
-    pointer-events: none;
-}
-
-.create-page::before {
-    content: '';
-    position: absolute;
-    top: -10%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 600px;
-    height: 400px;
-    background: radial-gradient(ellipse, rgba(56, 189, 248, 0.06) 0%, transparent 70%);
-    pointer-events: none;
-}
-
-.create-container {
-    position: relative;
-    max-width: 680px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1.75rem;
-}
-
-.create-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-}
-
-.back-btn {
-    background: transparent;
-    border: 1px solid #1e293b;
-    color: #64748b;
-    padding: 0.4rem 0.85rem;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-    margin-top: 0.35rem;
-}
-
-.back-btn:hover {
-    border-color: #334155;
-    color: #94a3b8;
-}
-
-.header-text {
-    flex: 1;
-}
-
-.create-title {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: #f8fafc;
-    margin: 0 0 0.25rem;
-    letter-spacing: -0.02em;
-}
-
-.create-subtitle {
-    color: #475569;
-    font-size: 0.9rem;
-    margin: 0;
-}
-
-.create-card {
-    background: #0a1628;
-    border: 1px solid #1e293b;
-    border-radius: 16px;
-    padding: 0;
-    overflow: hidden;
-    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.04), 0 24px 48px rgba(0, 0, 0, 0.4);
-}
-
-.form-section {
-    padding: 1.75rem 2rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-}
-
-.section-divider {
-    height: 1px;
-    background: linear-gradient(to right, transparent, #1e293b 20%, #1e293b 80%, transparent);
-}
-
-.section-label {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.section-number {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: #38bdf8;
-    letter-spacing: 0.1em;
-    opacity: 0.7;
-}
-
-.section-title {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-.tag-count {
-    margin-left: auto;
-    font-size: 0.75rem;
-    color: #334155;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.input-label {
-    font-size: 0.85rem;
-    color: #94a3b8;
-    font-weight: 500;
-}
-
-.required {
-    color: #38bdf8;
-}
-
-.optional {
-    color: #475569;
-    font-size: 0.8rem;
-    font-weight: 400;
-}
-
-.input {
-    background: #060f1e;
-    border: 1px solid #1e293b;
-    border-radius: 8px;
-    padding: 0.65rem 0.9rem;
-    color: #f1f5f9;
-    font-size: 0.9rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.input:focus {
-    outline: none;
-    border-color: #38bdf8;
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08);
-}
-
-.input::placeholder {
-    color: #334155;
-}
-
-.input:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-.plot-textarea {
-    resize: vertical;
-    min-height: 100px;
-    line-height: 1.6;
-}
-
-.char-counter {
-    font-size: 0.72rem;
-    color: #334155;
-    text-align: right;
-    margin-top: -0.1rem;
-}
-
-.char-picker-trigger {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: #060f1e;
-    border: 1px solid #1e293b;
-    border-radius: 8px;
-    padding: 0.65rem 0.9rem;
-    color: #f1f5f9;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: border-color 0.2s;
-    text-align: left;
-}
-
-.char-picker-trigger:hover {
-    border-color: #334155;
-}
-
-.char-picker {
-    margin-top: 0.35rem;
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.picker-search {
-    width: 100%;
-    background: #0f172a;
-    border: none;
-    border-bottom: 1px solid #334155;
-    padding: 0.5rem 0.75rem;
-    color: #f8fafc;
-    font-size: 0.85rem;
-    outline: none;
-    box-sizing: border-box;
-}
-
-.picker-search::placeholder {
-    color: #475569;
-}
-
-.picker-list {
-    max-height: 180px;
-    overflow-y: auto;
-    padding: 0.25rem 0;
-}
-
-.picker-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.75rem;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.picker-row:hover {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.picker-checkbox {
-    accent-color: #38bdf8;
-    flex-shrink: 0;
-}
-
-.cast-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    flex-shrink: 0;
-    display: inline-block;
-}
-
-.picker-name {
-    color: #e2e8f0;
-    font-size: 0.85rem;
-    flex: 1;
-}
-
-.picker-nick {
-    color: #64748b;
-    font-size: 0.75rem;
-    font-style: italic;
-}
-
-.picker-empty {
-    color: #475569;
-    font-size: 0.8rem;
-    text-align: center;
-    padding: 0.75rem;
-}
-
-.tag-input-row {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.tag-input {
-    flex: 1;
-}
-
-.add-tag-btn {
-    background: #0f172a;
-    border: 1px solid #1e293b;
-    color: #94a3b8;
-    padding: 0 1rem;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-
-.add-tag-btn:hover:not(:disabled) {
-    border-color: #38bdf8;
-    color: #38bdf8;
-}
-
-.add-tag-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-}
-
-.tag-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.25rem;
-}
-
-.tag-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    background: rgba(56, 189, 248, 0.08);
-    border: 1px solid rgba(56, 189, 248, 0.2);
-    color: #7dd3fc;
-    padding: 0.25rem 0.6rem 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 500;
-}
-
-.tag-remove {
-    background: transparent;
-    border: none;
-    color: #38bdf8;
-    cursor: pointer;
-    font-size: 0.65rem;
-    opacity: 0.5;
-    padding: 0;
-    line-height: 1;
-    transition: opacity 0.15s;
-}
-
-.tag-remove:hover {
-    opacity: 1;
-}
-
-.input-hint {
-    font-size: 0.78rem;
-    color: #334155;
-    margin: 0.1rem 0 0;
-}
-
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1.25rem 2rem 1.75rem;
-    border-top: 1px solid #0f172a;
-    background: rgba(0, 0, 0, 0.2);
-}
-
-.cancel-btn {
-    background: transparent;
-    border: 1px solid #1e293b;
-    color: #475569;
-    padding: 0.6rem 1.25rem;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.cancel-btn:hover {
-    border-color: #334155;
-    color: #64748b;
-}
-
-.submit-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: #38bdf8;
-    color: #020617;
-    border: none;
-    padding: 0.65rem 1.5rem;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.submit-btn:hover:not(:disabled) {
-    background: #7dd3fc;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
-}
-
-.submit-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.submit-icon {
-    font-size: 0.7rem;
-    opacity: 0.8;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.2s;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
-}
-
-.tag-enter-active {
-    transition: all 0.2s ease;
-}
-
-.tag-leave-active {
-    transition: all 0.15s ease;
-}
-
-.tag-enter-from {
-    opacity: 0;
-    transform: scale(0.85);
-}
-
-.tag-leave-to {
-    opacity: 0;
-    transform: scale(0.85);
-}
-
-@media (max-width: 640px) {
-    .create-page {
-        padding: 1.5rem 0.75rem 3rem;
-    }
-
-    .form-section {
-        padding: 1.25rem;
-    }
-
-    .form-actions {
-        padding: 1rem 1.25rem 1.25rem;
-    }
-
-    .create-title {
-        font-size: 1.4rem;
-    }
-}
-
-/* Error state */
-.error-message {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    color: #f87171;
-    font-size: 0.85rem;
-    margin-top: 1rem;
-}
-</style>
