@@ -1,20 +1,19 @@
 <template>
     <div class="max-w-7xl mx-auto px-4 py-6">
         <!-- Header with Update Button -->
-        <div class="action-bar mb-8">
+        <div class="flex justify-between items-center flex-wrap gap-4 mb-8">
             <div>
-                <h1 id="page-title" class="section-title mb-0">Edit Character</h1>
-                <p id="page-description" class="text-gray-400 text-sm">Update your character's appearance, expressions,
+                <h1 id="page-title" class="text-3xl font-bold text-slate-50 mb-0">Edit Character</h1>
+                <p id="page-description" class="text-slate-400 text-sm">Update your character's appearance, expressions,
                     and voice lines</p>
             </div>
             <div class="flex gap-3">
                 <button id="btn-delete-character" type="button" @click="deleteCharacter"
-                    class="btn-danger px-6 py-3 text-base font-medium" aria-label="Delete character permanently">
+                    :class="[btnBase, btnDanger, 'text-base']" aria-label="Delete character permanently">
                     Delete Character
                 </button>
                 <button id="btn-update-character" type="button" @click="updateCharacter"
-                    class="btn-primary px-6 py-3 text-base font-medium" :disabled="!character.name.trim() || !isValid"
-                    :class="{ 'opacity-50 cursor-not-allowed': !character.name.trim() || !isValid }"
+                    :class="[btnBase, btnPrimary, 'text-base']" :disabled="!character.name.trim() || !isValid"
                     aria-label="Save character changes">
                     Update Character
                 </button>
@@ -25,9 +24,9 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Panel 1: Character Info (Left) -->
             <div class="lg:col-span-1">
-                <div class="panel h-full">
-                    <div class="panel-header">
-                        <h3 class="panel-title">Character Info</h3>
+                <div :class="[panel, 'h-full']">
+                    <div :class="panelHeader">
+                        <h3 :class="panelTitle">Character Info</h3>
                     </div>
                     <CharacterInfoPanel :name="character.name" :nickname="character.nickname" :color="character.color"
                         :age="character.age" :birth-date="character.birthDate" :bio="character.bio"
@@ -42,12 +41,12 @@
             <!-- Panel 2 & 3: Right Column -->
             <div class="lg:col-span-2 space-y-6">
                 <!-- Panel 2: Preview (Top Right) -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h3 class="panel-title">Preview</h3>
+                <div :class="panel">
+                    <div :class="panelHeader">
+                        <h3 :class="panelTitle">Preview</h3>
                         <div class="flex gap-2">
-                            <span class="text-xs text-gray-400">Live Preview</span>
-                            <span v-if="hasUnsavedChanges" id="unsaved-indicator" class="text-xs text-yellow-400">*
+                            <span class="text-xs text-slate-400">Live Preview</span>
+                            <span v-if="hasUnsavedChanges" id="unsaved-indicator" class="text-xs text-amber-400">*
                                 Unsaved changes</span>
                         </div>
                     </div>
@@ -57,7 +56,10 @@
                 </div>
 
                 <!-- Panel 3: Asset Library (Bottom) -->
-                <div class="panel">
+                <!-- AssetLibraryPanel's root also carries the global `.panel` class; the [&>.panel] variants keep it
+                     matching this view's slate panel look (this used to leak in via the scoped <style>). -->
+                <div
+                    :class="[panel, '[&>.panel]:bg-slate-950 [&>.panel]:border-slate-700 [&>.panel]:rounded-xl [&>.panel]:overflow-hidden']">
                     <AssetLibraryPanel :character="assetLibraryCharacter" @add-expression="addExpression"
                         @remove-expression="removeExpression" @add-outfit="addOutfit" @remove-outfit="removeOutfit"
                         @add-voice="addVoice" @remove-voice="removeVoice" @upload-image="handleImageUpload"
@@ -69,28 +71,33 @@
         </div>
 
         <!-- Unsaved Changes Warning Modal -->
-        <div v-if="showUnsavedModal" class="modal-overlay" @click.self="closeUnsavedModal">
-            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="unsaved-modal-title">
-                <div class="modal-header">
-                    <h3 id="unsaved-modal-title">Unsaved Changes</h3>
-                    <button id="btn-close-unsaved-modal" class="modal-close" @click="closeUnsavedModal"
+        <div v-if="showUnsavedModal"
+            class="fixed inset-0 bg-black/80 flex items-center justify-center z-[1000] backdrop-blur-sm"
+            @click.self="closeUnsavedModal">
+            <div class="bg-slate-950 border border-slate-700 rounded-2xl w-[90%] max-w-[500px]" role="dialog"
+                aria-modal="true" aria-labelledby="unsaved-modal-title">
+                <div class="flex justify-between items-center p-6 border-b border-slate-700">
+                    <h3 id="unsaved-modal-title" class="m-0 text-[1.17rem] font-bold text-slate-50">Unsaved Changes
+                    </h3>
+                    <button id="btn-close-unsaved-modal"
+                        class="bg-transparent text-2xl text-slate-400 cursor-pointer p-1" @click="closeUnsavedModal"
                         aria-label="Close modal">
                         ✕
                     </button>
                 </div>
-                <div class="modal-content">
+                <div class="p-6 text-slate-300">
                     <p>You have unsaved changes. Do you want to save them before leaving?</p>
                 </div>
-                <div class="modal-footer">
-                    <button id="btn-discard-changes" class="btn-secondary" @click="discardAndLeave"
+                <div class="flex justify-end gap-4 p-6 border-t border-slate-700">
+                    <button id="btn-discard-changes" :class="[btnBase, btnSecondary]" @click="discardAndLeave"
                         aria-label="Discard unsaved changes">
                         Discard
                     </button>
-                    <button id="btn-cancel-leave" class="btn-secondary" @click="closeUnsavedModal"
+                    <button id="btn-cancel-leave" :class="[btnBase, btnSecondary]" @click="closeUnsavedModal"
                         aria-label="Cancel and stay on page">
                         Cancel
                     </button>
-                    <button id="btn-save-and-leave" class="btn-primary" @click="saveAndLeave"
+                    <button id="btn-save-and-leave" :class="[btnBase, btnPrimary]" @click="saveAndLeave"
                         aria-label="Save changes and leave">
                         Save & Leave
                     </button>
@@ -110,6 +117,20 @@ import { getCharacter, updateCharacter as updateCharacterService, deleteCharacte
 
 const route = useRoute();
 const router = useRouter();
+
+// --- Shared Tailwind class strings (full literals so Tailwind's scanner picks them up) ---
+// Named locally so they don't collide with the global .btn-* / .panel* component classes in tailwind.css.
+const btnBase =
+    'px-6 py-3 rounded-lg font-medium cursor-pointer transition-all duration-200';
+const btnPrimary =
+    'bg-sky-400 text-slate-950 enabled:hover:opacity-90 enabled:hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed';
+const btnDanger = 'bg-red-900 text-red-200 hover:bg-red-800 hover:-translate-y-px';
+const btnSecondary = 'bg-transparent border border-slate-700 text-slate-300 hover:bg-slate-800';
+// p-6 / mb-6 are intentional: the old scoped CSS only overrode colours, so the global
+// .panel (p-6) and .panel-header (mb-6) spacing from tailwind.css still applied.
+const panel = 'bg-slate-950 border border-slate-700 rounded-xl overflow-hidden p-6';
+const panelHeader = 'px-6 py-4 mb-6 border-b border-slate-700 flex justify-between items-center';
+const panelTitle = 'text-lg font-semibold text-slate-50';
 
 // Types
 interface VoiceLine {
@@ -508,270 +529,3 @@ onBeforeUnmount(() => {
     window.removeEventListener('beforeunload', handleBeforeUnload);
 });
 </script>
-
-<style scoped>
-/* Reuse styles from CharacterCreatorView */
-.action-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.section-title {
-    font-size: 1.875rem;
-    font-weight: 700;
-    color: #f8fafc;
-    margin-bottom: 0.5rem;
-}
-
-.panel {
-    background: #020617;
-    border: 1px solid #334155;
-    border-radius: 12px;
-    overflow: hidden;
-}
-
-.panel-header {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid #334155;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.panel-title {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: #f8fafc;
-}
-
-.btn-primary {
-    background: #38bdf8;
-    color: #020617;
-    border: none;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    padding: 0.75rem 1.5rem;
-}
-
-.btn-primary:hover:not(:disabled) {
-    opacity: 0.9;
-    transform: translateY(-1px);
-}
-
-.btn-primary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.btn-danger {
-    background: #7f1d1d;
-    color: #fecaca;
-    border: none;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    padding: 0.75rem 1.5rem;
-}
-
-.btn-danger:hover {
-    background: #991b1b;
-    transform: translateY(-1px);
-}
-
-/* Modal styles */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    backdrop-filter: blur(4px);
-}
-
-.modal {
-    background: #020617;
-    border: 1px solid #334155;
-    border-radius: 16px;
-    width: 90%;
-    max-width: 500px;
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    border-bottom: 1px solid #334155;
-}
-
-.modal-header h3 {
-    color: #f8fafc;
-    margin: 0;
-}
-
-.modal-close {
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    font-size: 1.5rem;
-    cursor: pointer;
-    padding: 0.25rem;
-}
-
-.modal-content {
-    padding: 1.5rem;
-    color: #cbd5e1;
-}
-
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    padding: 1.5rem;
-    border-top: 1px solid #334155;
-}
-
-.btn-secondary {
-    background: transparent;
-    border: 1px solid #334155;
-    color: #cbd5e1;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    cursor: pointer;
-}
-
-.btn-secondary:hover {
-    background: #1e293b;
-}
-
-/* Utility classes */
-.text-gray-400 {
-    color: #94a3b8;
-}
-
-.text-sm {
-    font-size: 0.875rem;
-}
-
-.text-xs {
-    font-size: 0.75rem;
-}
-
-.text-yellow-400 {
-    color: #fbbf24;
-}
-
-.mb-0 {
-    margin-bottom: 0;
-}
-
-.mb-8 {
-    margin-bottom: 2rem;
-}
-
-.px-4 {
-    padding-left: 1rem;
-    padding-right: 1rem;
-}
-
-.px-6 {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-}
-
-.py-3 {
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-}
-
-.py-6 {
-    padding-top: 1.5rem;
-    padding-bottom: 1.5rem;
-}
-
-.gap-2 {
-    gap: 0.5rem;
-}
-
-.gap-3 {
-    gap: 0.75rem;
-}
-
-.gap-6 {
-    gap: 1.5rem;
-}
-
-.space-y-6>*+* {
-    margin-top: 1.5rem;
-}
-
-.grid {
-    display: grid;
-}
-
-.grid-cols-1 {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
-}
-
-.h-full {
-    height: 100%;
-}
-
-.max-w-7xl {
-    max-width: 80rem;
-}
-
-.mx-auto {
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.flex {
-    display: flex;
-}
-
-.justify-between {
-    justify-content: space-between;
-}
-
-.items-center {
-    align-items: center;
-}
-
-.flex-wrap {
-    flex-wrap: wrap;
-}
-
-.opacity-50 {
-    opacity: 0.5;
-}
-
-.cursor-not-allowed {
-    cursor: not-allowed;
-}
-
-@media (min-width: 1024px) {
-    .lg\:col-span-1 {
-        grid-column: span 1 / span 1;
-    }
-
-    .lg\:col-span-2 {
-        grid-column: span 2 / span 2;
-    }
-
-    .lg\:grid-cols-3 {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-}
-</style>
