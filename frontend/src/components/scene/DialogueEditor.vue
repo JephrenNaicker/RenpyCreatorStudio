@@ -278,6 +278,26 @@
                         </div>
                     </template>
 
+                    <!-- Preset Audio Tag Selector (Background vs Effect) -->
+                    <div class="mb-4">
+                        <label class="text-xs text-slate-400 block mb-1.5">Audio Category</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button v-for="preset in labelPresets" :key="preset" type="button"
+                                class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer"
+                                :class="currentMusicLabel === preset
+                                    ? 'bg-violet-500/20 border-violet-400 text-violet-200'
+                                    : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500'"
+                                @click="currentMusicLabel = currentMusicLabel === preset ? undefined : preset">
+                                🏷️ {{ preset }}
+                            </button>
+                            <button v-if="currentMusicLabel" type="button"
+                                class="px-2 py-1 text-xs text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                                @click="currentMusicLabel = undefined">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="mb-4">
                         <label class="text-xs text-slate-400 block mb-1" for="music-fade">
                             {{ currentMusicMode === 'stop' ? 'Fade out' : 'Fade in' }} (seconds, 0 = instant)
@@ -316,7 +336,7 @@ import CastSelector from '@/components/scene/CastSelector.vue';
 import DialogueHistory from '@/components/scene/DialogueHistory.vue';
 import MenuChoiceEditor from '@/components/scene/MenuChoiceEditor.vue';
 import { createDialogueLine, createMenuNode } from '@/services/dialogueService';
-import type { DialogueLine, MenuNode, ActionNode, Character, SceneLine, BackgroundAsset, MusicAsset } from '@/types/models';
+import type { DialogueLine, MenuNode, ActionNode, Character, SceneLine, BackgroundAsset, MusicAsset, MusicLabel } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
 interface Props {
@@ -374,6 +394,8 @@ const editingIndex = ref<number | null>(null);
 const mode = ref<'dialogue' | 'menu' | 'action' | 'music'>('dialogue');
 const editingMenuNode = ref<MenuNode | null>(null);
 
+const labelPresets: MusicLabel[] = ['Background', 'Effect'];
+const currentMusicLabel = ref<MusicLabel | undefined>('Background');
 const currentMusicMode = ref<'play' | 'stop'>('play');
 const currentMusicPath = ref('');
 const currentMusicName = ref('');
@@ -383,8 +405,6 @@ const musicInputRef = ref<HTMLInputElement>();
 const fileNameFromPath = (path: string) =>
     path.startsWith('blob:') ? 'Uploaded track' : (path.split('/').pop() || path);
 
-// Library + the currently selected track, even if it isn't in the project library
-// (e.g. a blob: upload the parent hasn't stored, or a track from a loaded scene)
 const libraryTracks = computed<MusicAsset[]>(() => {
     const path = currentMusicPath.value;
     if (!path || props.musicAssets.some(t => t.path === path)) return props.musicAssets;
@@ -398,7 +418,6 @@ const selectedTrackLabel = computed(() =>
     currentMusicName.value || fileNameFromPath(currentMusicPath.value)
 );
 
-// Preview playback in the editor panel
 const isPreviewing = ref(false);
 let previewAudio: HTMLAudioElement | null = null;
 
@@ -480,6 +499,7 @@ const resetForm = () => {
     currentMusicPath.value = '';
     currentMusicName.value = '';
     currentMusicFade.value = 0;
+    currentMusicLabel.value = 'Background';
     nextTick(() => {
         if (mode.value === 'dialogue') {
             textAreaRef.value?.focus();
@@ -552,6 +572,11 @@ const selectMusic = (path: string, name: string) => {
     stopPreview();
     currentMusicPath.value = path;
     currentMusicName.value = name;
+
+    const matchedTrack = props.musicAssets.find(t => t.path === path);
+    if (matchedTrack?.default_label) {
+        currentMusicLabel.value = matchedTrack.default_label;
+    }
 };
 
 const triggerMusicFileInput = () => musicInputRef.value?.click();
@@ -574,9 +599,9 @@ const handleMusicFileUpload = (event: Event) => {
 const addOrUpdateMusicAction = () => {
     const isStop = currentMusicMode.value === 'stop';
     const fade = Number(currentMusicFade.value) || 0;
+    const label = currentMusicLabel.value;
 
     if (isEditing.value && editingIndex.value !== null) {
-        // Updating existing node
         const existing = props.dialogueLines[editingIndex.value] as ActionNode;
         const updatedNode: ActionNode = {
             ...existing,
@@ -586,10 +611,10 @@ const addOrUpdateMusicAction = () => {
             music_path: isStop ? undefined : (currentMusicPath.value || undefined),
             music_name: isStop ? undefined : (currentMusicName.value || undefined),
             music_fade: fade > 0 ? fade : undefined,
+            music_label: label,
         };
         emit('edit-line', { index: editingIndex.value, line: updatedNode });
     } else {
-        // Adding brand new music action
         emit('add-background-action', {
             type: 'action',
             action_type: 'music_change',
@@ -597,6 +622,7 @@ const addOrUpdateMusicAction = () => {
             music_path: isStop ? undefined : (currentMusicPath.value || undefined),
             music_name: isStop ? undefined : (currentMusicName.value || undefined),
             music_fade: fade > 0 ? fade : undefined,
+            music_label: label,
         });
     }
 
@@ -769,6 +795,7 @@ const handleInsertMusic = (payload: { index: number }) => {
         order: payload.index + 1,
         action_type: 'music_change',
         music_mode: 'play',
+        music_label: 'Background',
     };
     emit('insert-line', { index: payload.index, line: newNode });
 };
@@ -805,6 +832,7 @@ watch(() => props.selectedLineIndex, (index) => {
         currentMusicPath.value = musicNode.music_path || '';
         currentMusicName.value = musicNode.music_name || '';
         currentMusicFade.value = musicNode.music_fade ?? 0;
+        currentMusicLabel.value = musicNode.music_label ?? 'Background';
         isEditing.value = true;
     } else if (line.type === 'action') {
         const actionNode = line as ActionNode;

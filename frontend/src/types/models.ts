@@ -55,11 +55,14 @@ export interface BackgroundAsset {
     path: string;   // blob:/data:/http(s) path — same convention as Expression.image_path
 }
 
+export type MusicLabel = 'Background' | 'Effect';
+
 // ─── Music asset (project-level, reusable across scenes) ─────────────────────
 export interface MusicAsset {
     id: string;
     name: string;
     path: string;   // blob:/data:/http(s) path — same convention as BackgroundAsset.path
+    default_label?: MusicLabel;
 }
 
 export interface DialogueLineCharacter {
@@ -144,6 +147,7 @@ export interface ActionNode {
     music_path?: string;        // undefined while mode is 'play' = no track picked yet
     music_name?: string;        // snapshot, so history survives library changes
     music_fade?: number;        // seconds; undefined/0 = instant
+    music_label?: MusicLabel; // Restricted to 'Background' | 'Effect'
 }
 
 export interface MenuChoice {
