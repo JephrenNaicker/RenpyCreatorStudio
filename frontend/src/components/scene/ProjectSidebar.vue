@@ -15,6 +15,7 @@
             </button>
         </div>
 
+        <!-- Inside frontend/src/components/sidebar/ProjectSidebar.vue -->
         <div v-if="!isSidebarCollapsed" class="flex-1 p-4 overflow-y-auto flex flex-col gap-6" id="sidebar-content">
             <!-- Character Roster -->
             <CharacterRoster :characters="characters" :all-characters="allCharacters"
@@ -23,6 +24,21 @@
                 @remove-character="(id) => $emit('remove-character', id)"
                 @add-characters="(ids) => $emit('add-characters', ids)"
                 @create-character="(char) => $emit('create-character', char)" />
+
+            <div class="bg-slate-900 border border-slate-700/80 rounded-xl p-4 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-bold text-slate-200 tracking-wide uppercase">Setup & Exports</span>
+                    <span
+                        class="text-xs text-sky-400 bg-sky-950/60 px-2 py-0.5 rounded border border-sky-800/50">.rpy</span>
+                </div>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                    Bulk preview and manage all character definitions and image bindings.
+                </p>
+                <button @click="$emit('open-character-setup')"
+                    class="w-full py-2.5 px-4 bg-sky-400 hover:bg-sky-300 text-slate-950 font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm">
+                    <span>⚙️</span> Character Setup Panel
+                </button>
+            </div>
 
             <!-- Scene Manager -->
             <SceneManager :scenes="scenes || []" :characters="characters" :selected-scene-id="selectedSceneId"
@@ -85,6 +101,7 @@ interface Emits {
     (e: 'update-scene', scene: Scene): void;
     (e: 'add-characters', characterIds: string[]): void;
     (e: 'create-character', character: Omit<Character, 'id' | 'created_at' | 'updated_at'>): void;
+    (e: 'open-character-setup'): void;
 }
 
 const props = defineProps<Props>();

@@ -6,20 +6,33 @@
             :project-id="String(route.params.id)" :dirty-scene-ids="dirtyScenes"
             @select-character="handleSelectCharacter" @remove-character="openRemoveCharacterModal"
             @add-character="addCharacterToProject" @add-characters="handleAddCharactersToProject"
-            @select-scene="selectScene" @add-scene="handleAddScene" @delete-scene="handleDeleteScene"
-            @update-scene="handleUpdateScene" @create-character="handleCreateCharacter" />
+            @select-scene="(scene) => { activeView = 'editor'; selectScene(scene); }" @add-scene="handleAddScene"
+            @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene"
+            @create-character="handleCreateCharacter" @open-character-setup="activeView = 'setup'" />
 
         <!-- Main Panel -->
         <main id="workspace-main" class="flex-1 flex flex-col overflow-hidden">
-            <SceneWorkspaceHeader :project-name="currentProject?.name" :scene="currentScene" :can-undo="canUndo"
-                :can-redo="canRedo" @save-scene="saveScene" @export-scene="exportScene" @undo="undo" @redo="redo"
-                @manage-variables="showVariableManager = true"
+            <!-- Conditionally show header or setup top bar -->
+            <SceneWorkspaceHeader v-if="activeView === 'editor'" :project-name="currentProject?.name"
+                :scene="currentScene" :can-undo="canUndo" :can-redo="canRedo" @save-scene="saveScene"
+                @export-scene="exportScene" @undo="undo" @redo="redo" @manage-variables="showVariableManager = true"
                 @back-to-project="router.push(`/projects/${route.params.id}`)" />
 
+            <div v-else class="bg-slate-950 border-b border-slate-700/80 px-6 py-4 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-slate-50">Character Setup & Bulk Preview</h2>
+                <button @click="activeView = 'editor'"
+                    class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-lg transition-colors cursor-pointer">
+                    ← Back to Scene Editor
+                </button>
+            </div>
+
+            <!-- Workspace Switcher Content -->
             <div id="workspace-content" class="flex-1 overflow-y-auto p-4">
-                <DialogueEditor id="scene-workspace-component" :key="currentScene?.id" :dialogue-lines="dialogueLines"
-                    :characters="projectCharacters" :variables="variables" :background-assets="backgroundAssets"
-                    :selected-line-index="selectedLineIndex" :selected-speaker-id="selectedCharacterId"
+                <CharacterSetupView v-if="activeView === 'setup'" :characters="projectCharacters" />
+                <DialogueEditor v-else id="scene-workspace-component" :key="currentScene?.id"
+                    :dialogue-lines="dialogueLines" :characters="projectCharacters" :variables="variables"
+                    :background-assets="backgroundAssets" :selected-line-index="selectedLineIndex"
+                    :selected-speaker-id="selectedCharacterId"
                     :is-dirty="currentScene ? dirtyScenes.has(currentScene.id) : false"
                     :scene-character-ids="currentScene?.character_ids || undefined" @add-line="addDialogueLine"
                     @edit-line="handleEditLine" @delete-line="deleteDialogueLine" @select-line="selectLine"
@@ -145,6 +158,7 @@ import ProjectSidebar from '@/components/scene/ProjectSidebar.vue';
 import SceneWorkspaceHeader from '@/components/scene/SceneWorkspaceHeader.vue';
 import DialogueEditor from '@/components/scene/DialogueEditor.vue';
 import VariableManager from '@/components/scene/VariableManager.vue';
+import CharacterSetupView from '@/components/character/CharacterSetupView.vue'; // Adjust path if placed elsewhere
 import type { Character, DialogueLine, MenuNode, ActionNode, SceneLine, Scene, Project, StoryVariable } from '@/utils/dummyData';
 import type { ImagePosition } from '@/types/models';
 import { getProject, updateProject } from '@/services/projectService';
@@ -399,6 +413,11 @@ const handleCreateCharacter = async (characterData: Omit<Character, 'id' | 'crea
         showTempError('Failed to create character. Please try again.');
     }
 };
+
+
+// Controls whether we are viewing a scene editor or the project character setup
+const activeView = ref<'editor' | 'setup'>('editor');
+
 
 // ── Helper for error toast ──
 const showTempError = (message: string) => {
