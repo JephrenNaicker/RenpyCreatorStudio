@@ -20,7 +20,7 @@
         </div>
 
         <!-- Summary Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div :class="card">
                 <span class="text-slate-400 text-sm font-medium">Total Characters</span>
                 <p class="text-3xl font-bold text-slate-50 mt-1">{{ characters.length }}</p>
@@ -32,10 +32,6 @@
             <div :class="card">
                 <span class="text-slate-400 text-sm font-medium">Voice Lines Mapped</span>
                 <p class="text-3xl font-bold text-violet-400 mt-1">{{ totalVoiceLinesCount }}</p>
-            </div>
-            <div :class="card">
-                <span class="text-slate-400 text-sm font-medium">Export Status</span>
-                <p class="text-3xl font-bold text-emerald-400 mt-1">Ready</p>
             </div>
         </div>
 
