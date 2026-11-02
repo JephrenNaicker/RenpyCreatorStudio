@@ -42,9 +42,11 @@
 
             <!-- Scene Manager -->
             <SceneManager :scenes="scenes || []" :characters="characters" :selected-scene-id="selectedSceneId"
-                :dirty-scene-ids="dirtySceneIds" @select-scene="(scene) => $emit('select-scene', scene)"
-                @add-scene="handleAddScene" @delete-scene="(id) => $emit('delete-scene', id)"
-                @update-scene="(scene) => $emit('update-scene', scene)" />
+                :dirty-scene-ids="dirtySceneIds" :export-statuses="exportStatuses"
+                @select-scene="(scene) => $emit('select-scene', scene)" @add-scene="handleAddScene"
+                @delete-scene="(id) => $emit('delete-scene', id)"
+                @update-scene="(scene) => $emit('update-scene', scene)"
+                @export-scenes="(ids) => $emit('export-scenes', ids)" />
         </div>
 
         <!-- Delete Confirmation Modal -->
@@ -81,6 +83,7 @@ import { ref } from 'vue';
 import type { Character, Scene } from '@/utils/dummyData';
 import CharacterRoster from './CharacterRoster.vue';
 import SceneManager from './SceneManager.vue';
+import type { FileStatus } from '@/services/renpyExportService';
 
 interface Props {
     characters: Character[];
@@ -90,6 +93,7 @@ interface Props {
     dirtySceneIds?: Set<string>;
     allCharacters?: Character[];
     projectId?: string;
+    exportStatuses?: Record<string, FileStatus>; // keyed by scene id
 }
 
 interface Emits {
@@ -102,6 +106,7 @@ interface Emits {
     (e: 'add-characters', characterIds: string[]): void;
     (e: 'create-character', character: Omit<Character, 'id' | 'created_at' | 'updated_at'>): void;
     (e: 'open-character-setup'): void;
+    (e: 'export-scenes', sceneIds: string[]): void;
 }
 
 const props = defineProps<Props>();

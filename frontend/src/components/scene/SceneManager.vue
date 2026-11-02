@@ -4,10 +4,38 @@
         <!-- Section Header -->
         <div class="flex justify-between items-center" id="scene-manager-header">
             <h4 class="m-0 font-bold text-slate-50 text-sm tracking-wide">Scenes</h4>
-            <button
-                class="bg-slate-800 border border-slate-700 text-slate-200 w-7 h-7 rounded-md flex items-center justify-center cursor-pointer transition-all hover:bg-slate-700 hover:border-slate-600 hover:scale-105"
-                @click="$emit('add-scene')" title="Add new scene" id="add-scene-btn">
-                <span class="text-base font-semibold">+</span>
+            <div class="flex items-center gap-1.5">
+                <button v-if="scenes && scenes.length > 0"
+                    class="h-7 px-2 rounded-md border text-xs font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                    :class="selectMode
+                        ? 'bg-sky-400 border-sky-400 text-slate-950 hover:bg-sky-300'
+                        : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:border-slate-600'"
+                    @click="toggleSelectMode"
+                    :title="selectMode ? 'Leave export selection' : 'Choose scenes to export to Ren\'Py'"
+                    id="export-mode-btn">
+                    <span v-if="selectMode">Cancel</span>
+                    <template v-else><span>📤</span> Export</template>
+                </button>
+                <button
+                    class="bg-slate-800 border border-slate-700 text-slate-200 w-7 h-7 rounded-md flex items-center justify-center cursor-pointer transition-all hover:bg-slate-700 hover:border-slate-600 hover:scale-105"
+                    @click="$emit('add-scene')" title="Add new scene" id="add-scene-btn">
+                    <span class="text-base font-semibold">+</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Select-mode toolbar -->
+        <div v-if="selectMode && scenes && scenes.length > 0"
+            class="flex items-center justify-between gap-2 text-xs text-slate-400" id="export-toolbar">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" :checked="allChecked" @change="toggleAll"
+                    class="accent-sky-400 cursor-pointer" />
+                Select all
+            </label>
+            <button v-if="outdatedCount > 0 && outdatedCount < scenes.length"
+                class="bg-transparent border border-slate-700 hover:border-sky-400 hover:text-sky-400 text-slate-400 rounded px-2 py-0.5 cursor-pointer transition-colors"
+                @click="selectOutdated" title="Select scenes that are new or changed since their last export">
+                New / changed ({{ outdatedCount }})
             </button>
         </div>
 
@@ -17,7 +45,8 @@
                 class="group rounded-lg text-sm transition-all bg-slate-900 border border-transparent hover:bg-slate-800/80"
                 :class="{
                     '!bg-sky-400/10 !border-sky-400/40': selectedSceneId === scene.id,
-                    'ring-1 ring-sky-400': editingSceneId === scene.id
+                    'ring-1 ring-sky-400': editingSceneId === scene.id,
+                    '!border-sky-400/60': selectMode && checkedIds.has(scene.id)
                 }" :id="`scene-item-${scene.id}`">
 
                 <!-- Editing mode -->
@@ -34,8 +63,10 @@
                         <div class="flex items-center justify-between px-2.5 pt-2 pb-1"
                             :id="`scene-top-row-${scene.id}`">
                             <div class="flex items-center gap-2 flex-1 overflow-hidden cursor-pointer"
-                                @click="$emit('select-scene', scene)" @dblclick.stop="startEditing(scene)"
+                                @click="onRowClick(scene)" @dblclick.stop="!selectMode && startEditing(scene)"
                                 :id="`scene-content-${scene.id}`">
+                                <input v-if="selectMode" type="checkbox" :checked="checkedIds.has(scene.id)" @click.stop
+                                    @change="toggleChecked(scene.id)" class="accent-sky-400 shrink-0 cursor-pointer" />
                                 <span class="opacity-70 shrink-0 text-xs">🎬</span>
                                 <span class="truncate text-slate-200 text-xs font-medium"
                                     :id="`scene-name-${scene.id}`">
@@ -44,7 +75,8 @@
                                         title="Unsaved changes">*</span>
                                 </span>
                             </div>
-                            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                            <div v-if="!selectMode"
+                                class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                                 :id="`scene-actions-${scene.id}`">
                                 <button
                                     class="bg-transparent border-none px-1.5 py-0.5 cursor-pointer rounded text-xs text-slate-500 hover:text-sky-400 hover:bg-sky-400/10 transition-colors"
@@ -73,6 +105,14 @@
                                     No cast
                                 </span>
                             </div>
+
+                            <!-- Export status badge -->
+                            <span v-if="statusInfoById[scene.id]"
+                                class="text-[10px] leading-none px-1.5 py-1 rounded border shrink-0"
+                                :class="statusInfoById[scene.id]!.cls" :title="statusInfoById[scene.id]!.title"
+                                :id="`export-status-${scene.id}`">
+                                {{ statusInfoById[scene.id]!.label }}
+                            </span>
 
                             <!-- Add character to scene button -->
                             <button
@@ -118,18 +158,30 @@
         <div v-else class="text-slate-500 text-xs text-center py-4" id="empty-scenes">
             No scenes yet. Click + to add one.
         </div>
+
+        <!-- Sticky export action -->
+        <div v-if="selectMode" class="sticky bottom-0 pt-3 pb-1 bg-slate-950" id="export-footer">
+            <button
+                class="w-full py-2 px-4 bg-sky-400 hover:bg-sky-300 text-slate-950 font-semibold text-sm rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="checkedCount === 0" @click="emitExport" id="export-selected-btn">
+                Export ({{ checkedCount }}) →
+            </button>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, watch } from 'vue';
 import type { Character, Scene } from '@/utils/dummyData';
+import type { FileStatus } from '@/services/renpyExportService';
 
 interface Props {
     scenes: Scene[];
     characters: Character[];
     selectedSceneId?: string | null;
     dirtySceneIds?: Set<string>;
+    // keyed by scene id (the parent maps file paths -> scene ids)
+    exportStatuses?: Record<string, FileStatus>;
 }
 
 interface Emits {
@@ -137,6 +189,7 @@ interface Emits {
     (e: 'add-scene'): void;
     (e: 'delete-scene', sceneId: string): void;
     (e: 'update-scene', scene: Scene): void;
+    (e: 'export-scenes', sceneIds: string[]): void;
 }
 
 const props = defineProps<Props>();
@@ -158,6 +211,91 @@ const filteredPickerCharacters = computed(() => {
     return q
         ? props.characters.filter(c => c.name.toLowerCase().includes(q) || c.nickname?.toLowerCase().includes(q))
         : props.characters;
+});
+
+// ── Export select mode ──
+// Selection stays after clicking "Export (n)" so reopening the modal after a
+// tweak is one click; the user leaves select mode with Cancel.
+const selectMode = ref(false);
+const checkedIds = ref<Set<string>>(new Set());
+
+const checkedCount = computed(() => props.scenes.filter(s => checkedIds.value.has(s.id)).length);
+const allChecked = computed(() => props.scenes.length > 0 && checkedCount.value === props.scenes.length);
+const outdatedCount = computed(
+    () => props.scenes.filter(s => props.exportStatuses?.[s.id]?.status !== 'up_to_date').length
+);
+
+const toggleSelectMode = () => {
+    selectMode.value = !selectMode.value;
+    checkedIds.value = new Set();
+    pickerSceneId.value = null;
+};
+
+const toggleChecked = (id: string) => {
+    const next = new Set(checkedIds.value);
+    next.has(id) ? next.delete(id) : next.add(id);
+    checkedIds.value = next;
+};
+
+const toggleAll = () => {
+    checkedIds.value = allChecked.value ? new Set() : new Set(props.scenes.map(s => s.id));
+};
+
+const selectOutdated = () => {
+    checkedIds.value = new Set(
+        props.scenes.filter(s => props.exportStatuses?.[s.id]?.status !== 'up_to_date').map(s => s.id)
+    );
+};
+
+const onRowClick = (scene: Scene) => {
+    if (selectMode.value) toggleChecked(scene.id);
+    else emit('select-scene', scene);
+};
+
+// Emit in sidebar order, not click order.
+const emitExport = () => {
+    const ids = props.scenes.filter(s => checkedIds.value.has(s.id)).map(s => s.id);
+    if (ids.length) emit('export-scenes', ids);
+};
+
+// Drop selections for scenes that were deleted while selecting.
+watch(() => props.scenes, scenes => {
+    const live = new Set(scenes.map(s => s.id));
+    const pruned = new Set([...checkedIds.value].filter(id => live.has(id)));
+    if (pruned.size !== checkedIds.value.size) checkedIds.value = pruned;
+});
+
+// ── Export status badges ──
+interface StatusInfo { label: string; cls: string; title: string }
+
+const formatWhen = (iso?: string) => (iso ? new Date(iso).toLocaleString() : '');
+
+const statusInfoById = computed<Record<string, StatusInfo>>(() => {
+    const out: Record<string, StatusInfo> = {};
+    for (const scene of props.scenes) {
+        const st = props.exportStatuses?.[scene.id];
+        if (!st) continue;
+        if (st.status === 'never') {
+            out[scene.id] = {
+                label: 'Not exported',
+                cls: 'text-slate-400 bg-slate-800 border-slate-700',
+                title: 'This scene has never been exported'
+            };
+        } else if (st.status === 'up_to_date') {
+            out[scene.id] = {
+                label: 'Exported ✓',
+                cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+                title: `Exported ${formatWhen(st.exported_at)} - unchanged since`
+            };
+        } else {
+            out[scene.id] = {
+                label: 'Changed',
+                cls: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+                title: `Changed since last export (${formatWhen(st.exported_at)})`
+            };
+        }
+    }
+    return out;
 });
 
 // ── Helpers ──

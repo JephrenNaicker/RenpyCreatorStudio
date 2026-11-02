@@ -3,9 +3,10 @@
         <!-- Left Panel -->
         <ProjectSidebar :id="`project-sidebar-${route.params.id}`" :characters="projectCharacters" :scenes="scenes"
             :selected-scene-id="currentScene?.id ?? null" :all-characters="allCharacters"
-            :project-id="String(route.params.id)" :dirty-scene-ids="dirtyScenes"
-            @select-character="handleSelectCharacter" @remove-character="openRemoveCharacterModal"
-            @add-character="addCharacterToProject" @add-characters="handleAddCharactersToProject"
+            :project-id="String(route.params.id)" :dirty-scene-ids="dirtyScenes" :export-statuses="sceneExportStatuses"
+            @export-scenes="openExport" @select-character="handleSelectCharacter"
+            @remove-character="openRemoveCharacterModal" @add-character="addCharacterToProject"
+            @add-characters="handleAddCharactersToProject"
             @select-scene="(scene) => { activeView = 'editor'; selectScene(scene); }" @add-scene="handleAddScene"
             @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene"
             @create-character="handleCreateCharacter" @open-character-setup="activeView = 'setup'" />
@@ -48,6 +49,12 @@
     <VariableManager :open="showVariableManager" :variables="variables" :scenes="scenes"
         @update:open="showVariableManager = $event" @update:variables="handleVariablesUpdate"
         @update:scenes="handleVariableRenameScenes" />
+
+    <!-- Ren'Py Export Modal -->
+    <ExportModal :open="showExportModal" :project="currentProject" :scenes="scenesWithDrafts"
+        :characters="projectCharacters" :scene-ids="exportSceneIds" :records="exportRecords" :options="exportOptions"
+        @update:open="showExportModal = $event" @update:options="exportOptions = $event" @exported="handleExported"
+        @goto-issue="handleGotoIssue" />
 
     <!-- Character Removal Warning Modal -->
     <div v-if="showRemovalModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
@@ -125,7 +132,7 @@
                         id="option-delete">
                         <input type="radio" v-model="removalAction" value="delete" class="mt-1" />
                         <div>
-                            <div class="text-slate-50 font-medium text-red-400">Delete all dialogue lines</div>
+                            <div class="font-medium text-red-400">Delete all dialogue lines</div>
                             <div class="text-slate-400 text-sm">⚠️ This action cannot be undone. All dialogue for this
                                 character will be permanently deleted.</div>
                         </div>
@@ -158,6 +165,7 @@ import ProjectSidebar from '@/components/scene/ProjectSidebar.vue';
 import SceneWorkspaceHeader from '@/components/scene/SceneWorkspaceHeader.vue';
 import DialogueEditor from '@/components/scene/DialogueEditor.vue';
 import VariableManager from '@/components/scene/VariableManager.vue';
+import ExportModal from '@/components/scene/export/ExportModal.vue';
 import CharacterSetupView from '@/components/character/CharacterSetupView.vue'; // Adjust path if placed elsewhere
 import type { Character, DialogueLine, MenuNode, ActionNode, SceneLine, Scene, Project, StoryVariable } from '@/utils/dummyData';
 import type { ImagePosition } from '@/types/models';
@@ -179,6 +187,12 @@ import {
     reorderLines,
 } from '@/services/dialogueService';
 import type { BackgroundAsset } from '@/types/models';
+import {
+    DEFAULT_EXPORT_OPTIONS,
+    getExportStatuses,
+    scenePath,
+} from '@/services/renpyExportService';
+import type { ExportOptions, ExportRecords, FileStatus } from '@/services/renpyExportService';
 
 
 const route = useRoute();
@@ -336,6 +350,7 @@ const loadProjectData = async () => {
         projectCharacterIds.value = project?.character_ids ?? chars.map(c => c.id);
         variables.value = project?.variables ?? [];
         backgroundAssets.value = project?.background_assets ?? [];
+        exportRecords.value = project?.export_records ?? {};
     } catch (err) {
         console.error('Failed to load project data:', err);
         error.value = 'Failed to load project data';
@@ -417,6 +432,74 @@ const handleCreateCharacter = async (characterData: Omit<Character, 'id' | 'crea
 
 // Controls whether we are viewing a scene editor or the project character setup
 const activeView = ref<'editor' | 'setup'>('editor');
+
+// ── Ren'Py export ────────────────────────────────────────────────────────────
+const showExportModal = ref(false);
+const exportSceneIds = ref<string[]>([]);
+// path -> { hash, exported_at }, persisted on the project (Project.export_records)
+const exportRecords = ref<ExportRecords>({});
+// Shared by the sidebar badges and the modal so both hash the same output.
+const exportOptions = ref<ExportOptions>({ ...DEFAULT_EXPORT_OPTIONS });
+
+// The editor keeps unsaved edits in dialogueLines / sceneDialogueCache rather
+// than scenes.value, so fold those drafts in. That way the exporter (and the
+// "changed since export" badges) always reflect what is on screen.
+const scenesWithDrafts = computed<Scene[]>(() =>
+    scenes.value.map(s => {
+        if (currentScene.value?.id === s.id) return { ...s, dialogue_lines: dialogueLines.value };
+        const cached = sceneDialogueCache.value[s.id];
+        return cached && cached.length ? { ...s, dialogue_lines: cached } : s;
+    })
+);
+
+// Export status per scene id, for the sidebar badges.
+const sceneExportStatuses = computed<Record<string, FileStatus>>(() => {
+    if (!currentProject.value) return {};
+    const byPath = getExportStatuses(
+        {
+            project: currentProject.value,
+            scenes: scenesWithDrafts.value,
+            characters: projectCharacters.value,
+            options: { ...exportOptions.value, sceneIds: [] },
+        },
+        exportRecords.value
+    );
+    const out: Record<string, FileStatus> = {};
+    for (const s of scenesWithDrafts.value) {
+        const st = byPath[scenePath(s.id)];
+        if (st) out[s.id] = st;
+    }
+    return out;
+});
+
+const openExport = (sceneIds: string[]) => {
+    if (!sceneIds.length) return;
+    exportSceneIds.value = sceneIds;
+    showExportModal.value = true;
+};
+
+// Called after the ZIP was actually downloaded.
+const handleExported = async (records: ExportRecords) => {
+    exportRecords.value = records;
+    if (!currentProject.value) return;
+    try {
+        const updated = await updateProject(currentProject.value.id, { export_records: records });
+        if (updated) currentProject.value = updated;
+    } catch (err) {
+        console.error('Failed to persist export records:', err);
+        showTempError('Exported, but the export history could not be saved.');
+    }
+};
+
+// Issue rows in the modal jump straight to the offending line.
+const handleGotoIssue = ({ sceneId, lineId }: { sceneId: string; lineId: string }) => {
+    const target = scenes.value.find(s => s.id === sceneId);
+    if (!target) return;
+    activeView.value = 'editor';
+    if (currentScene.value?.id !== sceneId) selectScene(target);
+    const index = dialogueLines.value.findIndex(l => l.id === lineId);
+    if (index >= 0) selectLine(index);
+};
 
 
 // ── Helper for error toast ──
@@ -568,7 +651,7 @@ const confirmRemoveCharacter = async () => {
 
     // Persist every scene that actually changed (dialogue and/or
     // character_ids) — comparing against the pre-mutation snapshot avoids
-    // re-saving (and re-timestamping) scenes the removed character never
+    // re-saving (and updating the timestamps of) scenes the removed character never
     // touched.
     const changedScenes = updatedScenes.filter(scene => {
         const original = scenes.value.find(s => s.id === scene.id);
@@ -816,7 +899,7 @@ const scheduleAutoSave = () => {
     if (autoSaveTimer.value) {
         clearTimeout(autoSaveTimer.value);
     }
-    autoSaveTimer.value = setTimeout(() => {
+    autoSaveTimer.value = window.setTimeout(() => {
         if (hasUnsavedChanges.value && currentScene.value) {
             console.log('Auto-saving scene...');
             saveScene();
@@ -840,8 +923,7 @@ const exportScene = () => {
         alert('No scene selected to export');
         return;
     }
-    console.log('Exporting scene:', currentScene.value);
-    alert('Export feature coming soon!');
+    openExport([currentScene.value.id]);
 };
 
 const undo = () => {

@@ -1,4 +1,5 @@
 // src/types/models.ts
+import type { ExportRecords } from '@/services/renpyExportService';
 
 export interface VoiceLine {
     line_name: string;
@@ -46,6 +47,7 @@ export interface Project {
     background_assets?: BackgroundAsset[];
     // Reusable music library — uploaded once, picked from music_change action nodes
     music_assets?: MusicAsset[];
+    export_records?: ExportRecords;
 }
 
 // ─── Background asset (project-level, reusable across scenes) ────────────────
