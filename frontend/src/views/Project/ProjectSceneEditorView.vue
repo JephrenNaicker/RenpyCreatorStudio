@@ -1,3 +1,4 @@
+<!-- frontend/src/views/project/ProjectSceneEditorView.vue -->
 <template>
     <div id="scene-editor-layout" class="flex h-screen bg-gray-950">
         <!-- Left Panel -->
@@ -104,7 +105,7 @@
                             <div class="text-slate-50 font-medium">Keep as "Removed Character" placeholder</div>
                             <div class="text-slate-400 text-sm">Dialogue lines will show "[Removed: {{
                                 characterToRemove?.name
-                            }}]" and can be reassigned later</div>
+                                }}]" and can be reassigned later</div>
                         </div>
                     </label>
 
