@@ -1,3 +1,4 @@
+<!-- frontend/src/views/project/ProjectListView.vue -->
 <template>
     <div id="project-list-view" class="max-w-[1100px] mx-auto px-4">
         <!-- Page background: fixed behind everything, so it never changes the page layout/container -->

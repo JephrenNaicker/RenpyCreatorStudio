@@ -1,3 +1,4 @@
+<!-- frontend/src/views/character/CharacterListView.vue -->
 <template>
     <div class="max-w-7xl mx-auto px-4 py-8" id="character-list-view">
         <!-- Header -->

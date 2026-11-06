@@ -1,3 +1,4 @@
+<!-- frontend/src/views/character/CharacterDetailView.vue -->
 <template>
     <div v-if="character" class="max-w-[1200px] mx-auto">
         <!-- Character Header -->
@@ -86,7 +87,7 @@
                         <div class="text-2xl">😀</div>
                         <div class="flex flex-col">
                             <span :id="`expression-name-${expIndex}`" class="font-medium text-slate-50">{{ exp.name
-                                }}</span>
+                            }}</span>
                             <span v-if="exp.outfit" :id="`expression-outfit-${expIndex}`"
                                 class="text-[0.8rem] text-sky-400">{{ exp.outfit }}</span>
                         </div>
@@ -115,7 +116,7 @@
                     <div v-for="(voice, voiceIndex) in character.voice_lines" :id="`voice-item-${voiceIndex}`"
                         :key="voice.line_name" class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
                         <span :id="`voice-name-${voiceIndex}`" class="font-medium text-slate-50">{{ voice.line_name
-                            }}</span>
+                        }}</span>
                         <span :id="`voice-path-${voiceIndex}`" class="font-mono text-[0.85rem] text-slate-400">{{
                             voice.audio_path }}</span>
                     </div>

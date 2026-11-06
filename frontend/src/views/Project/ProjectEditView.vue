@@ -1,3 +1,4 @@
+<!-- frontend/src/views/project/ProjectEditView.vue -->
 <template>
     <div id="project-edit-page"
         class="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-4 pt-10 pb-16 max-sm:px-3 max-sm:pt-6 max-sm:pb-12">
@@ -104,7 +105,7 @@
                                     class="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-white/20"
                                     :style="{ background: selectedCharacter.color, boxShadow: `0 0 8px ${selectedCharacter.color}88` }" />
                                 <span id="selected-char-name" class="text-slate-100">{{ selectedCharacter.name
-                                    }}</span>
+                                }}</span>
                                 <span v-if="selectedCharacter.nickname" id="selected-char-nickname"
                                     class="text-xs italic text-slate-400">
                                     "{{ selectedCharacter.nickname }}"

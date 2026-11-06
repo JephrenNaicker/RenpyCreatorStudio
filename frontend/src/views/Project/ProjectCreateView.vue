@@ -1,3 +1,4 @@
+<!-- frontend/src/views/project/ProjectCreateView.vue -->
 <template>
     <div class="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-4 pt-10 pb-16 max-sm:px-3 max-sm:pt-6 max-sm:pb-12"
         id="project-create-page">
