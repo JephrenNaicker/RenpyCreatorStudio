@@ -46,7 +46,16 @@ v<!-- frontend/src/components/scene/export/ExportModal.vue -->
 
                     <!-- Options -->
                     <section class="flex flex-col gap-3">
-                        <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wide m-0">Options</h4>
+                        <div class="flex flex-col gap-1">
+                            <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wide m-0">Options</h4>
+                            <p class="text-[11px] text-slate-500 m-0 leading-snug" id="export-defaults-hint">
+                                Starts from your project defaults; changes here apply to this export only.
+                                <RouterLink v-if="project" :to="`/projects/${project.id}/setup`"
+                                    class="text-sky-400 hover:text-sky-300 whitespace-nowrap" id="export-open-setup">
+                                    Edit defaults in Setup &amp; Exports
+                                </RouterLink>
+                            </p>
+                        </div>
 
                         <label class="flex items-start gap-2 text-xs text-slate-300 cursor-pointer">
                             <input type="checkbox" class="accent-sky-400 mt-0.5 cursor-pointer"
@@ -54,7 +63,8 @@ v<!-- frontend/src/components/scene/export/ExportModal.vue -->
                                 @change="setOption('includeShared', ($event.target as HTMLInputElement).checked)" />
                             <span>
                                 Include shared files
-                                <span class="block text-slate-500">characters.rpy, images.rpy, variables.rpy</span>
+                                <span class="block text-slate-500">characters.rpy, images.rpy, variables.rpy (names,
+                                    paths and defaults come from Setup)</span>
                             </span>
                         </label>
 
@@ -226,6 +236,7 @@ import { ref, computed, watch } from 'vue';
 import type { Character, Project, Scene } from '@/types/models';
 import {
     exportProject,
+    optionsFromSettings,
     recordExport,
     SHARED_PATHS,
 } from '@/services/renpyExportService';
@@ -310,8 +321,9 @@ const scriptAlreadyExported = computed(() => !!props.records[SHARED_PATHS.script
 
 const toggleStart = (on: boolean) => setOption('startSceneId', on ? orderedSceneIds.value[0] : undefined);
 
-// Fresh defaults every time the modal opens: only offer `label start` when
-// script.rpy has never been exported.
+// Fresh defaults every time the modal opens: run options are re-seeded from the
+// project's Setup defaults, and `label start` is only offered when script.rpy has
+// never been exported.
 watch(
     () => props.open,
     open => {
@@ -319,7 +331,13 @@ watch(
         skipUpToDate.value = false;
         activePath.value = null;
         copied.value = false;
-        setOption('startSceneId', scriptAlreadyExported.value ? undefined : orderedSceneIds.value[0]);
+        // One merged emit: sequential setOption() calls would each spread the same
+        // stale props.options and the first patch would be lost.
+        emit('update:options', {
+            ...props.options,
+            ...optionsFromSettings(props.project?.export_settings),
+            startSceneId: scriptAlreadyExported.value ? undefined : orderedSceneIds.value[0],
+        });
     }
 );
 

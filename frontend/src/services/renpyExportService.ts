@@ -20,6 +20,7 @@ import type {
     CharacterState,
     ChoiceEffect,
     DialogueLine,
+    ExportSettings,
     ImagePosition,
     MenuChoice,
     MenuNode,
@@ -104,6 +105,74 @@ const START = '__start__';
 const slug = (s: string): string =>
     s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'x';
 
+// ─── Character tags ──────────────────────────────────────────────────────────
+// A tag is the short script name (`alice "Hello"`, `show alice happy`). It has
+// to be a valid Python identifier and must not collide with a Ren'Py/Python
+// word - `define menu = Character(...)` would break the whole game.
+
+const RESERVED_TAGS = new Set([
+    'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue', 'def', 'del', 'elif', 'else',
+    'except', 'finally', 'for', 'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not',
+    'or', 'pass', 'raise', 'return', 'try', 'while', 'with', 'yield',
+    'label', 'menu', 'scene', 'show', 'hide', 'jump', 'call', 'play', 'stop', 'queue', 'voice', 'define',
+    'default', 'image', 'transform', 'screen', 'init', 'python', 'pause', 'window', 'style', 'config',
+    'store', 'renpy', 'persistent', 'preferences', 'gui', 'layout', 'theme',
+]);
+
+// Always returns a valid tag, whatever the input.
+export const safeTag = (raw: string): string => {
+    let t = slug(raw);
+    if (/^[0-9]/.test(t)) t = `c_${t}`;
+    if (RESERVED_TAGS.has(t)) t = `${t}_c`;
+    return t;
+};
+
+// True when `raw` can be used as a tag exactly as typed (used for form validation).
+export const isValidTag = (raw: string): boolean => /^[a-z][a-z0-9_]*$/.test(raw) && !RESERVED_TAGS.has(raw);
+
+export interface ResolvedTag {
+    tag: string;
+    overridden: boolean; // came from ExportSettings.character_tags
+    deduped: boolean; // collided with another character, so a suffix was added
+}
+
+// Single source of truth for tags: the exporter and the Setup page both call this.
+// Explicit overrides are claimed first so they win collisions against auto-generated names.
+export function resolveCharacterTags(
+    characters: Character[],
+    overrides: Record<string, string> = {}
+): Map<string, ResolvedTag> {
+    const out = new Map<string, ResolvedTag>();
+    const used = new Set<string>();
+
+    const claim = (ch: Character, base: string, overridden: boolean) => {
+        let tag = base;
+        let deduped = false;
+        if (used.has(tag)) {
+            deduped = true;
+            tag = `${base}_${slug(ch.id)}`;
+            for (let n = 2; used.has(tag); n++) tag = `${base}_${slug(ch.id)}_${n}`;
+        }
+        used.add(tag);
+        out.set(ch.id, { tag, overridden, deduped });
+    };
+
+    for (const ch of characters) {
+        const o = overrides[ch.id]?.trim();
+        if (o) claim(ch, safeTag(o), true);
+    }
+    for (const ch of characters) {
+        if (!out.has(ch.id)) claim(ch, safeTag(ch.name), false);
+    }
+    return out;
+}
+
+// "images/characters/" -> "images/characters"; rejects empty / ".." paths.
+const cleanFolder = (s?: string): string | undefined => {
+    const c = (s ?? '').trim().replace(/\\/g, '/').replace(/\/{2,}/g, '/').replace(/^\/+|\/+$/g, '');
+    return c && !c.split('/').includes('..') ? c : undefined;
+};
+
 export const sceneLabel = (sceneId: string) => `scene_${slug(sceneId)}`;
 export const scenePath = (sceneId: string) => `game/${sceneLabel(sceneId)}.rpy`;
 export const SHARED_PATHS = {
@@ -157,7 +226,7 @@ const fileSafe = (name: string): string => {
 
 // ─── Compile context ─────────────────────────────────────────────────────────
 
-type VarType = 'number' | 'boolean' | 'string';
+export type VarType = 'number' | 'boolean' | 'string';
 
 interface Ctx {
     input: ExportInput;
@@ -199,19 +268,17 @@ const createCtx = (input: ExportInput): Ctx => {
         warnedAssets: new Set(),
     };
 
-    const usedTags = new Set<string>();
+    const tags = resolveCharacterTags(input.characters, input.project.export_settings?.character_tags);
     for (const ch of input.characters) {
         ctx.charById.set(ch.id, ch);
-        let tag = slug(ch.name);
-        if (usedTags.has(tag)) {
-            tag = `${tag}_${slug(ch.id)}`;
+        const { tag, deduped } = tags.get(ch.id)!;
+        if (deduped) {
             issue(ctx, {
                 severity: 'warning',
                 code: 'duplicate_character_tag',
-                message: `Character "${ch.name}" shares a name with another character; using "${tag}" in the script.`,
+                message: `Character \"${ch.name}\" has the same script name (tag) as another character; using \"${tag}\" in the script.`,
             });
         }
-        usedTags.add(tag);
         ctx.tagById.set(ch.id, tag);
 
         for (const o of ch.outfits ?? []) ctx.definedImages.add(`${tag} ${slug(o.name)}`);
@@ -237,10 +304,18 @@ function registerBackground(ctx: Ctx, path: string, name?: string): string {
     return candidate;
 }
 
+// Project-level folder conventions (Setup & Exports) replace the built-in defaults.
+function resolveFolder(ctx: Ctx, folder: string): string {
+    const f = ctx.input.project.export_settings?.asset_folders;
+    const custom = folder === 'images/bg' ? f?.backgrounds : folder === 'audio' ? f?.audio : f?.images;
+    return cleanFolder(custom) ?? folder;
+}
+
 // folder = "images" | "images/bg" | "audio"
 function assetPath(ctx: Ctx, source: string, folder: string, hint?: string, sceneId?: string, lineId?: string): string {
     const mapped = ctx.input.options.assetMap?.[source];
     if (mapped) return mapped;
+    const dir = resolveFolder(ctx, folder);
 
     if (/^(blob:|data:|https?:)/.test(source)) {
         if (!ctx.warnedAssets.has(source)) {
@@ -253,9 +328,9 @@ function assetPath(ctx: Ctx, source: string, folder: string, hint?: string, scen
                 lineId,
             });
         }
-        return `${folder}/${hint ? fileSafe(hint) : 'missing_asset'}`;
+        return `${dir}/${hint ? fileSafe(hint) : 'missing_asset'}`;
     }
-    return source.includes('/') ? source : `${folder}/${source}`;
+    return source.includes('/') ? source : `${dir}/${source}`;
 }
 
 // ─── Positions / transforms ──────────────────────────────────────────────────
@@ -699,7 +774,7 @@ const emitStubs = (ids: string[]): string =>
 
 // ─── Entry point ─────────────────────────────────────────────────────────────
 
-export function exportProject(input: ExportInput): ExportResult {
+function runExport(input: ExportInput): ExportResult & { ctx: Ctx } {
     const { options } = input;
     const ctx = createCtx(input);
     const selected = new Set(options.sceneIds);
@@ -767,7 +842,63 @@ export function exportProject(input: ExportInput): ExportResult {
         .filter(i => !i.sceneId || selected.has(i.sceneId))
         .sort((a, b) => rank[a.severity] - rank[b.severity]);
 
+    return { files, issues, ctx };
+}
+
+export function exportProject(input: ExportInput): ExportResult {
+    const { files, issues } = runExport(input);
     return { files, issues };
+}
+
+// ─── Project defaults & shared-files preview ─────────────────────────────────
+// ExportSettings (Project.export_settings, edited in Setup & Exports) holds what
+// is true for the whole project. ExportOptions is what one export run uses; it
+// starts from these defaults and the export dialog may override it per run.
+
+export function optionsFromSettings(settings?: ExportSettings | null): Partial<ExportOptions> {
+    return {
+        sceneEnd: settings?.scene_end ?? DEFAULT_EXPORT_OPTIONS.sceneEnd,
+        stubMissingScenes: settings?.stub_missing_scenes ?? DEFAULT_EXPORT_OPTIONS.stubMissingScenes,
+        declareUndefinedVariables:
+            settings?.declare_undefined_variables ?? DEFAULT_EXPORT_OPTIONS.declareUndefinedVariables,
+    };
+}
+
+export interface UndeclaredVariable {
+    key: string;
+    type: VarType;
+}
+
+export interface SharedExportResult extends ExportResult {
+    // Used by choices/conditions but missing from the project's variable list.
+    undeclaredVariables: UndeclaredVariable[];
+}
+
+// characters.rpy / images.rpy / variables.rpy exactly as the export dialog would
+// produce them with the project defaults. Shared files depend on every scene
+// (backgrounds, positions, variables), so scenes are still required.
+export function exportSharedFiles(
+    input: Omit<ExportInput, 'options'> & { options?: Partial<ExportOptions> }
+): SharedExportResult {
+    const { files, issues, ctx } = runExport({
+        ...input,
+        options: {
+            ...DEFAULT_EXPORT_OPTIONS,
+            ...optionsFromSettings(input.project.export_settings),
+            ...input.options,
+            sceneIds: [],
+            includeShared: true,
+            startSceneId: undefined,
+            stubMissingScenes: false,
+        },
+    });
+
+    const undeclaredVariables = Array.from(ctx.usedVars.entries())
+        .filter(([key]) => !ctx.registryKeys.has(key))
+        .map(([key, type]) => ({ key, type }))
+        .sort((a, b) => a.key.localeCompare(b.key));
+
+    return { files: files.filter(f => f.kind === 'shared'), issues, undeclaredVariables };
 }
 
 // ─── Export tracking ─────────────────────────────────────────────────────────

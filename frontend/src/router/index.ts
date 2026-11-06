@@ -11,6 +11,7 @@ import CharacterListView from '../views/character/CharacterListView.vue';
 import CharacterDetailView from '../views/character/CharacterDetailView.vue';
 import CharacterCreator from '../views/character/CharacterCreatorView.vue';
 import CharacterEditorView from '../views/character/CharacterEditorView.vue';
+import CharacterSetupView from '../components/character/CharacterSetupView.vue';
 
 // Projects
 import ProjectListView from '../views/project/ProjectListView.vue';
@@ -92,7 +93,8 @@ const router = createRouter({
           component: ProjectSceneEditorView,
           props: true,
           meta: { layout: 'dashboard' }
-        }
+        },
+        { path: 'projects/:id/setup', name: 'project-setup', component: CharacterSetupView, props: true, meta: { layout: 'dashboard' } }
       ]
     }
   ]
