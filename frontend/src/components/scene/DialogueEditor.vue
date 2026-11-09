@@ -116,7 +116,8 @@
                         </h4>
                     </div>
                     <MenuChoiceEditor :editing-node="editingMenuNode" :line-count="dialogueLines.length"
-                        @add-menu="handleAddMenuNode" @update-menu="handleUpdateMenuNode" @cancel="closeMenuEditor" />
+                        :variables="variables" @add-menu="handleAddMenuNode" @update-menu="handleUpdateMenuNode"
+                        @cancel="closeMenuEditor" />
                 </div>
 
                 <!-- Background Action Editor Panel -->
@@ -336,12 +337,13 @@ import CastSelector from '@/components/scene/CastSelector.vue';
 import DialogueHistory from '@/components/scene/DialogueHistory.vue';
 import MenuChoiceEditor from '@/components/scene/MenuChoiceEditor.vue';
 import { createDialogueLine, createMenuNode } from '@/services/dialogueService';
-import type { DialogueLine, MenuNode, ActionNode, Character, SceneLine, BackgroundAsset, MusicAsset, MusicLabel } from '@/types/models';
+import type { DialogueLine, MenuNode, ActionNode, Character, SceneLine, BackgroundAsset, MusicAsset, MusicLabel, StoryVariable } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
 interface Props {
     dialogueLines: SceneLine[];
     characters: Character[];
+    variables?: StoryVariable[];
     backgroundAssets?: BackgroundAsset[];
     selectedLineIndex?: number | null;
     selectedSpeakerId?: string | null;
@@ -366,6 +368,7 @@ interface Emits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+    variables: () => [],
     backgroundAssets: () => [],
     selectedLineIndex: null,
     selectedSpeakerId: null,

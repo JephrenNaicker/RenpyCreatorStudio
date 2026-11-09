@@ -433,6 +433,27 @@ class Stage {
         this.shown.clear();
     }
 
+    // The exact image if it exists, otherwise the closest one that does:
+    //   1. outfit + expression (as requested)
+    //   2. the outfit alone (keeps the outfit the author picked, drops a bad expression)
+    //   3. the expression under the outfit it actually belongs to
+    //   4. the character's first outfit
+    // null when the character has no usable image at all.
+    private resolveImage(id: string, tag: string, a: Actor, wanted: string): string | null {
+        const defined = this.ctx.definedImages;
+        if (defined.has(wanted)) return wanted;
+
+        const ch = this.ctx.charById.get(id);
+        const candidates: string[] = [];
+        if (a.outfit) candidates.push(`${tag} ${slug(a.outfit)}`);
+        const e = a.expression ? ch?.expressions?.find(x => x.name === a.expression) : undefined;
+        if (e?.outfit) candidates.push(`${tag} ${slug(e.outfit)} ${slug(e.name)}`);
+        const first = ch?.outfits?.[0];
+        if (first) candidates.push(`${tag} ${slug(first.name)}`);
+
+        return candidates.find(c => defined.has(c)) ?? null;
+    }
+
     sync(ids?: Iterable<string>, lineId?: string): string[] {
         const out: string[] = [];
         for (const id of ids ?? Array.from(this.actors.keys())) {
@@ -448,22 +469,28 @@ class Stage {
                 continue;
             }
 
-            const name = [tag, a.outfit && slug(a.outfit), a.expression && slug(a.expression)]
+            const wanted = [tag, a.outfit && slug(a.outfit), a.expression && slug(a.expression)]
                 .filter(Boolean)
                 .join(' ');
-            const key = `${name}@${a.pos}`;
+            const name = this.resolveImage(id, tag, a, wanted);
+            const key = `${name ?? wanted}@${a.pos}`;
             if (this.shown.get(id) === key) continue;
 
-            if (!this.ctx.definedImages.has(name)) {
+            if (name !== wanted) {
+                // Ren'Py raises an exception for `show` on an image that doesn't exist, so a
+                // warning alone isn't enough: show the closest valid image instead, or nothing.
                 issue(this.ctx, {
                     severity: 'warning',
                     code: 'undefined_image',
-                    message: `No image defined for "${name}". Check the outfit/expression pairing.`,
+                    message: name
+                        ? `No image defined for "${wanted}" (check the outfit/expression pairing); showing "${name}" instead.`
+                        : `No image defined for "${wanted}" and the character has no other images; nothing is shown.`,
                     sceneId: this.sceneId,
                     lineId,
                 });
             }
-            out.push(`show ${name} at ${a.pos}`);
+            if (name) out.push(`show ${name} at ${a.pos}`);
+            else out.push(`# skipped: no image for "${wanted}"`);
             this.shown.set(id, key);
         }
         return out;

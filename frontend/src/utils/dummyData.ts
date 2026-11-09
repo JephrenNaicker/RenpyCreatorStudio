@@ -9,7 +9,9 @@ import {
     type SceneLine,
     type StoryVariable,
     type ChoiceEffect,
-    type CharacterState
+    type CharacterState,
+    type BackgroundAsset,
+    type MusicAsset
 } from '@/types/models';
 
 // Define the data arrays
@@ -165,6 +167,60 @@ const project2Variables: StoryVariable[] = [
     }
 ];
 
+// Project 1 variables for the choice system (Mystic Academy).
+// Every key used in a ChoiceEffect in scenes 1-3 must be registered here, otherwise
+// MenuChoiceEditor flags it as 'Unknown variable' and blocks the update.
+const project1Variables: StoryVariable[] = [
+    {
+        key: 'forbidden_knowledge',
+        type: 'number',
+        default_value: 0,
+        label: 'Forbidden Knowledge',
+        category: 'resource'
+    },
+    {
+        key: 'academy_trust',
+        type: 'number',
+        default_value: 0,
+        label: 'Academy Trust',
+        category: 'affinity'
+    },
+    {
+        key: 'magic_power',
+        type: 'number',
+        default_value: 0,
+        label: 'Magic Power',
+        category: 'resource'
+    },
+    {
+        key: 'met_shadow_entity',
+        type: 'boolean',
+        default_value: false,
+        label: 'Met Shadow Entity',
+        category: 'flag'
+    }
+];
+
+// Reusable asset libraries (project-level). Paths follow the same convention as
+// Expression.image_path: relative here for dummy data, blob:/data:/http(s) at runtime.
+const project1Backgrounds: BackgroundAsset[] = [
+    { id: 'bg_academy_gates', name: 'Academy Gates', path: 'academy_gates.png' },
+    { id: 'bg_library', name: 'Library', path: 'academy_library.png' },
+    { id: 'bg_training', name: 'Training Grounds', path: 'academy_training.png' }
+];
+
+const project1Music: MusicAsset[] = [
+    { id: 'music_academy_theme', name: 'Academy Theme', path: 'audio/music/academy_theme.ogg', default_label: 'Background' },
+    { id: 'music_library_ambience', name: 'Library Ambience', path: 'audio/music/library_ambience.ogg', default_label: 'Background' },
+    { id: 'sfx_magic_chime', name: 'Magic Chime', path: 'audio/sfx/magic_chime.ogg', default_label: 'Effect' }
+];
+
+const project2Music: MusicAsset[] = [
+    { id: 'music_neon_rain', name: 'Neon Rain', path: 'audio/music/neon_rain.ogg', default_label: 'Background' },
+    { id: 'music_nexus_pulse', name: 'Nexus Pulse', path: 'audio/music/nexus_pulse.ogg', default_label: 'Background' },
+    { id: 'sfx_glitch_hit', name: 'Glitch Hit', path: 'audio/sfx/glitch_hit.ogg', default_label: 'Effect' }
+];
+
 const initialProjects: Project[] = [
     {
         id: '1',
@@ -175,7 +231,9 @@ const initialProjects: Project[] = [
         tags: ['fantasy', 'school', 'mystery', 'magic'],
         created_at: '2024-01-15T10:30:00Z',
         updated_at: '2024-01-20T14:45:00Z',
-        variables: []
+        variables: project1Variables,
+        background_assets: project1Backgrounds,
+        music_assets: project1Music
     },
     {
         id: '2',
@@ -203,7 +261,8 @@ const initialProjects: Project[] = [
                 name: 'Nexus Tower',
                 path: 'nexus_tower.png'
             }
-        ]
+        ],
+        music_assets: project2Music
     }
 ];
 
@@ -1183,6 +1242,45 @@ const scene6Lines: SceneLine[] = [
 // ─── Scene 2: The Library (Empty for now) ─────────────────────────────────────
 // Scene 3: Training Grounds (Empty for now)
 
+// ─── Music cue nodes (sample music_change actions) ────────────────────────────
+// Renumbers `order` so inserted nodes keep the timeline consistent.
+const withOrder = (lines: SceneLine[]): SceneLine[] =>
+    lines.map((line, i) => ({ ...line, order: i + 1 }));
+
+const scene1MusicStart: ActionNode = {
+    id: 's1_music_1',
+    type: 'action',
+    order: 1,
+    action_type: 'music_change',
+    music_mode: 'play',
+    music_path: 'audio/music/academy_theme.ogg',
+    music_name: 'Academy Theme',
+    music_fade: 2,
+    music_label: 'Background'
+};
+
+const scene4MusicStart: ActionNode = {
+    id: 's4_music_1',
+    type: 'action',
+    order: 1,
+    action_type: 'music_change',
+    music_mode: 'play',
+    music_path: 'audio/music/neon_rain.ogg',
+    music_name: 'Neon Rain',
+    music_fade: 1.5,
+    music_label: 'Background'
+};
+
+const scene6MusicStop: ActionNode = {
+    id: 's6_music_1',
+    type: 'action',
+    order: 99,
+    action_type: 'music_change',
+    music_mode: 'stop',
+    music_fade: 3,
+    music_label: 'Background'
+};
+
 // Update the scenes array with the new choice-enabled scenes
 const initialScenes: Scene[] = [
     {
@@ -1191,7 +1289,7 @@ const initialScenes: Scene[] = [
         project_id: '1',
         character_ids: ['1', '2', '3', '4'],
         notes: 'Opening scene at the academy gates. Features all four characters with proper show/hide states.',
-        dialogue_lines: scene1Lines,
+        dialogue_lines: withOrder([scene1MusicStart, ...scene1Lines]),
         created_at: '2024-01-20T10:00:00Z',
         updated_at: '2024-01-20T10:00:00Z'
     },
@@ -1221,7 +1319,7 @@ const initialScenes: Scene[] = [
         project_id: '2',
         character_ids: ['2', '4'],
         notes: 'Opening chase scene with branching choices. Features reputation system and multiple paths.',
-        dialogue_lines: scene4Lines,
+        dialogue_lines: withOrder([scene4MusicStart, ...scene4Lines]),
         created_at: '2024-01-19T10:00:00Z',
         updated_at: '2024-01-25T10:00:00Z',
         background_image: 'cyberpunk_alley.png'
@@ -1243,7 +1341,7 @@ const initialScenes: Scene[] = [
         project_id: '2',
         character_ids: ['2', '4'],
         notes: 'The climax of the Cyberpunk Dreams story. Multiple endings based on player choices.',
-        dialogue_lines: scene6Lines,
+        dialogue_lines: withOrder([...scene6Lines, scene6MusicStop]),
         created_at: '2024-01-25T11:00:00Z',
         updated_at: '2024-01-25T11:00:00Z',
         background_image: 'nexus_tower.png'
@@ -1256,4 +1354,4 @@ export const dummyProjects: Project[] = initialProjects;
 export const dummyScenes: Scene[] = initialScenes;
 
 // Export types for convenience
-export type { Character, Project, Scene, DialogueLine, MenuNode, ActionNode, SceneLine, StoryVariable, ChoiceEffect, CharacterState };
+export type { Character, Project, Scene, DialogueLine, MenuNode, ActionNode, SceneLine, StoryVariable, ChoiceEffect, CharacterState, BackgroundAsset, MusicAsset };

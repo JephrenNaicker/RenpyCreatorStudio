@@ -1,4 +1,4 @@
-v<!-- frontend/src/components/scene/export/ExportModal.vue -->
+<!-- frontend/src/components/scene/export/ExportModal.vue -->
 <!--
     Review step of the Ren'Py export: options, issues and a per-file code
     preview, then Download ZIP. Selection happens in the sidebar (SceneManager)
@@ -50,10 +50,11 @@ v<!-- frontend/src/components/scene/export/ExportModal.vue -->
                             <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wide m-0">Options</h4>
                             <p class="text-[11px] text-slate-500 m-0 leading-snug" id="export-defaults-hint">
                                 Starts from your project defaults; changes here apply to this export only.
-                                <RouterLink v-if="project" :to="`/projects/${project.id}/setup`"
-                                    class="text-sky-400 hover:text-sky-300 whitespace-nowrap" id="export-open-setup">
+                                <button type="button"
+                                    class="text-sky-400 hover:text-sky-300 whitespace-nowrap bg-transparent border-0 p-0 cursor-pointer text-[11px]"
+                                    id="export-open-setup" @click="emit('open-setup')">
                                     Edit defaults in Setup &amp; Exports
-                                </RouterLink>
+                                </button>
                             </p>
                         </div>
 
@@ -263,6 +264,7 @@ interface Props {
 interface Emits {
     (e: 'update:open', open: boolean): void;
     (e: 'update:options', options: ExportOptions): void;
+    (e: 'open-setup'): void;
     (e: 'exported', records: ExportRecords): void;
     (e: 'goto-issue', payload: { sceneId: string; lineId: string }): void;
 }

@@ -8,7 +8,7 @@
             @export-scenes="openExport" @select-character="handleSelectCharacter"
             @remove-character="openRemoveCharacterModal" @add-character="addCharacterToProject"
             @add-characters="handleAddCharactersToProject"
-            @select-scene="(scene) => { activeView = 'editor'; selectScene(scene); }" @add-scene="handleAddScene"
+            @select-scene="(scene) => { if (!leaveSetup()) return; selectScene(scene); }" @add-scene="handleAddScene"
             @delete-scene="handleDeleteScene" @update-scene="handleUpdateScene"
             @create-character="handleCreateCharacter" @open-character-setup="activeView = 'setup'" />
 
@@ -21,8 +21,8 @@
                 @back-to-project="router.push(`/projects/${route.params.id}`)" />
 
             <div v-else class="bg-slate-950 border-b border-slate-700/80 px-6 py-4 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-slate-50">Character Setup & Bulk Preview</h2>
-                <button @click="activeView = 'editor'"
+                <h2 class="text-xl font-bold text-slate-50">Setup &amp; Exports</h2>
+                <button @click="leaveSetup"
                     class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-lg transition-colors cursor-pointer">
                     ← Back to Scene Editor
                 </button>
@@ -30,11 +30,14 @@
 
             <!-- Workspace Switcher Content -->
             <div id="workspace-content" class="flex-1 overflow-y-auto p-4">
-                <CharacterSetupView v-if="activeView === 'setup'" :characters="projectCharacters" />
+                <CharacterSetupView v-if="activeView === 'setup'" :project="currentProject"
+                    :characters="projectCharacters" :scenes="scenesWithDrafts" :saving="isSavingSetup"
+                    :save-error="setupSaveError" @save="saveSetup" @dirty-change="setupDirty = $event" />
+
                 <DialogueEditor v-else id="scene-workspace-component" :key="currentScene?.id"
-                    :dialogue-lines="dialogueLines" :characters="projectCharacters" :variables="variables"
-                    :background-assets="backgroundAssets" :selected-line-index="selectedLineIndex"
-                    :selected-speaker-id="selectedCharacterId"
+                    :music-assets="musicAssets" @add-music-asset="handleAddMusicAsset" :dialogue-lines="dialogueLines"
+                    :characters="projectCharacters" :variables="variables" :background-assets="backgroundAssets"
+                    :selected-line-index="selectedLineIndex" :selected-speaker-id="selectedCharacterId"
                     :is-dirty="currentScene ? dirtyScenes.has(currentScene.id) : false"
                     :scene-character-ids="currentScene?.character_ids || undefined" @add-line="addDialogueLine"
                     @edit-line="handleEditLine" @delete-line="deleteDialogueLine" @select-line="selectLine"
@@ -55,7 +58,7 @@
     <ExportModal :open="showExportModal" :project="currentProject" :scenes="scenesWithDrafts"
         :characters="projectCharacters" :scene-ids="exportSceneIds" :records="exportRecords" :options="exportOptions"
         @update:open="showExportModal = $event" @update:options="exportOptions = $event" @exported="handleExported"
-        @goto-issue="handleGotoIssue" />
+        @goto-issue="handleGotoIssue" @open-setup="openSetupFromExport" />
 
     <!-- Character Removal Warning Modal -->
     <div v-if="showRemovalModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
@@ -105,7 +108,7 @@
                             <div class="text-slate-50 font-medium">Keep as "Removed Character" placeholder</div>
                             <div class="text-slate-400 text-sm">Dialogue lines will show "[Removed: {{
                                 characterToRemove?.name
-                                }}]" and can be reassigned later</div>
+                            }}]" and can be reassigned later</div>
                         </div>
                     </label>
 
@@ -160,7 +163,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ProjectSidebar from '@/components/scene/ProjectSidebar.vue';
 import SceneWorkspaceHeader from '@/components/scene/SceneWorkspaceHeader.vue';
@@ -187,13 +190,15 @@ import {
     ensureInitialBackgroundLine,
     reorderLines,
 } from '@/services/dialogueService';
-import type { BackgroundAsset } from '@/types/models';
+import type { BackgroundAsset, MusicAsset, ExportSettings } from '@/types/models';
 import {
     DEFAULT_EXPORT_OPTIONS,
     getExportStatuses,
+    optionsFromSettings,
     scenePath,
 } from '@/services/renpyExportService';
 import type { ExportOptions, ExportRecords, FileStatus } from '@/services/renpyExportService';
+
 
 
 const route = useRoute();
@@ -213,6 +218,8 @@ const dirtyScenes = ref<Set<string>>(new Set());
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 const autoSaveTimer = ref<number | null>(null);
+const musicAssets = ref<MusicAsset[]>([]);
+
 
 // Undo/redo history — a per-scene stack of dialogueLines snapshots taken
 // immediately *before* each mutation. Undo pops the most recent snapshot
@@ -254,6 +261,10 @@ const currentProject = ref<Project | null>(null);
 // managed via VariableManager.vue + VariableManagerService.ts
 const variables = ref<StoryVariable[]>([]);
 const showVariableManager = ref(false);
+
+const handleAddMusicAsset = (asset: MusicAsset) => {
+    musicAssets.value.push(asset);
+};
 
 // Computed: Selected character
 const selectedCharacter = computed<Character | null>(() =>
@@ -352,6 +363,10 @@ const loadProjectData = async () => {
         variables.value = project?.variables ?? [];
         backgroundAssets.value = project?.background_assets ?? [];
         exportRecords.value = project?.export_records ?? {};
+        // Run options start from the project's Setup defaults, so the sidebar badges hash
+        // the same output the export dialog will produce.
+        exportOptions.value = { ...DEFAULT_EXPORT_OPTIONS, ...optionsFromSettings(project?.export_settings) };
+        musicAssets.value = project?.music_assets ?? [];
     } catch (err) {
         console.error('Failed to load project data:', err);
         error.value = 'Failed to load project data';
@@ -492,11 +507,51 @@ const handleExported = async (records: ExportRecords) => {
     }
 };
 
+// ── Setup & Exports ──────────────────────────────────────────────────────────
+// CharacterSetupView is a controlled view: it edits drafts and emits `save`; this is
+// where the project is persisted and every dependent piece of state is refreshed.
+const isSavingSetup = ref(false);
+const setupSaveError = ref<string | null>(null);
+const setupDirty = ref(false);
+
+const saveSetup = async (payload: { export_settings: ExportSettings; variables: StoryVariable[] }) => {
+    if (!currentProject.value) return;
+    isSavingSetup.value = true;
+    setupSaveError.value = null;
+    try {
+        const updated = await updateProject(currentProject.value.id, payload);
+        if (updated) {
+            currentProject.value = updated; // also re-hashes the sidebar export badges
+            variables.value = updated.variables ?? [];
+            exportOptions.value = { ...exportOptions.value, ...optionsFromSettings(updated.export_settings) };
+        }
+    } catch (err) {
+        console.error('Failed to save setup:', err);
+        setupSaveError.value = 'Failed to save changes. Please try again.';
+    } finally {
+        isSavingSetup.value = false;
+    }
+};
+
+// Returns false (and stays put) if the user chooses to keep their unsaved Setup edits.
+const leaveSetup = (): boolean => {
+    if (activeView.value === 'setup' && setupDirty.value && !confirm('Discard unsaved Setup & Exports changes?')) {
+        return false;
+    }
+    activeView.value = 'editor';
+    return true;
+};
+
+const openSetupFromExport = () => {
+    showExportModal.value = false;
+    activeView.value = 'setup';
+};
+
 // Issue rows in the modal jump straight to the offending line.
 const handleGotoIssue = ({ sceneId, lineId }: { sceneId: string; lineId: string }) => {
     const target = scenes.value.find(s => s.id === sceneId);
     if (!target) return;
-    activeView.value = 'editor';
+    if (!leaveSetup()) return;
     if (currentScene.value?.id !== sceneId) selectScene(target);
     const index = dialogueLines.value.findIndex(l => l.id === lineId);
     if (index >= 0) selectLine(index);
@@ -521,7 +576,16 @@ const showTempError = (message: string) => {
 // uses below until projectService exposes one.
 const handleVariablesUpdate = (updated: StoryVariable[]) => {
     variables.value = updated;
-    // TODO: persist via projectService once an update-project-variables endpoint exists
+    // Persist on the project so Setup & Exports (and a reload) see the same registry.
+    if (!currentProject.value) return;
+    updateProject(currentProject.value.id, { variables: updated })
+        .then(saved => {
+            if (saved) currentProject.value = saved;
+        })
+        .catch(err => {
+            console.error('Failed to persist variables:', err);
+            showTempError('Variables changed, but could not be saved.');
+        });
 };
 
 // Only fires when a variable rename cascaded into scene data (effects/conditions
@@ -850,7 +914,7 @@ const handleUpdateLineVisibility = ({ index, visible }: { index: number; visible
 // already never offers that position. Re-assigns `order` the same way
 // deleteLine does, and selects the new (blank) line so it opens straight in
 // the right-side editor for the user to fill in.
-const handleInsertLine = ({ index, line }: { index: number; line: SceneLine }) => {
+const handleInsertLine = async ({ index, line }: { index: number; line: SceneLine }) => {
     pushHistory();
 
     const first = dialogueLines.value[0];
@@ -861,10 +925,15 @@ const handleInsertLine = ({ index, line }: { index: number; line: SceneLine }) =
     lines.splice(clampedIndex, 0, line);
     dialogueLines.value = reorderLines(lines);
 
-    selectedLineIndex.value = clampedIndex;
-    selectedCharacterId.value = isDialogueLine(line) ? (line.character?.id || null) : null;
     if (currentScene.value) dirtyScenes.value.add(currentScene.value.id);
     scheduleAutoSave();
+
+    // Force DialogueEditor's selectedLineIndex watcher to fire even when the
+    // new index equals the old one, so the right-hand panel reloads the new line.
+    selectedLineIndex.value = null;
+    await nextTick();
+    selectedLineIndex.value = clampedIndex;
+    selectedCharacterId.value = isDialogueLine(line) ? (line.character?.id || null) : null;
 };
 
 const saveScene = async () => {
