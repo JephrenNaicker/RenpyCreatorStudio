@@ -116,8 +116,8 @@
                         </h4>
                     </div>
                     <MenuChoiceEditor :editing-node="editingMenuNode" :line-count="dialogueLines.length"
-                        :variables="variables" @add-menu="handleAddMenuNode" @update-menu="handleUpdateMenuNode"
-                        @cancel="closeMenuEditor" />
+                        :scenes="scenes" :variables="variables" @add-menu="handleAddMenuNode"
+                        @update-menu="handleUpdateMenuNode" @cancel="closeMenuEditor" />
                 </div>
 
                 <!-- Background Action Editor Panel -->
@@ -337,7 +337,7 @@ import CastSelector from '@/components/scene/CastSelector.vue';
 import DialogueHistory from '@/components/scene/DialogueHistory.vue';
 import MenuChoiceEditor from '@/components/scene/MenuChoiceEditor.vue';
 import { createDialogueLine, createMenuNode } from '@/services/dialogueService';
-import type { DialogueLine, MenuNode, ActionNode, Character, SceneLine, BackgroundAsset, MusicAsset, MusicLabel, StoryVariable } from '@/types/models';
+import type { DialogueLine, MenuNode, ActionNode, Character, SceneLine, BackgroundAsset, MusicAsset, MusicLabel, StoryVariable, Scene } from '@/types/models';
 import type { ImagePosition } from '@/components/scene/ImagePositionSelector.vue';
 
 interface Props {
@@ -350,6 +350,7 @@ interface Props {
     isDirty?: boolean;
     sceneCharacterIds?: string[];
     musicAssets?: MusicAsset[];
+    scenes?: Scene[];
 }
 
 interface Emits {

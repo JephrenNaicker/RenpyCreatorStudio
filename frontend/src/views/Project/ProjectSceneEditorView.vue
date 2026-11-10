@@ -34,7 +34,7 @@
                     :characters="projectCharacters" :scenes="scenesWithDrafts" :saving="isSavingSetup"
                     :save-error="setupSaveError" @save="saveSetup" @dirty-change="setupDirty = $event" />
 
-                <DialogueEditor v-else id="scene-workspace-component" :key="currentScene?.id"
+                <DialogueEditor v-else id="scene-workspace-component" :key="currentScene?.id" :scenes="scenes"
                     :music-assets="musicAssets" @add-music-asset="handleAddMusicAsset" :dialogue-lines="dialogueLines"
                     :characters="projectCharacters" :variables="variables" :background-assets="backgroundAssets"
                     :selected-line-index="selectedLineIndex" :selected-speaker-id="selectedCharacterId"
@@ -108,7 +108,7 @@
                             <div class="text-slate-50 font-medium">Keep as "Removed Character" placeholder</div>
                             <div class="text-slate-400 text-sm">Dialogue lines will show "[Removed: {{
                                 characterToRemove?.name
-                            }}]" and can be reassigned later</div>
+                                }}]" and can be reassigned later</div>
                         </div>
                     </label>
 

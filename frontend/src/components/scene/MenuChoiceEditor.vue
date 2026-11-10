@@ -235,15 +235,26 @@
                 <!-- Target scene -->
                 <div class="flex flex-col gap-1.5" id="target-section">
                     <label class="text-[0.78rem] text-slate-400 font-medium tracking-wide" id="target-label">
-                        Target Scene ID <span class="text-slate-500 font-normal text-[0.72rem]">(optional — for future
-                            scene
-                            linking)</span>
+                        Target Scene <span class="text-slate-500 font-normal text-[0.72rem]">(optional)</span>
                     </label>
-                    <input :value="expandedChoice.target_scene_id"
-                        @input="updateExpandedField('target_scene_id', ($event.target as HTMLInputElement).value)"
-                        type="text"
-                        class="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-slate-50 text-sm focus:outline-none focus:border-sky-400 transition-colors"
-                        placeholder="e.g. scene_3" :id="`target-input-${expandedIdx}`" />
+                    <select :value="expandedChoice.target_scene_id ?? ''"
+                        @change="updateExpandedField('target_scene_id', ($event.target as HTMLSelectElement).value)"
+                        class="w-full bg-slate-900 border rounded-md px-3 py-2 text-slate-50 text-sm cursor-pointer focus:outline-none focus:border-sky-400 transition-colors"
+                        :class="isTargetSceneMissing(expandedChoice.target_scene_id) ? 'border-red-500 bg-red-500/5' : 'border-slate-700'"
+                        :id="`target-input-${expandedIdx}`">
+                        <option value="">— No target scene —</option>
+                        <option v-if="isTargetSceneMissing(expandedChoice.target_scene_id)"
+                            :value="expandedChoice.target_scene_id">
+                            {{ expandedChoice.target_scene_id }} - [Scene not found]
+                        </option>
+                        <option v-for="scene in props.scenes" :key="scene.id" :value="scene.id">
+                            {{ scene.id }} - [{{ scene.name }}]
+                        </option>
+                    </select>
+                    <span v-if="isTargetSceneMissing(expandedChoice.target_scene_id)"
+                        class="text-[0.7rem] text-red-500">
+                        ⚠️ This scene no longer exists in the project
+                    </span>
                 </div>
             </div>
         </div>
@@ -277,18 +288,20 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import type { MenuNode, MenuChoice, ChoiceEffect, StoryVariable, ConditionPart } from '@/types/models';
+import type { MenuNode, MenuChoice, ChoiceEffect, StoryVariable, ConditionPart, Scene } from '@/types/models';
 
 interface Props {
     editingNode?: MenuNode | null;
     lineCount?: number;
     variables?: StoryVariable[];
+    scenes?: Scene[];
 }
 
 const props = withDefaults(defineProps<Props>(), {
     editingNode: null,
     lineCount: 0,
-    variables: () => []
+    variables: () => [],
+    scenes: () => []
 });
 
 const emit = defineEmits<{
@@ -524,6 +537,13 @@ const canSubmit = computed(() => {
 });
 
 // ─── Methods ──────────────────────────────────────────────────────────
+
+// True when a target is set but no longer matches any scene (e.g. scene was deleted).
+// The dropdown keeps showing it so the stored value isn't silently wiped.
+const isTargetSceneMissing = (id?: string): boolean => {
+    if (!id) return false;
+    return !props.scenes.some(s => s.id === id);
+};
 
 function updateExpandedField(field: 'target_scene_id', value: string) {
     if (expandedIdx.value === null) return;
