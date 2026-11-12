@@ -245,10 +245,10 @@
                         <option value="">— No target scene —</option>
                         <option v-if="isTargetSceneMissing(expandedChoice.target_scene_id)"
                             :value="expandedChoice.target_scene_id">
-                            {{ expandedChoice.target_scene_id }} - [Scene not found]
+                            [Scene not found]
                         </option>
-                        <option v-for="scene in props.scenes" :key="scene.id" :value="scene.id">
-                            {{ scene.id }} - [{{ scene.name }}]
+                        <option v-for="opt in sceneOptions" :key="opt.id" :value="opt.id">
+                            {{ opt.label }}
                         </option>
                     </select>
                     <span v-if="isTargetSceneMissing(expandedChoice.target_scene_id)"
@@ -537,6 +537,24 @@ const canSubmit = computed(() => {
 });
 
 // ─── Methods ──────────────────────────────────────────────────────────
+
+// Dropdown labels: just the scene name. If two scenes share a name, append
+// (2), (3)... so they can still be told apart without exposing the raw ID.
+const sceneOptions = computed(() => {
+    const seen = new Map<string, number>();
+    const totals = new Map<string, number>();
+    props.scenes.forEach(s => totals.set(s.name, (totals.get(s.name) ?? 0) + 1));
+
+    return props.scenes.map(s => {
+        const count = (seen.get(s.name) ?? 0) + 1;
+        seen.set(s.name, count);
+        const isDuplicate = (totals.get(s.name) ?? 0) > 1;
+        return {
+            id: s.id,
+            label: isDuplicate ? `${s.name} (${count})` : (s.name || 'Untitled scene'),
+        };
+    });
+});
 
 // True when a target is set but no longer matches any scene (e.g. scene was deleted).
 // The dropdown keeps showing it so the stored value isn't silently wiped.
