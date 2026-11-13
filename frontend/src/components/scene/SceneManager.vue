@@ -274,26 +274,14 @@ const statusInfoById = computed<Record<string, StatusInfo>>(() => {
     const out: Record<string, StatusInfo> = {};
     for (const scene of props.scenes) {
         const st = props.exportStatuses?.[scene.id];
-        if (!st) continue;
-        if (st.status === 'never') {
-            out[scene.id] = {
-                label: 'Not exported',
-                cls: 'text-slate-400 bg-slate-800 border-slate-700',
-                title: 'This scene has never been exported'
-            };
-        } else if (st.status === 'up_to_date') {
-            out[scene.id] = {
-                label: 'Exported ✓',
-                cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-                title: `Exported ${formatWhen(st.exported_at)} - unchanged since`
-            };
-        } else {
-            out[scene.id] = {
-                label: 'Changed',
-                cls: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-                title: `Changed since last export (${formatWhen(st.exported_at)})`
-            };
-        }
+        // Only surface scenes that were exported and have since changed.
+        // "never" and "up_to_date" are intentionally not shown on the card.
+        if (st?.status !== 'changed') continue;
+        out[scene.id] = {
+            label: 'Changed',
+            cls: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+            title: `Changed since last export (${formatWhen(st.exported_at)})`
+        };
     }
     return out;
 });

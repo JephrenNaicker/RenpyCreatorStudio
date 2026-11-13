@@ -91,7 +91,7 @@ export interface ExportResult {
 export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
     sceneIds: [],
     includeShared: true,
-    sceneEnd: 'return',
+    sceneEnd: 'next_in_order',
     stubMissingScenes: true,
     declareUndefinedVariables: true,
 };
